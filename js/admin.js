@@ -1,5 +1,19 @@
-// Cargar productos desde LocalStorage o iniciar vacío
-let products = JSON.parse(localStorage.getItem('lvs_products')) || [];
+// Variable global
+let products = [];
+
+// Cargar productos desde la nube al iniciar
+async function initAdmin() {
+    try {
+        const res = await fetch('/.netlify/functions/api/products');
+        if (res.ok) {
+            products = await res.json();
+            renderTable();
+        }
+    } catch (e) {
+        console.error("Error cargando productos", e);
+    }
+}
+initAdmin();
 
 function renderTable() {
     const tbody = document.getElementById('product-table-body');
@@ -52,7 +66,7 @@ async function addProduct(e) {
     }
 }
 
-function saveProductToStorage(name, price, image, discount) {
+async function saveProductToStorage(name, price, image, discount) {
     const newProduct = {
         id: Date.now(), // ID único basado en tiempo
         name: name,
@@ -62,7 +76,9 @@ function saveProductToStorage(name, price, image, discount) {
     };
     
     products.push(newProduct);
-    localStorage.setItem('lvs_products', JSON.stringify(products));
+    
+    // Guardar en la nube
+    await saveToCloud();
     
     // Reset form
     document.getElementById('prod-name').value = '';
@@ -75,10 +91,24 @@ function saveProductToStorage(name, price, image, discount) {
     alert('Producto agregado correctamente');
 }
 
-function deleteProduct(id) {
+// Función auxiliar para enviar todo a la nube
+async function saveToCloud() {
+    try {
+        const res = await fetch('/.netlify/functions/api/products', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(products)
+        });
+        if (!res.ok) alert('Error al guardar en la nube');
+    } catch (e) {
+        alert('Error de conexión');
+    }
+}
+
+async function deleteProduct(id) {
     if(confirm('¿Estás seguro de eliminar este producto?')) {
         products = products.filter(p => p.id !== id);
-        localStorage.setItem('lvs_products', JSON.stringify(products));
+        await saveToCloud();
         renderTable();
     }
 }
@@ -200,7 +230,7 @@ function closeEditModal() {
     editModal.classList.remove('active');
 }
 
-function saveEdit(e) {
+async function saveEdit(e) {
     e.preventDefault();
     const id = parseInt(document.getElementById('edit-id').value);
     const productIndex = products.findIndex(p => p.id === id);
@@ -210,7 +240,7 @@ function saveEdit(e) {
         products[productIndex].price = parseFloat(document.getElementById('edit-price').value);
         products[productIndex].discount = parseFloat(document.getElementById('edit-discount').value) || 0;
         
-        localStorage.setItem('lvs_products', JSON.stringify(products));
+        await saveToCloud();
         renderTable();
         closeEditModal();
     }

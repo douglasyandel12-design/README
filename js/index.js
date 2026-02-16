@@ -1,5 +1,5 @@
-// Cargar productos desde LocalStorage (gestionado por admin.html)
-let products = JSON.parse(localStorage.getItem('lvs_products')) || [];
+// Variable global para productos
+let products = [];
 
 const grid = document.getElementById('product-grid');
 const cartCountEl = document.getElementById('cart-count');
@@ -17,8 +17,27 @@ cart = cart.filter(item => item != null);
 // Para evitar errores, si detectamos items sin 'quantity', los adaptamos
 cart = cart.map(item => item.quantity ? item : { ...item, quantity: 1 });
 
-updateCartUI();
-checkUserSession();
+// Función de inicio
+async function init() {
+    await loadProducts();
+    updateCartUI();
+    checkUserSession();
+}
+init();
+
+// Cargar productos desde la Nube (Base de Datos)
+async function loadProducts() {
+    try {
+        const res = await fetch('/.netlify/functions/api/products');
+        if (res.ok) {
+            products = await res.json();
+            renderProducts();
+        }
+    } catch (error) {
+        console.error('Error cargando productos:', error);
+        grid.innerHTML = '<p>Error al cargar el catálogo.</p>';
+    }
+}
 
 async function checkUserSession() {
     try {
@@ -61,7 +80,9 @@ function logout() {
 }
 
 // Renderizar productos
-products.forEach((product, index) => {
+function renderProducts() {
+    grid.innerHTML = ''; // Limpiar grid
+    products.forEach((product, index) => {
     // Determinar si mostrar imagen o placeholder
     const imgContent = product.image 
         ? `<img src="${product.image}" alt="${product.name}">` 
@@ -90,7 +111,8 @@ products.forEach((product, index) => {
         </div>
     `;
     grid.appendChild(card);
-});
+    });
+}
 
 function addToCart(id) {
     // Usamos '==' para asegurar compatibilidad si el ID viene como texto o número

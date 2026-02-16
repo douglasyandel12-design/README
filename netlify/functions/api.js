@@ -11,6 +11,13 @@ const app = express();
 // Necesario para que Express confíe en el proxy de Netlify (HTTPS)
 app.set('trust proxy', 1);
 
+// --- CONFIGURACIÓN JSONBIN (Base de datos simple) ---
+const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${process.env.JSONBIN_ID}`;
+const JSONBIN_HEADERS = {
+  'X-Master-Key': process.env.JSONBIN_SECRET,
+  'Content-Type': 'application/json'
+};
+
 // --- CONFIGURACIÓN DE SESIÓN ---
 // Usamos cookie-session para persistencia en Serverless (Lambda)
 app.use(cookieSession({
@@ -103,6 +110,31 @@ router.post('/auth/register', (req, res) => {
 
   // Por ahora, como no tenemos base de datos, solo simulamos el éxito.
   res.status(201).json({ message: 'Usuario registrado con éxito.' });
+});
+
+// --- RUTAS DE PRODUCTOS (PARA QUE TODOS LOS VEAN) ---
+
+// Obtener todos los productos
+router.get('/products', async (req, res) => {
+  try {
+    // Leemos el archivo desde la nube
+    const response = await axios.get(JSONBIN_URL + '/latest', { headers: JSONBIN_HEADERS });
+    res.json(response.data.record);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al cargar productos' });
+  }
+});
+
+// Guardar TODOS los productos (Sobrescribir la lista)
+router.post('/products', async (req, res) => {
+  try {
+    // Recibimos la lista completa de productos desde el admin y la guardamos en la nube
+    const allProducts = req.body;
+    await axios.put(JSONBIN_URL, allProducts, { headers: JSONBIN_HEADERS });
+    res.status(200).json({ message: 'Lista actualizada' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al guardar el producto' });
+  }
 });
 
 // --- RUTA DE PEDIDOS (CON API DE DROPI) ---
