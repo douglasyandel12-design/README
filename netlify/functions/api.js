@@ -19,6 +19,18 @@ app.use(cookieSession({
   maxAge: 24 * 60 * 60 * 1000 // 24 horas
 }));
 
+// --- PARCHE PARA PASSPORT 0.6+ CON COOKIE-SESSION ---
+// Passport ahora requiere estas funciones que cookie-session no trae.
+app.use((req, res, next) => {
+  if (req.session && !req.session.regenerate) {
+    req.session.regenerate = (cb) => cb();
+  }
+  if (req.session && !req.session.save) {
+    req.session.save = (cb) => cb();
+  }
+  next();
+});
+
 // --- CONFIGURACIÓN DE PASSPORT (AUTENTICACIÓN) ---
 app.use(passport.initialize());
 app.use(passport.session());
