@@ -99,7 +99,11 @@ async function saveToCloud() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(products)
         });
-        if (!res.ok) alert('Error al guardar en la nube');
+        if (!res.ok) {
+            const data = await res.json();
+            // Mostramos el error específico que nos manda el servidor
+            alert('Error: ' + (data.details || 'No se pudo guardar'));
+        }
     } catch (e) {
         alert('Error de conexión');
     }

@@ -4,19 +4,53 @@ const serverless = require('serverless-http');
 const cookieSession = require('cookie-session');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const axios = require('axios');
+const mongoose = require('mongoose');
 
 const app = express();
 
 // Necesario para que Express confíe en el proxy de Netlify (HTTPS)
 app.set('trust proxy', 1);
 
-// --- CONFIGURACIÓN JSONBIN (Base de datos simple) ---
-const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${process.env.JSONBIN_ID}`;
-const JSONBIN_HEADERS = {
-  'X-Master-Key': process.env.JSONBIN_SECRET,
-  'Content-Type': 'application/json'
+// --- CONFIGURACIÓN MONGODB ---
+let isConnected = false;
+
+const connectToDatabase = async () => {
+  if (isConnected) {
+    return;
+  }
+
+  if (!process.env.MONGODB_URI) {
+    throw new Error('Falta la variable de entorno MONGODB_URI en el archivo .env o en Netlify');
+  }
+
+  try {
+    // Añadimos timeout para que no se quede colgado si la IP no está autorizada
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000
+    });
+    isConnected = true;
+    console.log('=> MongoDB conectado');
+  } catch (error) {
+    console.error('=> Error conectando a MongoDB:', error);
+    // Pista para errores comunes de contraseña
+    if (error.message.includes('bad auth') || error.code === 8000) {
+      console.error('=> PISTA: Verifica que la contraseña en el .env sea correcta y no tenga los símbolos < >.');
+    }
+    throw new Error('Fallo de conexión a base de datos: ' + error.message);
+  }
 };
+
+// Definimos el esquema del Producto
+const ProductSchema = new mongoose.Schema({
+  id: { type: Number, required: true }, // Mantenemos tu ID numérico
+  name: String,
+  price: Number,
+  image: String, // Base64
+  discount: Number
+}, { strict: false }); // strict: false permite guardar campos nuevos sin cambiar el backend
+
+// Evitamos re-compilar el modelo si la función se mantiene caliente
+const Product = mongoose.models.Product || mongoose.model('Product', ProductSchema);
 
 // --- CONFIGURACIÓN DE SESIÓN ---
 // Usamos cookie-session para persistencia en Serverless (Lambda)
@@ -69,7 +103,16 @@ passport.use(new GoogleStrategy({
 ));
 
 const router = express.Router();
-app.use(express.json());
+// Aumentamos el límite a 10MB para permitir imágenes en Base64 más grandes
+app.use(express.json({ limit: '10mb' }));
+
+// Middleware de manejo de errores para payload demasiado grande
+app.use((err, req, res, next) => {
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'La imagen es demasiado pesada. Intenta reducir su tamaño (Máx 10MB).' });
+  }
+  next(err);
+});
 
 // --- RUTAS DE AUTENTICACIÓN ---
 router.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
@@ -117,23 +160,34 @@ router.post('/auth/register', (req, res) => {
 // Obtener todos los productos
 router.get('/products', async (req, res) => {
   try {
-    // Leemos el archivo desde la nube
-    const response = await axios.get(JSONBIN_URL + '/latest', { headers: JSONBIN_HEADERS });
-    res.json(response.data.record);
+    await connectToDatabase();
+    // Obtenemos todos los productos, excluyendo el _id interno de mongo si quieres limpiar la salida,
+    // pero dejarlo no afecta a tu frontend.
+    const products = await Product.find({});
+    res.json(products);
   } catch (error) {
-    res.status(500).json({ error: 'Error al cargar productos' });
+    console.error(error);
+    res.status(500).json({ error: 'Error al cargar productos', details: error.message });
   }
 });
 
 // Guardar TODOS los productos (Sobrescribir la lista)
 router.post('/products', async (req, res) => {
   try {
-    // Recibimos la lista completa de productos desde el admin y la guardamos en la nube
+    await connectToDatabase();
     const allProducts = req.body;
-    await axios.put(JSONBIN_URL, allProducts, { headers: JSONBIN_HEADERS });
+
+    // Estrategia: Borrar todo y volver a insertar (para mantener sincronía total con el frontend actual)
+    // En una app más grande haríamos actualizaciones individuales, pero esto funciona perfecto para tu caso.
+    await Product.deleteMany({});
+    if (allProducts.length > 0) {
+      await Product.insertMany(allProducts);
+    }
+
     res.status(200).json({ message: 'Lista actualizada' });
   } catch (error) {
-    res.status(500).json({ error: 'Error al guardar el producto' });
+    console.error('Error guardando en MongoDB:', error);
+    res.status(500).json({ error: 'Error al guardar', details: error.message });
   }
 });
 
