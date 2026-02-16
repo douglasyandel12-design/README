@@ -1,0 +1,13 @@
+:root { --primary: #000000; --bg-light: #fafafa; --text-dark: #171717; --white: #ffffff; }
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+body { background-color: var(--bg-light); color: var(--text-dark); }
+header { background: var(--white); padding: 1rem; border-bottom: 1px solid #eaeaea; }
+nav { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+.logo { font-size: 1.5rem; font-weight: bold; color: var(--primary); text-decoration: none; }
+.container { max-width: 800px; margin: 3rem auto; padding: 0 1rem; }
+.card { background: var(--white); padding: 2rem; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+.form-group { margin-bottom: 1.5rem; }
+label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
+input, textarea { width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 6px; }
+.btn { background: var(--primary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer; font-weight: bold; width: auto; }
+.btn:hover { opacity: 0.9; }

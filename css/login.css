@@ -1,0 +1,28 @@
+:root { --primary: #000000; --bg-light: #fafafa; --text-dark: #171717; --white: #ffffff; }
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+body { background-color: var(--bg-light); color: var(--text-dark); display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+
+.container { background: var(--white); padding: 2.5rem; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); width: 100%; max-width: 400px; }
+.logo { text-align: center; font-size: 1.5rem; font-weight: bold; margin-bottom: 2rem; display: block; text-decoration: none; color: var(--primary); }
+
+.tabs { display: flex; margin-bottom: 1.5rem; border-bottom: 1px solid #eee; }
+.tab { flex: 1; padding: 0.75rem; text-align: center; cursor: pointer; color: #666; font-weight: 600; }
+.tab.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+
+.form-group { margin-bottom: 1rem; }
+label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 600; }
+input { width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 6px; }
+
+.btn { background: var(--primary); color: white; border: none; padding: 0.75rem; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 1rem; }
+.btn:hover { opacity: 0.9; }
+
+.google-btn { background: white; color: #333; border: 1px solid #ccc; margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.google-btn:hover { background: #f9f9f9; }
+
+.facebook-btn { background: #1877F2; color: white; border: none; margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.facebook-btn:hover { background: #166fe5; opacity: 1; }
+.facebook-btn svg { fill: white; }
+
+
+.hidden { display: none; }
+.error { color: #ef4444; font-size: 0.85rem; margin-top: 0.5rem; display: none; text-align: center; }

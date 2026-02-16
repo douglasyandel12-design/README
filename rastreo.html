@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LVS² Shop | Rastrear Pedido</title>
+    <link rel="stylesheet" href="css/rastreo.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="index.html" class="logo">LVS² Shop</a>
+            <a href="index.html" style="text-decoration: none; color: var(--text-dark);">Volver a la Tienda</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <h1>Rastrear mi Pedido</h1>
+        <p>Ingresa tu número de pedido para ver el estado actual.</p>
+        
+        <div class="search-box">
+            <input type="text" id="order-id" placeholder="Ej: ORD-123456">
+            <button class="btn" onclick="trackOrder()">Buscar</button>
+        </div>
+
+        <div id="result">
+            <div id="status-display" style="margin-bottom: 2rem;"></div>
+            <div class="order-details">
+                <p><strong>Fecha:</strong> <span id="res-date"></span></p>
+                <p><strong>Cliente:</strong> <span id="res-name"></span></p>
+                <p><strong>Total:</strong> <span id="res-total"></span></p>
+                <div style="margin-top: 1rem; background: #f9f9f9; padding: 1rem; border-radius: 8px;">
+                    <strong>Productos:</strong>
+                    <ul id="res-items" style="padding-left: 1.5rem; margin-top: 0.5rem;"></ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/rastreo.js"></script>
+</body>
+</html>

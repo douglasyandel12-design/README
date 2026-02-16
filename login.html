@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LVS² Shop | Acceso</title>
+    <link rel="stylesheet" href="css/login.css">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="logo">LVS² Shop</a>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('login')">Iniciar Sesión</div>
+            <div class="tab" onclick="switchTab('register')">Crear Cuenta</div>
+        </div>
+
+        <!-- Formulario de Login (para admin y futuros usuarios locales) -->
+        <form id="login-form" onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label>Correo Electrónico</label>
+                <input type="email" id="login-email" required>
+            </div>
+            <div class="form-group">
+                <label>Contraseña</label>
+                <input type="password" id="login-pass" required>
+            </div>
+            <p class="error" id="login-error">Credenciales incorrectas.</p>
+            <button type="submit" class="btn">Entrar</button>
+            <p style="text-align: center; margin: 1rem 0; color: #999;">o</p>
+            <a href="/.netlify/functions/api/auth/google" class="btn google-btn" style="text-decoration: none; margin-top: 0;">
+                <span style="font-weight: bold;">G</span> Continuar con Google
+            </a>
+        </form>
+
+        <!-- Opciones para crear cuenta -->
+        <div id="register-form" class="hidden">
+            <form onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label>Nombre Completo</label>
+                    <input type="text" id="reg-name" required>
+                </div>
+                <div class="form-group">
+                    <label>Correo Electrónico</label>
+                    <input type="email" id="reg-email" required>
+                </div>
+                <div class="form-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="reg-pass" required>
+                </div>
+                <button type="submit" class="btn">Crear Cuenta</button>
+            </form>
+            <p style="text-align: center; margin: 1rem 0; color: #999;">o</p>
+            <a href="/.netlify/functions/api/auth/google" class="btn google-btn" style="text-decoration: none; margin-top: 0;">
+                <span style="font-weight: bold;">G</span> Continuar con Google
+            </a>
+        </div>
+    </div>
+
+    <script src="js/login.js"></script>
+</body>
+</html>

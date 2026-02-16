@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LVS² Shop | Inicio</title>
+    <link rel="stylesheet" href="css/index.css">
+    <!-- Frameworks y Librerías -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js" defer></script>
+</head>
+<body>
+
+    <header>
+        <nav>
+            <div class="logo">LVS² Shop</div>
+            <div class="nav-right">
+                <div class="profile-menu" id="user-menu">
+                    <!-- El menú de usuario se genera aquí -->
+                </div>
+                <div class="cart-icon" onclick="toggleCart()">
+                    🛒 <span class="cart-count" id="cart-count">0</span>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Cart Modal -->
+    <div class="cart-modal" id="cart-modal">
+        <div class="cart-content">
+            <div class="cart-header">
+                <h2>Tu Carrito</h2>
+                <button class="close-btn" onclick="toggleCart()">&times;</button>
+            </div>
+            <div class="cart-items" id="modal-cart-items">
+                <!-- Items injected here -->
+                <p>Tu carrito está vacío.</p>
+            </div>
+            <div style="margin-top: 1rem; border-top: 1px solid #eee; padding-top: 1rem;">
+                <p style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 1rem;">
+                    <span>Total:</span>
+                    <span id="modal-total">$0.00</span>
+                </p>
+                <a href="carrito.html" class="btn" style="display: block; text-align: center; text-decoration: none; margin-bottom: 0.5rem;">Ver Carrito Completo</a>
+            </div>
+        </div>
+    </div>
+
+    <section class="hero">
+        <h1>Ofertas de Temporada</h1>
+        <p>Encuentra los mejores productos al mejor precio.</p>
+    </section>
+
+    <main class="container">
+        <h2 style="margin-bottom: 1.5rem;">Nuestros Productos</h2>
+        <div class="product-grid" id="product-grid">
+            <!-- Los productos se generarán con JS -->
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 LVS² Shop. Todos los derechos reservados.</p>
+    </footer>
+
+    <script src="js/index.js"></script>
+</body>
+</html>

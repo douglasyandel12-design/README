@@ -1,0 +1,84 @@
+:root {
+    --primary: #000000;
+    --bg-light: #fafafa;
+    --text-dark: #171717;
+    --white: #ffffff;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+body { background-color: var(--bg-light); color: var(--text-dark); }
+
+header { background: var(--white); padding: 1rem; border-bottom: 1px solid #eaeaea; }
+nav { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+.logo { font-size: 1.5rem; font-weight: bold; color: var(--primary); text-decoration: none; }
+
+.container { max-width: 600px; margin: 4rem auto; padding: 2rem; background: var(--white); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); text-align: center; }
+
+h1 { margin-bottom: 1rem; }
+p { color: #666; margin-bottom: 2rem; }
+
+.search-box { display: flex; gap: 10px; margin-bottom: 2rem; }
+input { flex: 1; padding: 1rem; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; }
+.btn { background: var(--primary); color: white; border: none; padding: 1rem 2rem; border-radius: 6px; cursor: pointer; font-weight: bold; }
+.btn:hover { opacity: 0.9; }
+
+#result { text-align: left; display: none; border-top: 1px solid #eee; padding-top: 2rem; }
+.status-badge { display: inline-block; padding: 0.5rem 1rem; border-radius: 50px; font-weight: bold; font-size: 0.9rem; margin-bottom: 1rem; }
+
+.status-pendiente { background: #fef3c7; color: #d97706; }
+.status-aceptado { background: #dbeafe; color: #2563eb; }
+.status-enviado { background: #e0e7ff; color: #4f46e5; }
+.status-entregado { background: #dcfce7; color: #16a34a; }
+
+.order-details p { margin-bottom: 0.5rem; }
+
+/* Barra de Progreso Visual */
+.stepper-wrapper {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    position: relative;
+}
+.stepper-wrapper::before {
+    content: "";
+    position: absolute;
+    top: 15px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #e0e0e0;
+    z-index: 0;
+}
+.stepper-item {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+.step-counter {
+    width: 30px;
+    height: 30px;
+    background: #fff;
+    border: 2px solid #e0e0e0;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 6px;
+    font-weight: bold;
+    color: #ccc;
+    transition: all 0.3s;
+}
+.step-name {
+    font-size: 0.8rem;
+    color: #999;
+    font-weight: 600;
+}
+
+/* Estados Activos */
+.stepper-item.completed .step-counter { background: var(--primary); border-color: var(--primary); color: #fff; }
+.stepper-item.completed .step-name { color: var(--text-dark); }
+.stepper-item.active .step-counter { border-color: var(--primary); color: var(--primary); background: #fff; box-shadow: 0 0 0 3px rgba(0,0,0,0.1); }
+.stepper-item.active .step-name { color: var(--primary); font-weight: bold; }

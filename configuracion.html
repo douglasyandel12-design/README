@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LVS² Shop | Configuración</title>
+    <link rel="stylesheet" href="css/configuracion.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="index.html" class="logo">LVS² Shop</a>
+            <a href="perfil.html" style="text-decoration: none; color: var(--text-dark);">Volver al Perfil</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="card">
+            <h2>Configuración de Envío</h2>
+            <p style="color: #666; font-size: 0.9rem; margin-bottom: 1.5rem;">Guarda tu información para autocompletar en futuras compras.</p>
+            <form id="shipping-form" onsubmit="saveShippingInfo(event)">
+                <div class="form-group">
+                    <label>Teléfono de Contacto</label>
+                    <input type="tel" id="shipping-phone" placeholder="Tu número de teléfono">
+                </div>
+                <div class="form-group">
+                    <label>Dirección de Envío Predeterminada</label>
+                    <textarea id="shipping-address" rows="3" placeholder="Tu dirección para futuros pedidos"></textarea>
+                </div>
+                <button type="submit" class="btn">Guardar Configuración</button>
+            </form>
+        </div>
+    </main>
+
+    <script src="js/configuracion.js"></script>
+</body>
+</html>

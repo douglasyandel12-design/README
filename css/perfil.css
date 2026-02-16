@@ -1,0 +1,55 @@
+:root { --primary: #000000; --bg-light: #fafafa; --text-dark: #171717; --white: #ffffff; }
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+body { background-color: var(--bg-light); color: var(--text-dark); }
+
+header { background: var(--white); padding: 1rem; border-bottom: 1px solid #eaeaea; }
+nav { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+.logo { font-size: 1.5rem; font-weight: bold; color: var(--primary); text-decoration: none; }
+
+.container { max-width: 800px; margin: 3rem auto; padding: 0 1rem; }
+
+.profile-card {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    background: var(--white);
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    margin-bottom: 3rem;
+}
+.profile-pic { width: 80px; height: 80px; border-radius: 50%; overflow: hidden; }
+.profile-pic img { width: 100%; height: 100%; object-fit: cover; }
+.profile-info h2 { margin: 0; font-size: 1.5rem; }
+.profile-info p { margin: 0; color: #666; }
+
+.order-card {
+    background: var(--white);
+    border: 1px solid #f0f0f0;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-radius: 8px;
+}
+.order-header {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+.order-header strong { color: var(--text-dark); }
+.order-status {
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-weight: bold;
+    font-size: 0.8rem;
+    background: #eee;
+}
+.status-Pendiente { background: #fef3c7; color: #d97706; }
+.status-Aceptado { background: #dbeafe; color: #2563eb; }
+.status-Enviado { background: #e0e7ff; color: #4f46e5; }
+.status-Entregado { background: #dcfce7; color: #16a34a; }
+
+.order-items li { margin-bottom: 0.25rem; }

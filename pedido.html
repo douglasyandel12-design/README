@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LVS² Shop | Finalizar Pedido</title>
+    <link rel="stylesheet" href="css/pedido.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="index.html" class="logo">LVS² Shop</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <h1>Finalizar Compra</h1>
+        
+        <div class="order-summary">
+            <h3>Resumen del Pedido</h3>
+            <div id="items-list" style="margin: 1rem 0; border-bottom: 1px solid #eee; padding-bottom: 1rem;"></div>
+            <div class="total-row">
+                <span>Total a Pagar:</span>
+                <span id="order-total">$0.00</span>
+            </div>
+        </div>
+
+        <form onsubmit="submitOrder(event)">
+            <div class="form-group">
+                <label>Nombre Completo</label>
+                <input type="text" id="client-name" required placeholder="Ej: Juan Pérez">
+            </div>
+            <div class="form-group">
+                <label>Correo Electrónico</label>
+                <input type="email" id="client-email" required placeholder="juan@ejemplo.com">
+            </div>
+            <div class="form-group">
+                <label>Número de Teléfono</label>
+                <input type="tel" id="client-phone" required placeholder="Ej: 55 1234 5678">
+            </div>
+            <div class="form-group">
+                <label>Dirección de Envío</label>
+                <textarea id="client-address" required rows="3" placeholder="Calle, Número, Colonia, Ciudad..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Método de Pago</label>
+                <select id="client-payment">
+                    <option>Tarjeta de Crédito / Débito</option>
+                    <option>PayPal</option>
+                    <option>Transferencia Bancaria</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <a href="index.html" class="btn" style="background-color: transparent; color: var(--text-dark); border: 1px solid #ccc; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center;">Volver a la Tienda</a>
+                <button type="submit" class="btn">Confirmar Pedido</button>
+            </div>
+        </form>
+    </main>
+
+    <script src="js/pedido.js"></script>
+</body>
+</html>
