@@ -125,6 +125,30 @@ router.get('/auth/google/callback',
   }
 );
 
+// --- RUTA DE LOGIN (EMAIL/PASSWORD) ---
+router.post('/auth/login', (req, res) => {
+  const { email, password } = req.body;
+
+  // Verificación del Administrador (Hardcoded por seguridad simple)
+  if (email === 'admin@lvs-shop.com' && password === '0991412359') {
+    const user = {
+      id: 'admin',
+      name: 'Administrador',
+      email: email,
+      isAdmin: true, // Marca especial para identificar al admin
+      picture: null
+    };
+
+    // Guardamos la sesión usando Passport
+    req.login(user, (err) => {
+      if (err) return res.status(500).json({ message: 'Error de sesión' });
+      return res.json({ message: 'Bienvenido Admin', user });
+    });
+  } else {
+    res.status(401).json({ message: 'Credenciales incorrectas' });
+  }
+});
+
 router.get('/auth/status', (req, res) => {
   // Devuelve el usuario si está logueado, o un objeto vacío si no.
   res.json({ user: req.user || null });

@@ -45,15 +45,29 @@ async function checkUserSession() {
         const data = await response.json();
         if (data.user) {
             const user = data.user;
+            
+            // Configuración visual para Admin vs Usuario Normal
+            let iconHtml = '';
+            let adminOption = '';
+
+            if (user.isAdmin) {
+                // Icono "A" para el admin
+                iconHtml = `<div class="profile-icon" onclick="toggleDropdown()" style="background: #000; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem;">A</div>`;
+                // Opción extra en el menú
+                adminOption = `<a href="admin.html" style="color: #2563eb; font-weight: bold; border-bottom: 1px solid #eee;">Entrar al panel de control</a>`;
+            } else {
+                // Foto normal de Google
+                iconHtml = `<div class="profile-icon" onclick="toggleDropdown()"><img src="${user.picture}" alt="Foto"></div>`;
+            }
+
             userMenu.innerHTML = `
-                <div class="profile-icon" onclick="toggleDropdown()">
-                    <img src="${user.picture}" alt="Foto de perfil">
-                </div>
+                ${iconHtml}
                 <div class="dropdown-menu" id="profile-dropdown">
                     <div class="user-info">
                         <p>${user.name}</p>
                         <small>${user.email}</small>
                     </div>
+                    ${adminOption}
                     <a href="perfil.html">Mi Perfil</a>
                     <a href="configuracion.html">Configuración</a>
                     <a href="/.netlify/functions/api/auth/logout" class="logout">Cerrar Sesión</a>

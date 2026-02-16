@@ -9,19 +9,27 @@ function switchTab(tab) {
     tabs[1].classList.toggle('active', tab === 'register');
 }
 
-function handleLogin(e) {
+async function handleLogin(e) {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
     const pass = document.getElementById('login-pass').value;
 
-    // Login especial para el administrador
-    if (email === 'admin@lvs-shop.com' && pass === '0991412359') {
-        window.location.href = 'admin.html';
-        return;
-    }
+    try {
+        const res = await fetch('/.netlify/functions/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password: pass })
+        });
 
-    // Para otros usuarios, se mostraría un error ya que no hay DB de usuarios locales
-    document.getElementById('login-error').style.display = 'block';
+        if (res.ok) {
+            window.location.href = 'index.html'; // Vamos al inicio para ver el menú de Admin
+        } else {
+            document.getElementById('login-error').style.display = 'block';
+        }
+    } catch (error) {
+        console.error(error);
+        alert('Error de conexión');
+    }
 }
 
 async function handleRegister(e) {
