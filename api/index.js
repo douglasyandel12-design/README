@@ -103,6 +103,9 @@ const router = express.Router();
 app.use(express.json({ limit: '10mb' }));
 
 // --- RUTAS ---
+// Ruta de prueba para verificar que la API está online
+router.get('/', (req, res) => res.send('API Online y funcionando 🚀'));
+
 router.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 router.get('/auth/google/callback',
