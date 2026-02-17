@@ -90,7 +90,15 @@ async function checkUserSession() {
             // Re-renderizar productos para aplicar descuentos de socio si aplica
             renderProducts();
         } else {
-            userMenu.innerHTML = `<a href="login.html" style="text-decoration: none; color: var(--primary); font-weight: 600; font-size: 0.9rem; border: 1px solid #000; padding: 5px 10px; border-radius: 4px;">Iniciar Sesión</a>`;
+            // Si es invitado, verificamos si tiene pedidos locales
+            const guestOrders = JSON.parse(localStorage.getItem('lvs_guest_orders')) || [];
+            let guestLink = '';
+            
+            if (guestOrders.length > 0) {
+                guestLink = `<a href="rastreo.html?id=${guestOrders[guestOrders.length-1]}" style="margin-right:10px; text-decoration:none; font-size:0.9rem; color:#2563eb;">📦 Mis Pedidos</a>`;
+            }
+
+            userMenu.innerHTML = `${guestLink}<a href="login.html" style="text-decoration: none; color: var(--primary); font-weight: 600; font-size: 0.9rem; border: 1px solid #000; padding: 5px 10px; border-radius: 4px;">Iniciar Sesión</a>`;
         }
     } catch (error) {
         console.error('Error al verificar sesión:', error);

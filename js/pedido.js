@@ -89,7 +89,17 @@ async function submitOrder(e) {
         await Swal.fire('¡Pedido Confirmado!', `Tu número de pedido es: ${order.id}`, 'success');
         
         localStorage.removeItem('lvs_cart'); // Limpiar carrito
-        window.location.href = 'index.html';
+
+        // Si no hay usuario logueado (invitado), guardamos el ID localmente para que no lo pierda
+        const isLogged = await verifySession();
+        if (!isLogged) {
+            const guestOrders = JSON.parse(localStorage.getItem('lvs_guest_orders')) || [];
+            guestOrders.push(order.id);
+            localStorage.setItem('lvs_guest_orders', JSON.stringify(guestOrders));
+        }
+
+        // Redirigir "de una" a la página de rastreo con el ID en la URL
+        window.location.href = `rastreo.html?id=${order.id}`;
 
     } catch (error) {
         console.error('Error al enviar el pedido:', error);

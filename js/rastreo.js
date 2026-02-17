@@ -1,3 +1,37 @@
+// Al cargar la página, verificamos URL y Sesión
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Auto-rellenar y buscar si viene el ID en la URL (ej: rastreo.html?id=ORD-123)
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderIdParam = urlParams.get('id');
+    
+    if (orderIdParam) {
+        document.getElementById('order-id').value = orderIdParam;
+        trackOrder(); // Ejecutar búsqueda automáticamente
+    }
+
+    // 2. Verificar sesión para mostrar advertencia
+    try {
+        const response = await fetch('/api/auth/status');
+        const data = await response.json();
+        
+        // Si NO hay usuario (data.user es null), mostramos el mensaje
+        if (!data.user) {
+            const container = document.querySelector('.container') || document.body;
+            const warningMsg = document.createElement('div');
+            warningMsg.style.cssText = "background-color: #fff3cd; color: #856404; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid #ffeeba; text-align: center;";
+            warningMsg.innerHTML = `
+                <strong>⚠️ Aviso para invitados:</strong> 
+                Como no has iniciado sesión, solo podrás visualizar el progreso de tu pedido en este dispositivo. 
+                <br><small>Guarda tu número de pedido en un lugar seguro.</small>
+            `;
+            // Insertar al principio del contenedor (antes del input de rastreo)
+            container.insertBefore(warningMsg, container.firstChild);
+        }
+    } catch (e) {
+        console.error("Error verificando sesión en rastreo", e);
+    }
+});
+
 async function trackOrder() {
     const idInput = document.getElementById('order-id').value.trim();
     const resultDiv = document.getElementById('result');
