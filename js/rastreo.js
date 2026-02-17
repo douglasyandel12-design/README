@@ -1,11 +1,12 @@
-function trackOrder() {
+async function trackOrder() {
     const idInput = document.getElementById('order-id').value.trim();
     const resultDiv = document.getElementById('result');
     
     if (!idInput) return alert("Por favor ingresa un número de pedido.");
 
-    const orders = JSON.parse(localStorage.getItem('lvs_orders')) || [];
-    // Buscamos el pedido (convertimos a string para comparar por si acaso)
+    // CAMBIO: Buscar en la base de datos en lugar de localStorage
+    const response = await fetch('/api/orders');
+    const orders = await response.json();
     const order = orders.find(o => o.id.toString() === idInput);
 
     if (order) {
