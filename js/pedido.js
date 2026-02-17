@@ -55,7 +55,7 @@ async function submitOrder(e) {
     // Crear objeto de pedido con toda la info
     const order = {
         id: 'ORD-' + Math.floor(100000 + Math.random() * 900000),
-        status: 'Pendiente',
+        status: 'En progreso',
         date: new Date().toLocaleString(),
         customer: {
             name: document.getElementById('client-name').value,

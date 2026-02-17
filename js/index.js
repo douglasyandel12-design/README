@@ -81,6 +81,7 @@ async function checkUserSession() {
                         <small>${user.email}</small>
                     </div>
                     ${adminOption}
+                    <a href="perfil.html" style="font-weight: 600; color: #2563eb;">📦 Mis Pedidos</a>
                     <a href="perfil.html">Mi Perfil</a>
                     <a href="configuracion.html">Configuración</a>
                     <a href="/api/auth/logout" class="logout">Cerrar Sesión</a>

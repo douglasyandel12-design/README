@@ -47,36 +47,26 @@ async function trackOrder() {
         resultDiv.style.display = 'block';
         
         // Configurar badge de estado
-        const status = order.status || 'Pendiente';
+        const status = order.status || 'En progreso';
         
-        // Lógica para la barra de progreso
-        const steps = ['Pendiente', 'Aceptado', 'Enviado', 'Entregado'];
-        let currentStepIndex = steps.indexOf(status);
-        if (currentStepIndex === -1) currentStepIndex = 0;
-
-        let stepperHtml = '<div class="stepper-wrapper">';
-        steps.forEach((step, index) => {
-            let className = 'stepper-item';
-            if (index < currentStepIndex) className += ' completed';
-            if (index === currentStepIndex) className += ' active';
-            
-            stepperHtml += `
-                <div class="${className}">
-                    <div class="step-counter">${index + 1}</div>
-                    <div class="step-name">${step}</div>
-                </div>
-            `;
-        });
-        stepperHtml += '</div>';
-
-        let badgeClass = 'status-pendiente';
-        if (status === 'Aceptado') badgeClass = 'status-aceptado';
-        if (status === 'Enviado') badgeClass = 'status-enviado';
+        let badgeClass = 'status-en-progreso';
+        let statusText = status;
+        
+        // Si es pendiente o en progreso, usamos el mismo estilo visual
+        if (status === 'Pendiente' || status === 'En progreso') {
+            badgeClass = 'status-pendiente'; // Reusamos clase o creamos nueva
+            statusText = 'En progreso';
+        }
         if (status === 'Entregado') badgeClass = 'status-entregado';
 
         document.getElementById('status-display').innerHTML = `
-            <div style="text-align:center; margin-bottom:1rem;"><span class="status-badge ${badgeClass}" style="font-size:1.1rem;">${status}</span></div>
-            ${stepperHtml}
+            <div style="text-align:center; margin-bottom:1rem;">
+                <span class="status-badge ${badgeClass}" style="font-size:1.5rem; padding: 0.5rem 1.5rem; border-radius: 50px; background-color: #3b82f6; color: white;">${statusText}</span>
+            </div>
+            <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 1rem; border-radius: 8px; text-align: center; margin-bottom: 1.5rem;">
+                <p style="margin: 0; font-weight: 500;">📱 Esté atento a su WhatsApp y Email.</p>
+                <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">Nos pondremos en contacto por WhatsApp para coordinar la entrega.</p>
+            </div>
         `;
 
         document.getElementById('res-date').textContent = order.date;

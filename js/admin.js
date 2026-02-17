@@ -185,7 +185,7 @@ async function renderOrders() {
                 <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: #eef2ff; border-radius: 4px;">
                     <strong>Estado:</strong>
                     <select onchange="updateOrderStatus('${order.id}', this.value)" style="padding: 0.25rem; border-radius: 4px; border: 1px solid #ccc;">
-                        <option value="Pendiente" ${order.status === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
+                        <option value="En progreso" ${order.status === 'En progreso' ? 'selected' : ''}>En progreso</option>
                         <option value="Aceptado" ${order.status === 'Aceptado' ? 'selected' : ''}>Aceptado</option>
                         <option value="Enviado" ${order.status === 'Enviado' ? 'selected' : ''}>Enviado</option>
                         <option value="Entregado" ${order.status === 'Entregado' ? 'selected' : ''}>Entregado</option>
