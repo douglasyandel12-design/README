@@ -1,5 +1,6 @@
 // Variable global
 let products = [];
+let allOrders = []; // Variable para guardar los pedidos cargados
 
 // Cargar productos desde la nube al iniciar
 async function initAdmin() {
@@ -166,15 +167,16 @@ async function renderOrders() {
     try {
         const response = await fetch('/api/orders');
         if (!response.ok) throw new Error('No se pudieron cargar los pedidos del servidor.');
-        const orders = await response.json();
+        // Guardamos en la variable global para usarla al exportar
+        allOrders = await response.json();
 
-        if (orders.length === 0) {
+        if (allOrders.length === 0) {
             container.innerHTML = '<p style="color: #666;">No hay pedidos registrados aún.</p>';
             return;
         }
 
         // La API ya los devuelve ordenados (más recientes primero)
-        container.innerHTML = orders.map(order => `
+        container.innerHTML = allOrders.map(order => `
             <div class="order-card">
                 <div class="order-header">
                     <span>📅 ${order.date}</span>
@@ -235,8 +237,7 @@ async function deleteOrder(id) {
 }
 
 function exportOrdersToCSV() {
-    const orders = JSON.parse(localStorage.getItem('lvs_orders')) || [];
-    if (orders.length === 0) {
+    if (allOrders.length === 0) {
         return alert("No hay pedidos para exportar.");
     }
 
@@ -245,7 +246,7 @@ function exportOrdersToCSV() {
         "PaymentMethod", "Total", "Products"
     ];
 
-    const csvRows = orders.map(order => {
+    const csvRows = allOrders.map(order => {
         const customer = order.customer;
         const productsStr = order.items.map(item => `${item.quantity}x ${item.name}`).join('; ');
 
