@@ -1,5 +1,0 @@
-[build]
-  # Directorio donde están los archivos de tu sitio (la raíz en este caso)
-  publish = "."
-  # Directorio donde Netlify buscará las funciones del servidor
-  functions = "netlify/functions"

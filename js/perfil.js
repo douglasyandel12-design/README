@@ -19,8 +19,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
 
         // Renderizar historial de pedidos
-        const allOrders = JSON.parse(localStorage.getItem('lvs_orders')) || [];
-        const myOrders = allOrders.filter(order => order.customer.email === user.email);
+        // CORRECCIÓN: Pedimos los pedidos a la API en lugar de localStorage
+        const ordersResponse = await fetch('/api/orders');
+        const allOrders = await ordersResponse.json();
+        const myOrders = allOrders.filter(order => order.customer && order.customer.email === user.email);
         const historyContainer = document.getElementById('order-history');
 
         if (myOrders.length === 0) {
