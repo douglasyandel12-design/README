@@ -8,12 +8,53 @@ async function initAdmin() {
         if (res.ok) {
             products = await res.json();
             renderTable();
+            renderSettingsPanel(); // Cargar panel de configuración
         }
     } catch (e) {
         console.error("Error cargando productos", e);
     }
 }
 initAdmin();
+
+// --- LÓGICA DE CONFIGURACIÓN (PROMOCIONES) ---
+async function renderSettingsPanel() {
+    const container = document.querySelector('main.container') || document.body;
+    // Insertar panel antes de la tabla si no existe
+    if (!document.getElementById('settings-panel')) {
+        const panel = document.createElement('div');
+        panel.id = 'settings-panel';
+        panel.style.cssText = "background: #f3f4f6; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; border: 1px solid #ddd;";
+        
+        // Obtener estado actual
+        let isPromoActive = false;
+        try {
+            const res = await fetch('/.netlify/functions/api/settings');
+            const data = await res.json();
+            isPromoActive = data.promo_login_5 === true;
+        } catch(e) { console.error(e); }
+
+        panel.innerHTML = `
+            <h3>⚙️ Configuración Global</h3>
+            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; margin-top:0.5rem;">
+                <input type="checkbox" id="promo-toggle" ${isPromoActive ? 'checked' : ''} style="transform: scale(1.5);">
+                <span>Activar <strong>5% de Descuento</strong> automático para usuarios logueados.</span>
+            </label>
+        `;
+        
+        // Insertar al principio del contenedor principal
+        container.insertBefore(panel, container.firstChild);
+
+        // Evento de cambio
+        document.getElementById('promo-toggle').addEventListener('change', async (e) => {
+            await fetch('/.netlify/functions/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: 'promo_login_5', value: e.target.checked })
+            });
+            alert('Configuración actualizada. Los usuarios verán el cambio al recargar.');
+        });
+    }
+}
 
 function renderTable() {
     const tbody = document.getElementById('product-table-body');

@@ -1,5 +1,6 @@
 // Variable global para productos
 let products = [];
+let globalSettings = {}; // Para guardar config de promociones
 
 const grid = document.getElementById('product-grid');
 const cartCountEl = document.getElementById('cart-count');
@@ -19,11 +20,22 @@ cart = cart.map(item => item.quantity ? item : { ...item, quantity: 1 });
 
 // Función de inicio
 async function init() {
+    await loadSettings(); // Cargar configuración primero
     await loadProducts();
     updateCartUI();
     checkUserSession();
 }
 init();
+
+// Cargar configuraciones globales
+async function loadSettings() {
+    try {
+        const res = await fetch('/.netlify/functions/api/settings');
+        if (res.ok) globalSettings = await res.json();
+    } catch (error) {
+        console.error('Error cargando settings', error);
+    }
+}
 
 // Cargar productos desde la Nube (Base de Datos)
 async function loadProducts() {
@@ -44,6 +56,7 @@ async function checkUserSession() {
         const response = await fetch('/.netlify/functions/api/auth/status');
         const data = await response.json();
         if (data.user) {
+            window.currentUser = data.user; // Guardar usuario globalmente para usarlo en render
             const user = data.user;
             
             // Configuración visual para Admin vs Usuario Normal
@@ -73,6 +86,9 @@ async function checkUserSession() {
                     <a href="/.netlify/functions/api/auth/logout" class="logout">Cerrar Sesión</a>
                 </div>
             `;
+            
+            // Re-renderizar productos para aplicar descuentos de socio si aplica
+            renderProducts();
         } else {
             userMenu.innerHTML = `<a href="login.html" style="text-decoration: none; color: var(--primary); font-weight: 600; font-size: 0.9rem; border: 1px solid #000; padding: 5px 10px; border-radius: 4px;">Iniciar Sesión</a>`;
         }
@@ -96,6 +112,10 @@ function logout() {
 // Renderizar productos
 function renderProducts() {
     grid.innerHTML = ''; // Limpiar grid
+    
+    // Verificar si aplica promo de socio (Usuario logueado + Config activa)
+    const isPromoActive = globalSettings.promo_login_5 === true && window.currentUser;
+
     products.forEach((product, index) => {
     // Determinar si mostrar imagen o placeholder
     const imgContent = product.image 
@@ -104,11 +124,19 @@ function renderProducts() {
 
     // Calcular precio con descuento si existe
     const hasDiscount = product.discount && product.discount > 0;
-    const finalPrice = hasDiscount ? product.price * (1 - product.discount / 100) : product.price;
+    let finalPrice = hasDiscount ? product.price * (1 - product.discount / 100) : product.price;
     
-    const priceHtml = hasDiscount 
-        ? `<div class="price-container"><span class="original-price">$${product.price.toFixed(2)}</span><span class="sale-price">$${finalPrice.toFixed(2)}</span></div>`
-        : `<div class="price-container"><span class="product-price">$${product.price.toFixed(2)}</span></div>`;
+    // Aplicar 5% extra si es socio
+    if (isPromoActive) {
+        finalPrice = finalPrice * 0.95;
+    }
+
+    let priceHtml = '';
+    if (hasDiscount || isPromoActive) {
+        priceHtml = `<div class="price-container"><span class="original-price">$${product.price.toFixed(2)}</span><span class="sale-price">$${finalPrice.toFixed(2)}</span> ${isPromoActive ? '<small style="color:green; display:block; font-size:0.7rem;">¡Precio Socio!</small>' : ''}</div>`;
+    } else {
+        priceHtml = `<div class="price-container"><span class="product-price">$${product.price.toFixed(2)}</span></div>`;
+    }
 
     const card = document.createElement('div');
     card.className = 'product-card';
@@ -136,7 +164,13 @@ function addToCart(id) {
     if (!product) return;
 
     // Calcular precio final para el carrito
-    const finalPrice = product.discount ? product.price * (1 - product.discount / 100) : product.price;
+    let finalPrice = product.discount ? product.price * (1 - product.discount / 100) : product.price;
+
+    // Aplicar promo socio al añadir al carrito
+    const isPromoActive = globalSettings.promo_login_5 === true && window.currentUser;
+    if (isPromoActive) {
+        finalPrice = finalPrice * 0.95;
+    }
 
     // Lógica de agrupación
     const existingItem = cart.find(item => item.id == id);
@@ -160,7 +194,13 @@ function orderNow(id) {
     if (!product) return;
 
     // Calcular precio final para el pedido
-    const finalPrice = product.discount ? product.price * (1 - product.discount / 100) : product.price;
+    let finalPrice = product.discount ? product.price * (1 - product.discount / 100) : product.price;
+
+    // Aplicar promo socio
+    const isPromoActive = globalSettings.promo_login_5 === true && window.currentUser;
+    if (isPromoActive) {
+        finalPrice = finalPrice * 0.95;
+    }
 
     // Lógica de agrupación para pedido directo
     const existingItem = cart.find(item => item.id == id);

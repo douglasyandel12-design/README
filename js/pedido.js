@@ -49,22 +49,8 @@ async function submitOrder(e) {
         return;
     }
 
-    // Verificar sesión antes de procesar
-    const isLogged = await verifySession();
-    if (!isLogged) {
-        Swal.fire({
-            title: 'Inicia Sesión',
-            text: 'Para finalizar la compra, por favor inicia sesión.',
-            icon: 'info',
-            confirmButtonText: 'Ir a Iniciar Sesión',
-            confirmButtonColor: '#000000',
-            showCancelButton: true,
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) window.location.href = 'login.html';
-        });
-        return;
-    }
+    // NOTA: Se eliminó la verificación obligatoria de sesión (verifySession)
+    // para permitir compras de invitados.
 
     // Crear objeto de pedido con toda la info
     const order = {

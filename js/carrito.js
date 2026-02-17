@@ -64,23 +64,8 @@ document.addEventListener('click', async (e) => {
     const btn = e.target.closest('#checkout-btn');
     if (btn) {
         e.preventDefault();
-        
-        const isLogged = await verifySession();
-        if (isLogged) {
-            window.location.href = 'pedido.html';
-        } else {
-            Swal.fire({
-                title: 'Inicia Sesión',
-                text: 'Para finalizar la compra, por favor inicia sesión.',
-                icon: 'info',
-                confirmButtonText: 'Ir a Iniciar Sesión',
-                confirmButtonColor: '#000000',
-                showCancelButton: true,
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result.isConfirmed) window.location.href = 'login.html';
-            });
-        }
+        // Ya no obligamos a iniciar sesión, cualquiera puede comprar
+        window.location.href = 'pedido.html';
     }
 });
 

@@ -52,6 +52,13 @@ const ProductSchema = new mongoose.Schema({
 // Evitamos re-compilar el modelo si la función se mantiene caliente
 const Product = mongoose.models.Product || mongoose.model('Product', ProductSchema);
 
+// Definimos esquema para Configuraciones Globales (ej. Promociones)
+const SettingSchema = new mongoose.Schema({
+  key: { type: String, required: true, unique: true },
+  value: mongoose.Schema.Types.Mixed
+}, { strict: false });
+const Setting = mongoose.models.Setting || mongoose.model('Setting', SettingSchema);
+
 // --- CONFIGURACIÓN DE SESIÓN ---
 // Usamos cookie-session para persistencia en Serverless (Lambda)
 app.use(cookieSession({
@@ -212,6 +219,33 @@ router.post('/products', async (req, res) => {
   } catch (error) {
     console.error('Error guardando en MongoDB:', error);
     res.status(500).json({ error: 'Error al guardar', details: error.message });
+  }
+});
+
+// --- RUTAS DE CONFIGURACIÓN (SETTINGS) ---
+router.get('/settings', async (req, res) => {
+  try {
+    await connectToDatabase();
+    const settings = await Setting.find({});
+    // Convertimos array a objeto para fácil acceso { promo_login: true, ... }
+    const settingsObj = {};
+    settings.forEach(s => settingsObj[s.key] = s.value);
+    res.json(settingsObj);
+  } catch (error) {
+    res.status(500).json({ error: 'Error cargando configuraciones' });
+  }
+});
+
+router.post('/settings', async (req, res) => {
+  try {
+    await connectToDatabase();
+    const { key, value } = req.body;
+    // Actualiza o crea la configuración (upsert)
+    await Setting.findOneAndUpdate({ key }, { value }, { upsert: true, new: true });
+    res.json({ message: 'Configuración guardada' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error guardando configuración' });
   }
 });
 
