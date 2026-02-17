@@ -52,6 +52,23 @@ const ProductSchema = new mongoose.Schema({
 // Evitamos re-compilar el modelo si la función se mantiene caliente
 const Product = mongoose.models.Product || mongoose.model('Product', ProductSchema);
 
+// Definimos el esquema del Pedido (Order)
+const OrderSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true }, // El ID 'ORD-...' que ya generas
+  status: String,
+  date: String,
+  customer: {
+    name: String,
+    email: String,
+    phone: String,
+    address: String,
+    payment: String
+  },
+  items: Array,
+  total: Number
+}, { timestamps: true }); // timestamps añade createdAt y updatedAt automáticamente
+const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
+
 // Definimos esquema para Configuraciones Globales (ej. Promociones)
 const SettingSchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true },
@@ -249,38 +266,47 @@ router.post('/settings', async (req, res) => {
   }
 });
 
-// --- RUTA DE PEDIDOS (CON API DE DROPI) ---
+// --- RUTA DE PEDIDOS ---
 router.post('/orders', async (req, res) => {
   const orderData = req.body;
   console.log('Pedido recibido en el backend:', orderData);
 
-  // --- LÓGICA PARA LLAMAR A LA API DE DROPI ---
-  // NOTA: Se comenta la llamada real para evitar errores 500 hasta tener las credenciales correctas.
-  /*
   try {
-    console.log('Enviando pedido a Dropi...');
-    const dropiApiUrl = 'https://api.dropi.co/v1/orders';
-    const response = await axios.post(dropiApiUrl, 
-      {
-        customer_name: orderData.customer.name,
-        customer_email: orderData.customer.email,
-        items: orderData.items,
-      }, 
-      {
-        headers: {
-          'Authorization': `Bearer ${process.env.DROPI_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-    console.log('Respuesta de Dropi:', response.data);
-  } catch (error) {
-    console.error('Error al contactar con la API de Dropi:', error.message);
-  }
-  */
+    await connectToDatabase();
+    
+    // Guardar el pedido en la base de datos
+    const newOrder = new Order(orderData);
+    await newOrder.save();
 
-  // Respuesta de éxito (Simulación)
-  res.status(200).json({ message: 'Pedido procesado correctamente.' });
+    console.log(`=> Pedido ${orderData.id} guardado en la base de datos.`);
+
+    // La lógica de Dropi (si se activa) iría aquí.
+
+    // Respuesta de éxito
+    res.status(200).json({ message: 'Pedido procesado y guardado correctamente.', orderId: orderData.id });
+
+  } catch (error) {
+    console.error('Error al guardar el pedido en la base de datos:', error);
+    // Si el ID ya existe, podría dar un error de duplicado.
+    if (error.code === 11000) {
+      return res.status(409).json({ error: 'Conflicto: El ID del pedido ya existe.' });
+    }
+    res.status(500).json({ error: 'No se pudo guardar el pedido en el servidor.' });
+  }
+});
+
+// Ruta para que el admin obtenga todos los pedidos
+router.get('/orders', async (req, res) => {
+  // TODO: Añadir autenticación para asegurar que solo un admin pueda acceder.
+  try {
+    await connectToDatabase();
+    // Buscamos y ordenamos por fecha de creación descendente (los más nuevos primero)
+    const orders = await Order.find({}).sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (error) {
+    console.error('Error al obtener los pedidos:', error);
+    res.status(500).json({ error: 'Error al cargar los pedidos del servidor.' });
+  }
 });
 
 app.use('/.netlify/functions/api', router);

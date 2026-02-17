@@ -9,6 +9,7 @@ async function initAdmin() {
             products = await res.json();
             renderTable();
             renderSettingsPanel(); // Cargar panel de configuración
+            renderOrders(); // Cargar pedidos desde la API
         }
     } catch (e) {
         console.error("Error cargando productos", e);
@@ -158,46 +159,55 @@ async function deleteProduct(id) {
     }
 }
 
-function renderOrders() {
-    const orders = JSON.parse(localStorage.getItem('lvs_orders')) || [];
+async function renderOrders() {
     const container = document.getElementById('orders-list');
-    
-    if (orders.length === 0) {
-        container.innerHTML = '<p style="color: #666;">No hay pedidos registrados aún.</p>';
-        return;
-    }
+    container.innerHTML = '<p>Cargando pedidos...</p>';
 
-    // Mostrar pedidos (del más reciente al más antiguo)
-    container.innerHTML = orders.map(order => `
-        <div class="order-card">
-            <div class="order-header">
-                <span>📅 ${order.date}</span>
-                <span>Total: $${order.total.toFixed(2)}</span>
-            </div>
-            <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: #eef2ff; border-radius: 4px;">
-                <strong>Estado:</strong>
-                <select onchange="updateOrderStatus('${order.id}', this.value)" style="padding: 0.25rem; border-radius: 4px; border: 1px solid #ccc;">
-                    <option value="Pendiente" ${order.status === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
-                    <option value="Aceptado" ${order.status === 'Aceptado' ? 'selected' : ''}>Aceptado</option>
-                    <option value="Enviado" ${order.status === 'Enviado' ? 'selected' : ''}>Enviado</option>
-                    <option value="Entregado" ${order.status === 'Entregado' ? 'selected' : ''}>Entregado</option>
-                </select>
-            </div>
-            <div style="font-size: 0.9rem; line-height: 1.6;">
-                <p><strong>Cliente:</strong> ${order.customer.name}</p>
-                <p><strong>Teléfono:</strong> ${order.customer.phone}</p>
-                <p><strong>Dirección:</strong> ${order.customer.address}</p>
-                <p><strong>Pago:</strong> ${order.customer.payment}</p>
-                <div style="margin-top: 0.5rem; background: white; padding: 0.5rem; border: 1px solid #eee;">
-                    <strong>Productos:</strong>
-                    <ul style="padding-left: 1.5rem; margin-top: 0.25rem;">
-                        ${order.items.map(item => `<li>${item.quantity}x ${item.name}</li>`).join('')}
-                    </ul>
+    try {
+        const response = await fetch('/.netlify/functions/api/orders');
+        if (!response.ok) throw new Error('No se pudieron cargar los pedidos del servidor.');
+        const orders = await response.json();
+
+        if (orders.length === 0) {
+            container.innerHTML = '<p style="color: #666;">No hay pedidos registrados aún.</p>';
+            return;
+        }
+
+        // La API ya los devuelve ordenados (más recientes primero)
+        container.innerHTML = orders.map(order => `
+            <div class="order-card">
+                <div class="order-header">
+                    <span>📅 ${order.date}</span>
+                    <span>Total: $${order.total.toFixed(2)}</span>
                 </div>
-                <button class="btn btn-danger" style="margin-top: 1rem; width: auto;" onclick="deleteOrder('${order.id}')">Eliminar Pedido</button>
+                <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: #eef2ff; border-radius: 4px;">
+                    <strong>Estado:</strong>
+                    <select onchange="updateOrderStatus('${order.id}', this.value)" style="padding: 0.25rem; border-radius: 4px; border: 1px solid #ccc;">
+                        <option value="Pendiente" ${order.status === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
+                        <option value="Aceptado" ${order.status === 'Aceptado' ? 'selected' : ''}>Aceptado</option>
+                        <option value="Enviado" ${order.status === 'Enviado' ? 'selected' : ''}>Enviado</option>
+                        <option value="Entregado" ${order.status === 'Entregado' ? 'selected' : ''}>Entregado</option>
+                    </select>
+                </div>
+                <div style="font-size: 0.9rem; line-height: 1.6;">
+                    <p><strong>Cliente:</strong> ${order.customer.name}</p>
+                    <p><strong>Teléfono:</strong> ${order.customer.phone}</p>
+                    <p><strong>Dirección:</strong> ${order.customer.address}</p>
+                    <p><strong>Pago:</strong> ${order.customer.payment}</p>
+                    <div style="margin-top: 0.5rem; background: white; padding: 0.5rem; border: 1px solid #eee;">
+                        <strong>Productos:</strong>
+                        <ul style="padding-left: 1.5rem; margin-top: 0.25rem;">
+                            ${order.items.map(item => `<li>${item.quantity}x ${item.name}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <button class="btn btn-danger" style="margin-top: 1rem; width: auto;" onclick="deleteOrder('${order.id}')">Eliminar Pedido</button>
+                </div>
             </div>
-        </div>
-    `).reverse().join('');
+        `).join('');
+    } catch (error) {
+        console.error('Error al cargar pedidos:', error);
+        container.innerHTML = `<p style="color: #ef4444;">${error.message}</p>`;
+    }
 }
 
 function updateOrderStatus(id, newStatus) {
@@ -206,15 +216,14 @@ function updateOrderStatus(id, newStatus) {
     if (orderIndex > -1) {
         orders[orderIndex].status = newStatus;
         localStorage.setItem('lvs_orders', JSON.stringify(orders));
+        // NOTA: Esta función ahora necesita hacer una llamada a un endpoint (ej: PATCH /api/orders/:id)
     }
 }
 
 function deleteOrder(id) {
-    if(confirm('¿Ya procesaste este pedido? Se eliminará de la lista.')) {
-        let orders = JSON.parse(localStorage.getItem('lvs_orders')) || [];
-        orders = orders.filter(o => o.id !== id);
-        localStorage.setItem('lvs_orders', JSON.stringify(orders));
-        renderOrders();
+    if(confirm('¿Estás seguro de eliminar este pedido de la base de datos?')) {
+        // NOTA: Esta función ahora necesita hacer una llamada a un endpoint (ej: DELETE /api/orders/:id)
+        alert('Funcionalidad de borrado no implementada en el backend.');
     }
 }
 
@@ -292,7 +301,6 @@ async function saveEdit(e) {
 }
 
 renderTable();
-renderOrders();
 renderSalesChart();
 
 function renderSalesChart() {

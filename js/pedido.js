@@ -86,11 +86,6 @@ async function submitOrder(e) {
             throw new Error('El servidor no pudo procesar el pedido.');
         }
 
-        // 2. Si el servidor responde OK, guardamos localmente y limpiamos el carrito
-        const orders = JSON.parse(localStorage.getItem('lvs_orders')) || [];
-        orders.push(order);
-        localStorage.setItem('lvs_orders', JSON.stringify(orders));
-
         await Swal.fire('¡Pedido Confirmado!', `Tu número de pedido es: ${order.id}`, 'success');
         
         localStorage.removeItem('lvs_cart'); // Limpiar carrito
