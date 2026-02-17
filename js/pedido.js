@@ -5,7 +5,7 @@ const totalEl = document.getElementById('order-total');
 // Función para auto-rellenar datos del usuario desde el backend
 async function prefillUserData() {
     try {
-        const response = await fetch('/.netlify/functions/api/auth/status');
+        const response = await fetch('/api/auth/status');
         const data = await response.json();
         if (data.user) {
             document.getElementById('client-name').value = data.user.name;
@@ -75,7 +75,7 @@ async function submitOrder(e) {
 
     try {
         // 1. Enviar el pedido a nuestro nuevo backend (Netlify Function)
-        const response = await fetch('/.netlify/functions/api/orders', {
+        const response = await fetch('/api/orders', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(order)
@@ -102,7 +102,7 @@ async function submitOrder(e) {
 
 async function verifySession() {
     try {
-        const response = await fetch('/.netlify/functions/api/auth/status');
+        const response = await fetch('/api/auth/status');
         if (!response.ok) return false;
         const data = await response.json();
         return !!data.user;

@@ -30,7 +30,7 @@ init();
 // Cargar configuraciones globales
 async function loadSettings() {
     try {
-        const res = await fetch('/.netlify/functions/api/settings');
+        const res = await fetch('/api/settings');
         if (res.ok) globalSettings = await res.json();
     } catch (error) {
         console.error('Error cargando settings', error);
@@ -40,7 +40,7 @@ async function loadSettings() {
 // Cargar productos desde la Nube (Base de Datos)
 async function loadProducts() {
     try {
-        const res = await fetch('/.netlify/functions/api/products');
+        const res = await fetch('/api/products');
         if (res.ok) {
             products = await res.json();
             renderProducts();
@@ -53,7 +53,7 @@ async function loadProducts() {
 
 async function checkUserSession() {
     try {
-        const response = await fetch('/.netlify/functions/api/auth/status');
+        const response = await fetch('/api/auth/status');
         const data = await response.json();
         if (data.user) {
             window.currentUser = data.user; // Guardar usuario globalmente para usarlo en render
@@ -83,7 +83,7 @@ async function checkUserSession() {
                     ${adminOption}
                     <a href="perfil.html">Mi Perfil</a>
                     <a href="configuracion.html">Configuración</a>
-                    <a href="/.netlify/functions/api/auth/logout" class="logout">Cerrar Sesión</a>
+                    <a href="/api/auth/logout" class="logout">Cerrar Sesión</a>
                 </div>
             `;
             

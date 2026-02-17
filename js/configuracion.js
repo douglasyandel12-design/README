@@ -2,7 +2,7 @@ let currentUser = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        const response = await fetch('/.netlify/functions/api/auth/status');
+        const response = await fetch('/api/auth/status');
         const data = await response.json();
 
         if (!data.user) {

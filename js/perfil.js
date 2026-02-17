@@ -1,8 +1,8 @@
-import { checkSession } from './modules/auth.js';
-
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        const user = await checkSession();
+        const response = await fetch('/api/auth/status');
+        const data = await response.json();
+        const user = data.user;
 
         if (!user) {
             window.location.href = 'login.html';

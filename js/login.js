@@ -15,7 +15,7 @@ async function handleLogin(e) {
     const pass = document.getElementById('login-pass').value;
 
     try {
-        const res = await fetch('/.netlify/functions/api/auth/login', {
+        const res = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password: pass })
@@ -43,7 +43,7 @@ async function handleRegister(e) {
     const pass = document.getElementById('reg-pass').value;
 
     try {
-        const response = await fetch('/.netlify/functions/api/auth/register', {
+        const response = await fetch('/api/auth/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, email, password: pass })

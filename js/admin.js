@@ -4,7 +4,7 @@ let products = [];
 // Cargar productos desde la nube al iniciar
 async function initAdmin() {
     try {
-        const res = await fetch('/.netlify/functions/api/products');
+        const res = await fetch('/api/products');
         if (res.ok) {
             products = await res.json();
             renderTable();
@@ -29,7 +29,7 @@ async function renderSettingsPanel() {
         // Obtener estado actual
         let isPromoActive = false;
         try {
-            const res = await fetch('/.netlify/functions/api/settings');
+            const res = await fetch('/api/settings');
             const data = await res.json();
             isPromoActive = data.promo_login_5 === true;
         } catch(e) { console.error(e); }
@@ -47,7 +47,7 @@ async function renderSettingsPanel() {
 
         // Evento de cambio
         document.getElementById('promo-toggle').addEventListener('change', async (e) => {
-            await fetch('/.netlify/functions/api/settings', {
+            await fetch('/api/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ key: 'promo_login_5', value: e.target.checked })
@@ -136,7 +136,7 @@ async function saveProductToStorage(name, price, image, discount) {
 // Función auxiliar para enviar todo a la nube
 async function saveToCloud() {
     try {
-        const res = await fetch('/.netlify/functions/api/products', {
+        const res = await fetch('/api/products', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(products)
@@ -164,7 +164,7 @@ async function renderOrders() {
     container.innerHTML = '<p>Cargando pedidos...</p>';
 
     try {
-        const response = await fetch('/.netlify/functions/api/orders');
+        const response = await fetch('/api/orders');
         if (!response.ok) throw new Error('No se pudieron cargar los pedidos del servidor.');
         const orders = await response.json();
 
@@ -210,20 +210,27 @@ async function renderOrders() {
     }
 }
 
-function updateOrderStatus(id, newStatus) {
-    let orders = JSON.parse(localStorage.getItem('lvs_orders')) || [];
-    const orderIndex = orders.findIndex(o => o.id === id);
-    if (orderIndex > -1) {
-        orders[orderIndex].status = newStatus;
-        localStorage.setItem('lvs_orders', JSON.stringify(orders));
-        // NOTA: Esta función ahora necesita hacer una llamada a un endpoint (ej: PATCH /api/orders/:id)
+async function updateOrderStatus(id, newStatus) {
+    try {
+        await fetch(`/api/orders/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
+        });
+        // No hace falta recargar todo, el usuario ya ve el cambio en el select
+    } catch (error) {
+        alert('Error al actualizar el estado en la base de datos.');
     }
 }
 
-function deleteOrder(id) {
+async function deleteOrder(id) {
     if(confirm('¿Estás seguro de eliminar este pedido de la base de datos?')) {
-        // NOTA: Esta función ahora necesita hacer una llamada a un endpoint (ej: DELETE /api/orders/:id)
-        alert('Funcionalidad de borrado no implementada en el backend.');
+        try {
+            await fetch(`/api/orders/${id}`, { method: 'DELETE' });
+            renderOrders(); // Recargar la lista
+        } catch (error) {
+            alert('Error al eliminar el pedido.');
+        }
     }
 }
 

@@ -71,7 +71,7 @@ document.addEventListener('click', async (e) => {
 
 async function verifySession() {
     try {
-        const response = await fetch('/.netlify/functions/api/auth/status');
+        const response = await fetch('/api/auth/status');
         if (!response.ok) return false;
         const data = await response.json();
         return !!data.user;
