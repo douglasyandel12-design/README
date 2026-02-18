@@ -295,19 +295,13 @@ function calculateItemPrice(product, quantity) {
         // Lógica especial para el producto en promoción
         const basePrice = product.price;
         
-        let totalCost = 0;
-        for (let i = 1; i <= quantity; i++) {
-            const unitIndex = pastPromoPurchases + i;
-            
-            // Regla: Descuento igual al número de unidad, con tope de $5.
-            let discount = 0;
-            if (unitIndex >= 2) {
-                discount = Math.min(unitIndex, 5);
-            }
-            
-            totalCost += Math.max(0, basePrice - discount);
+        // Nueva lógica: El precio de TODAS las unidades se basa en el nivel alcanzado por la cantidad TOTAL
+        const totalQuantity = pastPromoPurchases + quantity;
+        let discount = 0;
+        if (totalQuantity >= 2) {
+            discount = Math.min(totalQuantity, 5);
         }
-        priceAfterPrimaryDiscount = totalCost / quantity;
+        priceAfterPrimaryDiscount = Math.max(0, basePrice - discount);
     } else {
         // Lógica normal (Descuento fijo)
         priceAfterPrimaryDiscount = product.discount ? product.price * (1 - product.discount / 100) : product.price;
