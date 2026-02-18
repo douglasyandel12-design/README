@@ -294,21 +294,20 @@ function calculateItemPrice(product, quantity) {
     if (globalSettings.promo_product_id && product.id == globalSettings.promo_product_id) {
         // Lógica especial para el producto en promoción
         const basePrice = product.price;
-        const cycleLength = Math.ceil(basePrice);
-
-        if (cycleLength <= 0) {
-            priceAfterPrimaryDiscount = basePrice;
-        } else {
-            let totalCost = 0;
-            for (let i = 1; i <= quantity; i++) {
-                const unitIndex = pastPromoPurchases + i;
-                const step = ((unitIndex - 1) % cycleLength) + 1;
-                // Descuento máximo de 5 dólares
-                const discount = (step >= 2) ? Math.min(step, 5) : 0;
-                totalCost += Math.max(0, basePrice - discount);
+        
+        let totalCost = 0;
+        for (let i = 1; i <= quantity; i++) {
+            const unitIndex = pastPromoPurchases + i;
+            
+            // Regla: Descuento igual al número de unidad, con tope de $5.
+            let discount = 0;
+            if (unitIndex >= 2) {
+                discount = Math.min(unitIndex, 5);
             }
-            priceAfterPrimaryDiscount = totalCost / quantity;
+            
+            totalCost += Math.max(0, basePrice - discount);
         }
+        priceAfterPrimaryDiscount = totalCost / quantity;
     } else {
         // Lógica normal (Descuento fijo)
         priceAfterPrimaryDiscount = product.discount ? product.price * (1 - product.discount / 100) : product.price;
