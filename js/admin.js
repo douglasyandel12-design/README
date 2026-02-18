@@ -1,6 +1,7 @@
 // Variable global
 let products = [];
 let allOrders = []; // Variable para guardar los pedidos cargados
+let globalPromoProductId = ''; // Variable para saber cuál es el producto en promo
 
 // Cargar productos desde la nube al iniciar
 async function initAdmin() {
@@ -33,28 +34,16 @@ async function renderSettingsPanel() {
             const res = await fetch('/api/settings');
             const data = await res.json();
             isPromoActive = data.promo_login_5 === true;
-            promoProductId = data.promo_product_id || '';
+            globalPromoProductId = data.promo_product_id || '';
         } catch(e) { console.error(e); }
 
         panel.innerHTML = `
             <h3>⚙️ Configuración Global</h3>
-            <div style="margin-bottom: 1rem; border-bottom: 1px solid #ddd; padding-bottom: 1rem;">
+            <div>
                 <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
                     <input type="checkbox" id="promo-toggle" ${isPromoActive ? 'checked' : ''} style="transform: scale(1.5);">
                     <span>Activar <strong>5% de Descuento</strong> automático para usuarios logueados.</span>
                 </label>
-            </div>
-            <div>
-                <h4>Promoción "Más compras, más barato"</h4>
-                <p style="font-size: 0.85rem; color: #666; margin-bottom: 0.5rem;">
-                    Aplica un descuento progresivo a un producto específico (ej: 2 unidades = $2 de descuento).
-                    Copia el ID del producto desde la tabla de abajo y pégalo aquí.
-                </p>
-                <label for="promo-product-id" style="font-weight: 600;">ID del Producto en Promoción:</label>
-                <div style="display: flex; gap: 10px; margin-top: 5px;">
-                    <input type="text" id="promo-product-id" value="${promoProductId}" placeholder="Pega el ID del producto aquí" style="flex-grow: 1; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
-                    <button id="save-promo-id-btn" class="btn" style="width: auto; padding: 0.5rem 1rem;">Guardar ID</button>
-                </div>
             </div>
         `;
         
@@ -69,17 +58,6 @@ async function renderSettingsPanel() {
                 body: JSON.stringify({ key: 'promo_login_5', value: e.target.checked })
             });
             alert('Configuración de descuento para socios actualizada.');
-        });
-
-        // Evento para guardar el ID del producto en promo
-        document.getElementById('save-promo-id-btn').addEventListener('click', async () => {
-            const id = document.getElementById('promo-product-id').value.trim();
-            await fetch('/api/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: 'promo_product_id', value: id })
-            });
-            alert('ID del producto en promoción guardado. Los clientes verán el cambio al recargar la tienda.');
         });
     }
 }
@@ -99,15 +77,14 @@ function renderTable() {
                 <td>${imgDisplay}</td>
                 <td>
                     ${p.name}
-                    <br><small style="color:#6b7280; font-size:0.75rem;">ID: ${p.id}</small>
                 </td>
                 <td>
                     $${p.price.toFixed(2)}
                     ${p.discount > 0 ? `<br><small style="color:#ef4444; font-weight:bold;">-${p.discount}% OFF</small>` : ''}
                 </td>
                 <td>
-                    <button class="btn" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem; margin-right: 0.5rem; background-color: #2563eb;" onclick="openEditModal(${p.id})">Editar</button>
-                    <button class="btn btn-danger" onclick="deleteProduct(${p.id})">Borrar</button>
+                    <button class="btn" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem; margin-right: 0.5rem; background-color: #2563eb;" onclick="openEditModal('${p.id}')">Editar</button>
+                    <button class="btn btn-danger" onclick="deleteProduct('${p.id}')">Borrar</button>
                 </td>
             </tr>
         `;
@@ -140,7 +117,7 @@ async function addProduct(e) {
 
 async function saveProductToStorage(name, price, image, discount) {
     const newProduct = {
-        id: Date.now(), // ID único basado en tiempo
+        id: name, // El ID ahora es el NOMBRE
         name: name,
         price: price,
         image: image,
@@ -183,7 +160,7 @@ async function saveToCloud() {
 
 async function deleteProduct(id) {
     if(confirm('¿Estás seguro de eliminar este producto?')) {
-        products = products.filter(p => p.id !== id);
+        products = products.filter(p => p.id != id); // Usamos != para permitir borrar IDs viejos (numéricos) y nuevos (texto)
         await saveToCloud();
         renderTable();
     }
@@ -306,13 +283,38 @@ function exportOrdersToCSV() {
 const editModal = document.getElementById('edit-modal');
 
 function openEditModal(id) {
-    const product = products.find(p => p.id === id);
+    // Usamos == para encontrarlo ya sea texto o número
+    const product = products.find(p => p.id == id);
     if (!product) return;
 
     document.getElementById('edit-id').value = product.id;
     document.getElementById('edit-name').value = product.name;
     document.getElementById('edit-price').value = product.price;
     document.getElementById('edit-discount').value = product.discount || 0;
+
+    // --- Inyectar Checkbox de Promoción ---
+    const form = document.querySelector('#edit-modal form');
+    let promoContainer = document.getElementById('edit-promo-container');
+    
+    if (!promoContainer) {
+        promoContainer = document.createElement('div');
+        promoContainer.id = 'edit-promo-container';
+        promoContainer.style.cssText = "margin-top: 1rem; padding: 0.5rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px;";
+        // Insertar antes de los botones (asumiendo que los botones son el último elemento del form)
+        form.insertBefore(promoContainer, form.lastElementChild);
+    }
+
+    const isPromo = product.id == globalPromoProductId;
+    
+    promoContainer.innerHTML = `
+        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color: #166534; font-weight: 500;">
+            <input type="checkbox" id="edit-is-promo" ${isPromo ? 'checked' : ''}>
+            <span>🌟 Activar promoción "Más compras, más barato"</span>
+        </label>
+        <small style="display:block; margin-top:4px; color:#166534;">
+            Si activas esto, este producto bajará de precio según la cantidad (2 items = $2 menos, etc).
+        </small>
+    `;
     
     editModal.classList.add('active');
 }
@@ -323,13 +325,33 @@ function closeEditModal() {
 
 async function saveEdit(e) {
     e.preventDefault();
-    const id = parseInt(document.getElementById('edit-id').value);
-    const productIndex = products.findIndex(p => p.id === id);
+    const idInput = document.getElementById('edit-id').value;
+    // Buscar producto (puede ser ID numérico viejo o texto nuevo)
+    const productIndex = products.findIndex(p => p.id == idInput);
     
     if (productIndex > -1) {
-        products[productIndex].name = document.getElementById('edit-name').value;
-        products[productIndex].price = parseFloat(document.getElementById('edit-price').value);
-        products[productIndex].discount = parseFloat(document.getElementById('edit-discount').value) || 0;
+        const p = products[productIndex];
+        const oldId = p.id;
+
+        p.name = document.getElementById('edit-name').value;
+        p.price = parseFloat(document.getElementById('edit-price').value);
+        p.discount = parseFloat(document.getElementById('edit-discount').value) || 0;
+        
+        // ACTUALIZAR ID PARA QUE SEA EL NOMBRE
+        p.id = p.name;
+
+        // --- Lógica de Promoción ---
+        const isPromoChecked = document.getElementById('edit-is-promo').checked;
+        
+        if (isPromoChecked) {
+            // Si se marca, este producto es el nuevo "Producto Estrella"
+            globalPromoProductId = p.id;
+            await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: 'promo_product_id', value: p.id }) });
+        } else if (globalPromoProductId == oldId) {
+            // Si se desmarca Y era el producto estrella, quitamos la promo
+            globalPromoProductId = '';
+            await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: 'promo_product_id', value: '' }) });
+        }
         
         await saveToCloud();
         renderTable();
