@@ -30,7 +30,7 @@ function renderCart() {
     cart.forEach((item, index) => {
         // Lógica para mostrar precio original vs. rebajado
         const priceDisplay = (item.originalPrice && item.price < item.originalPrice)
-            ? `<span style="text-decoration: line-through; color: #999;">$${item.originalPrice.toFixed(2)}</span> <br> <strong style="color: #ef4444;">$${item.price.toFixed(2)}</strong>`
+            ? `<span style="text-decoration: line-through; color: #ef4444; margin-right: 4px;">$${item.originalPrice.toFixed(2)}</span> <strong style="color: #000;">$${item.price.toFixed(2)}</strong>`
             : `$${item.price.toFixed(2)}`;
 
         total += item.price * item.quantity;
