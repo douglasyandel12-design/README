@@ -216,38 +216,19 @@ function renderProducts() {
         ? `<img src="${product.image}" alt="${product.name}">` 
         : `<span>${product.name}</span>`;
 
-    // --- LÓGICA DE PRECIOS OPTIMIZADA Y UNIFICADA ---
+    // --- LÓGICA DE PRECIOS (Solo visualización estándar) ---
     const isPromoProduct = product.id == globalSettings.promo_product_id;
-    const isMemberPromoActive = globalSettings.promo_login_5 === true && window.currentUser;
-
-    // Para la tarjeta, calculamos el precio de la siguiente unidad que se agregaría (quantity=1)
-    const displayPrice = calculateItemPrice(product, 1);
-
+    
+    // Mostramos el precio de lista (o con descuento fijo si tiene), sin calcular progresivos ni socio aquí
+    let displayPrice = product.price;
     let originalPriceHtml = '';
-    let promoMsg = '';
 
-    // Si el precio final es menor que el original, mostramos el original tachado.
-    if (displayPrice < product.price) {
+    if (product.discount && product.discount > 0) {
+        displayPrice = product.price * (1 - product.discount / 100);
         originalPriceHtml = `<span class="original-price" style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">$${product.price.toFixed(2)}</span>`;
     }
-
-    // --- Lógica de Mensajes ---
-    if (isPromoProduct) {
-        const nextUnitIndex = pastPromoPurchases + 1;
-        const cycleLength = Math.ceil(product.price);
-        if (cycleLength > 0) {
-            const step = ((nextUnitIndex - 1) % cycleLength) + 1;
-            if (step >= 2) {
-                 promoMsg += `<small style="color:#ef4444; display:block; font-weight:bold; font-size:0.75rem; margin-top:4px;">¡Precio por tu unidad n.º ${nextUnitIndex}!</small>`;
-            }
-        }
-    }
     
-    if (isMemberPromoActive && displayPrice < product.price) {
-        promoMsg += `<small style="color:green; display:block; font-size:0.7rem; margin-top:2px;">+ 5% Descuento Socio</small>`;
-    }
-    
-    const priceHtml = `<div class="price-container">${originalPriceHtml}<span class="product-price" style="color:${(displayPrice < product.price) ? '#ef4444' : '#000'}">$${displayPrice.toFixed(2)}</span>${promoMsg}</div>`;
+    const priceHtml = `<div class="price-container">${originalPriceHtml}<span class="product-price">$${displayPrice.toFixed(2)}</span></div>`;
 
     // Añadir insignia si es el producto con promoción progresiva
     const promoBadge = isPromoProduct
@@ -291,7 +272,8 @@ function calculateItemPrice(product, quantity) {
             for (let i = 1; i <= quantity; i++) {
                 const unitIndex = pastPromoPurchases + i;
                 const step = ((unitIndex - 1) % cycleLength) + 1;
-                const discount = (step >= 2) ? step : 0;
+                // Descuento máximo de 5 dólares
+                const discount = (step >= 2) ? Math.min(step, 5) : 0;
                 totalCost += Math.max(0, basePrice - discount);
             }
             priceAfterPrimaryDiscount = totalCost / quantity;
@@ -301,10 +283,10 @@ function calculateItemPrice(product, quantity) {
         priceAfterPrimaryDiscount = product.discount ? product.price * (1 - product.discount / 100) : product.price;
     }
 
-    // 2. Aplicar descuento de socio (5%) SOBRE el precio ya rebajado, si aplica.
+    // 2. Aplicar descuento de socio (3%) SOBRE el precio ya rebajado, si aplica.
     const isMemberPromoActive = globalSettings.promo_login_5 === true && window.currentUser;
     if (isMemberPromoActive) {
-        return priceAfterPrimaryDiscount * 0.95;
+        return priceAfterPrimaryDiscount * 0.97;
     }
 
     return priceAfterPrimaryDiscount;
