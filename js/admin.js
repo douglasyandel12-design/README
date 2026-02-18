@@ -100,12 +100,6 @@ async function addProduct(e) {
     const fileInput = document.getElementById('prod-img-file');
     const urlInput = document.getElementById('prod-img-url');
 
-    // Validar que el nombre no exista ya (ignorando mayúsculas/minúsculas y espacios)
-    if (products.some(p => p.name.trim().toLowerCase() === name.trim().toLowerCase())) {
-        alert('Error: Ya existe un producto con este nombre. Los nombres de producto deben ser únicos.');
-        return;
-    }
-    
     let imageSrc = urlInput.value;
 
     // Si hay archivo, convertir a Base64
@@ -123,7 +117,7 @@ async function addProduct(e) {
 
 async function saveProductToStorage(name, price, image, discount) {
     const newProduct = {
-        id: name, // El ID ahora es el NOMBRE
+        id: Date.now(), // ID único basado en tiempo (Revertido para estabilidad)
         name: name,
         price: price,
         image: image,
@@ -343,28 +337,12 @@ async function saveEdit(e) {
     const productIndex = products.findIndex(p => p.id == idInput);
     
     if (productIndex > -1) {
-        const newName = document.getElementById('edit-name').value.trim();
-
-        // Validar que el nuevo nombre no esté en uso por OTRO producto
-        const isDuplicate = products.some((p, idx) => 
-            idx !== productIndex && p.name.trim().toLowerCase() === newName.toLowerCase()
-        );
-
-        if (isDuplicate) {
-            alert('Error: Ya existe otro producto con ese nombre. Los nombres deben ser únicos.');
-            return;
-        }
-
         const p = products[productIndex];
-        const oldId = p.id;
-
-        p.name = newName;
+        
+        p.name = document.getElementById('edit-name').value;
         p.price = parseFloat(document.getElementById('edit-price').value);
         p.discount = parseFloat(document.getElementById('edit-discount').value) || 0;
         
-        // ACTUALIZAR ID PARA QUE SEA EL NOMBRE
-        p.id = p.name;
-
         // --- Lógica de Promoción ---
         const isPromoChecked = document.getElementById('edit-is-promo').checked;
         
@@ -372,7 +350,7 @@ async function saveEdit(e) {
             // Si se marca, este producto es el nuevo "Producto Estrella"
             globalPromoProductId = p.id;
             await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: 'promo_product_id', value: p.id }) });
-        } else if (globalPromoProductId == oldId) {
+        } else if (globalPromoProductId == p.id) {
             // Si se desmarca Y era el producto estrella, quitamos la promo
             globalPromoProductId = '';
             await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: 'promo_product_id', value: '' }) });
