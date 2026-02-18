@@ -406,6 +406,10 @@ function updateCartUI() {
                             : `$${item.price.toFixed(2)}`
                         }
                     </span>
+                    ${ (globalSettings.promo_product_id && item.id == globalSettings.promo_product_id && item.price < item.originalPrice) 
+                        ? `<small style="color: #d97706; font-weight: 600; display: block; margin-top: 2px;">🔥 ¡Descuento progresivo aplicado!</small>` 
+                        : '' 
+                    }
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-weight:bold;">$${(item.price * item.quantity).toFixed(2)}</span>

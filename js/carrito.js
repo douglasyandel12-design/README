@@ -2,6 +2,20 @@ let cart = JSON.parse(localStorage.getItem('lvs_cart')) || [];
 const container = document.getElementById('cart-container');
 const summary = document.getElementById('cart-summary');
 const totalEl = document.getElementById('total-amount');
+let globalSettings = {};
+
+// Cargar configuración para saber cuál es el producto en promo
+async function loadSettings() {
+    try {
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+            globalSettings = await res.json();
+            renderCart();
+        }
+    } catch (error) {
+        console.error('Error cargando configuración:', error);
+    }
+}
 
 function renderCart() {
     if (cart.length === 0) {
@@ -33,10 +47,18 @@ function renderCart() {
             ? `<span style="text-decoration: line-through; color: #ef4444; margin-right: 4px;">$${item.originalPrice.toFixed(2)}</span> <strong style="color: #000;">$${item.price.toFixed(2)}</strong>`
             : `$${item.price.toFixed(2)}`;
 
+        const isPromo = globalSettings.promo_product_id && item.id == globalSettings.promo_product_id;
+        const promoMsg = (isPromo && item.price < item.originalPrice) 
+            ? `<br><small style="color: #d97706; font-weight: bold;">🔥 ¡Descuento progresivo aplicado!</small>` 
+            : '';
+
         total += item.price * item.quantity;
         html += `
             <tr>
-                <td>${item.name}</td>
+                <td>
+                    ${item.name}
+                    ${promoMsg}
+                </td>
                 <td>${priceDisplay}</td>
                 <td>${item.quantity}</td>
                 <td><button class="btn btn-danger" onclick="removeItem(${index})">Eliminar</button></td>
@@ -63,6 +85,7 @@ function clearCart() {
 }
 
 renderCart();
+loadSettings();
 
 // Manejar clic en "Proceder al Pago"
 document.addEventListener('click', async (e) => {
