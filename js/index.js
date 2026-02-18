@@ -1,6 +1,7 @@
 // Variable global para productos
 let products = [];
 let globalSettings = {}; // Para guardar config de promociones
+let pastPromoPurchases = 0; // Variable para contar compras pasadas del producto en promo
 
 const grid = document.getElementById('product-grid');
 const cartCountEl = document.getElementById('cart-count');
@@ -102,9 +103,56 @@ async function checkUserSession() {
 
             userMenu.innerHTML = `${guestLink}<a href="login.html" style="text-decoration: none; color: var(--primary); font-weight: 600; font-size: 0.9rem; border: 1px solid #000; padding: 5px 10px; border-radius: 4px;">Iniciar Sesión</a>`;
         }
+
+        // Calcular compras pasadas para aplicar descuento acumulativo
+        await fetchPastOrders();
+
     } catch (error) {
         console.error('Error al verificar sesión:', error);
         userMenu.innerHTML = `<a href="login.html" style="text-decoration: none; color: var(--primary); font-weight: 600; font-size: 0.9rem; border: 1px solid #000; padding: 5px 10px; border-radius: 4px;">Iniciar Sesión</a>`;
+    }
+}
+
+// Función para buscar en el historial cuántas veces se ha comprado el producto en promo
+async function fetchPastOrders() {
+    if (!globalSettings.promo_product_id) return;
+    pastPromoPurchases = 0; // Reiniciar contador
+
+    try {
+        const res = await fetch('/api/orders');
+        if (!res.ok) return;
+        const allOrders = await res.json();
+        
+        let relevantOrders = [];
+        
+        if (window.currentUser) {
+            // Si es usuario registrado, filtramos por su email
+            relevantOrders = allOrders.filter(o => o.customer && o.customer.email === window.currentUser.email);
+        } else {
+            // Si es invitado, filtramos por los IDs guardados en su navegador
+            const guestIds = JSON.parse(localStorage.getItem('lvs_guest_orders')) || [];
+            if (guestIds.length > 0) {
+                relevantOrders = allOrders.filter(o => guestIds.includes(o.id));
+            }
+        }
+
+        // Contar cuántas veces aparece el producto en promoción en esos pedidos
+        relevantOrders.forEach(order => {
+            if (order.items) {
+                order.items.forEach(item => {
+                    // Usamos == para comparar ID (puede ser string o number)
+                    if (item.id == globalSettings.promo_product_id) {
+                        pastPromoPurchases += (item.quantity || 0);
+                    }
+                });
+            }
+        });
+        
+        // Actualizar la cuadrícula de productos para reflejar el nuevo precio base si aplica
+        renderProducts();
+        
+    } catch (e) {
+        console.error("Error calculando compras pasadas:", e);
     }
 }
 
@@ -188,7 +236,9 @@ function calculateItemPrice(product, quantity) {
         // El descuento es igual a la cantidad, pero se reinicia en ciclos.
         // Ej: Si el producto cuesta $10, el descuento va de $1 a $10 para las cantidades 1-10,
         // y luego se reinicia para la cantidad 11.
-        const step = ((quantity - 1) % cycleLength) + 1;
+        // SUMAMOS LAS COMPRAS PASADAS A LA CANTIDAD ACTUAL
+        const totalQuantity = quantity + pastPromoPurchases;
+        const step = ((totalQuantity - 1) % cycleLength) + 1;
         
         // Regla: 1 unidad = Precio normal. 2 unidades = $2 menos. 3 unidades = $3 menos...
         let discountAmount = 0;
