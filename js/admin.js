@@ -33,14 +33,29 @@ async function renderSettingsPanel() {
             const res = await fetch('/api/settings');
             const data = await res.json();
             isPromoActive = data.promo_login_5 === true;
+            promoProductId = data.promo_product_id || '';
         } catch(e) { console.error(e); }
 
         panel.innerHTML = `
             <h3>⚙️ Configuración Global</h3>
-            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; margin-top:0.5rem;">
-                <input type="checkbox" id="promo-toggle" ${isPromoActive ? 'checked' : ''} style="transform: scale(1.5);">
-                <span>Activar <strong>5% de Descuento</strong> automático para usuarios logueados.</span>
-            </label>
+            <div style="margin-bottom: 1rem; border-bottom: 1px solid #ddd; padding-bottom: 1rem;">
+                <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                    <input type="checkbox" id="promo-toggle" ${isPromoActive ? 'checked' : ''} style="transform: scale(1.5);">
+                    <span>Activar <strong>5% de Descuento</strong> automático para usuarios logueados.</span>
+                </label>
+            </div>
+            <div>
+                <h4>Promoción "Más compras, más barato"</h4>
+                <p style="font-size: 0.85rem; color: #666; margin-bottom: 0.5rem;">
+                    Aplica un descuento progresivo a un producto específico (ej: 2 unidades = $2 de descuento).
+                    Copia el ID del producto desde la tabla de abajo y pégalo aquí.
+                </p>
+                <label for="promo-product-id" style="font-weight: 600;">ID del Producto en Promoción:</label>
+                <div style="display: flex; gap: 10px; margin-top: 5px;">
+                    <input type="text" id="promo-product-id" value="${promoProductId}" placeholder="Pega el ID del producto aquí" style="flex-grow: 1; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
+                    <button id="save-promo-id-btn" class="btn" style="width: auto; padding: 0.5rem 1rem;">Guardar ID</button>
+                </div>
+            </div>
         `;
         
         // Insertar al principio del contenedor principal
@@ -53,7 +68,18 @@ async function renderSettingsPanel() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ key: 'promo_login_5', value: e.target.checked })
             });
-            alert('Configuración actualizada. Los usuarios verán el cambio al recargar.');
+            alert('Configuración de descuento para socios actualizada.');
+        });
+
+        // Evento para guardar el ID del producto en promo
+        document.getElementById('save-promo-id-btn').addEventListener('click', async () => {
+            const id = document.getElementById('promo-product-id').value.trim();
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: 'promo_product_id', value: id })
+            });
+            alert('ID del producto en promoción guardado. Los clientes verán el cambio al recargar la tienda.');
         });
     }
 }
@@ -71,7 +97,10 @@ function renderTable() {
         const row = `
             <tr>
                 <td>${imgDisplay}</td>
-                <td>${p.name}</td>
+                <td>
+                    ${p.name}
+                    <br><small style="color:#6b7280; font-size:0.75rem;">ID: ${p.id}</small>
+                </td>
                 <td>
                     $${p.price.toFixed(2)}
                     ${p.discount > 0 ? `<br><small style="color:#ef4444; font-weight:bold;">-${p.discount}% OFF</small>` : ''}

@@ -165,6 +165,36 @@ function renderProducts() {
     });
 }
 
+// Función auxiliar para calcular precio (incluye la nueva lógica progresiva)
+function calculateItemPrice(product, quantity) {
+    // 1. Lógica especial para el producto en promoción (ID configurado por el admin)
+    // Usamos '==' para permitir que el ID sea string o number
+    if (globalSettings.promo_product_id && product.id == globalSettings.promo_product_id) {
+        const basePrice = product.price;
+        const cycleLength = Math.ceil(basePrice);
+
+        // Si el producto es gratis o tiene precio inválido, no aplicar descuento.
+        if (cycleLength <= 0) return basePrice;
+
+        // El descuento es igual a la cantidad, pero se reinicia en ciclos.
+        // Ej: Si el producto cuesta $10, el descuento va de $1 a $10 para las cantidades 1-10,
+        // y luego se reinicia para la cantidad 11.
+        const discountAmount = ((quantity - 1) % cycleLength) + 1;
+        
+        let newPrice = basePrice - discountAmount;
+        return Math.max(0, newPrice); // El precio no puede ser negativo.
+    }
+
+    // 2. Lógica normal (Descuento base + Socio)
+    let finalPrice = product.discount ? product.price * (1 - product.discount / 100) : product.price;
+    
+    const isPromoActive = globalSettings.promo_login_5 === true && window.currentUser;
+    if (isPromoActive) {
+        finalPrice = finalPrice * 0.95;
+    }
+    return finalPrice;
+}
+
 function addToCart(id) {
     // Usamos '==' para asegurar compatibilidad si el ID viene como texto o número
     const product = products.find(p => p.id == id);
@@ -172,51 +202,44 @@ function addToCart(id) {
     // Si no encuentra el producto, detenemos la función para no romper el carrito
     if (!product) return;
 
-    // Calcular precio final para el carrito
-    let finalPrice = product.discount ? product.price * (1 - product.discount / 100) : product.price;
-
-    // Aplicar promo socio al añadir al carrito
-    const isPromoActive = globalSettings.promo_login_5 === true && window.currentUser;
-    if (isPromoActive) {
-        finalPrice = finalPrice * 0.95;
-    }
-
     // Lógica de agrupación
     const existingItem = cart.find(item => item.id == id);
+    const newQuantity = existingItem ? existingItem.quantity + 1 : 1;
+
+    // Calcular precio dinámicamente
+    const finalPrice = calculateItemPrice(product, newQuantity);
     
     if (existingItem) {
-        existingItem.quantity += 1;
+        existingItem.quantity = newQuantity;
+        existingItem.price = finalPrice; // Actualizar el precio unitario
     } else {
-        cart.push({ id: product.id, name: product.name, price: finalPrice, quantity: 1 });
+        // Guardamos el precio original por si necesitamos recalcular y el producto ya no está en la lista `products`
+        cart.push({ id: product.id, name: product.name, price: finalPrice, quantity: 1, originalPrice: product.price });
     }
 
     saveCart();
     updateCartUI();
     
     // Mostrar notificación animada en lugar del modal
-    showToast(`¡${product.name} agregado al carrito!`);
+    showToast(`¡${product.name} agregado!`);
 }
 
 function orderNow(id) {
     const product = products.find(p => p.id == id);
-    
     if (!product) return;
-
-    // Calcular precio final para el pedido
-    let finalPrice = product.discount ? product.price * (1 - product.discount / 100) : product.price;
-
-    // Aplicar promo socio
-    const isPromoActive = globalSettings.promo_login_5 === true && window.currentUser;
-    if (isPromoActive) {
-        finalPrice = finalPrice * 0.95;
-    }
 
     // Lógica de agrupación para pedido directo
     const existingItem = cart.find(item => item.id == id);
+    const newQuantity = existingItem ? existingItem.quantity + 1 : 1;
+
+    // Calcular precio dinámicamente
+    const finalPrice = calculateItemPrice(product, newQuantity);
+
     if (existingItem) {
-        existingItem.quantity += 1;
+        existingItem.quantity = newQuantity;
+        existingItem.price = finalPrice;
     } else {
-        cart.push({ id: product.id, name: product.name, price: finalPrice, quantity: 1 });
+        cart.push({ id: product.id, name: product.name, price: finalPrice, quantity: 1, originalPrice: product.price });
     }
 
     saveCart();
@@ -263,8 +286,20 @@ function updateCartUI() {
 }
 
 function removeFromCart(index) {
-    if (cart[index].quantity > 1) {
-        cart[index].quantity -= 1;
+    const item = cart[index];
+    if (item.quantity > 1) {
+        item.quantity -= 1;
+
+        // Si es el producto en promoción, hay que recalcular su precio
+        if (globalSettings.promo_product_id && item.id == globalSettings.promo_product_id) {
+            // Buscamos el producto original para obtener el precio base
+            const product = products.find(p => p.id == item.id) || { id: item.id, price: item.originalPrice };
+            if (product.price !== undefined) {
+                item.price = calculateItemPrice(product, item.quantity);
+            }
+        }
+        // Para productos normales, el precio unitario no cambia, así que no hacemos nada más.
+
     } else {
         cart.splice(index, 1);
     }
