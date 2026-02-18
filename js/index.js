@@ -179,8 +179,14 @@ function calculateItemPrice(product, quantity) {
         // El descuento es igual a la cantidad, pero se reinicia en ciclos.
         // Ej: Si el producto cuesta $10, el descuento va de $1 a $10 para las cantidades 1-10,
         // y luego se reinicia para la cantidad 11.
-        const discountAmount = ((quantity - 1) % cycleLength) + 1;
+        const step = ((quantity - 1) % cycleLength) + 1;
         
+        // Regla: 1 unidad = Precio normal. 2 unidades = $2 menos. 3 unidades = $3 menos...
+        let discountAmount = 0;
+        if (step >= 2) {
+            discountAmount = step;
+        }
+
         let newPrice = basePrice - discountAmount;
         return Math.max(0, newPrice); // El precio no puede ser negativo.
     }
