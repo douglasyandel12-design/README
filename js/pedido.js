@@ -96,6 +96,12 @@ async function submitOrder(e) {
             const guestOrders = JSON.parse(localStorage.getItem('lvs_guest_orders')) || [];
             guestOrders.push(order.id);
             localStorage.setItem('lvs_guest_orders', JSON.stringify(guestOrders));
+
+            // Guardar email del invitado para futuros descuentos, SOLO SI EL USUARIO DIO SU CONSENTIMIENTO
+            const rememberEmail = document.getElementById('remember-email').checked;
+            if (rememberEmail) {
+                localStorage.setItem('lvs_guest_email', order.customer.email);
+            }
         }
 
         // Redirigir "de una" a la página de rastreo con el ID en la URL

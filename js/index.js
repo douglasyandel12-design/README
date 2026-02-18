@@ -52,6 +52,31 @@ async function loadProducts() {
     }
 }
 
+function handleGuestData() {
+    const guestEmail = localStorage.getItem('lvs_guest_email');
+    if (!guestEmail) return; // No hay nada que hacer
+
+    // Crear el banner
+    const banner = document.createElement('div');
+    banner.id = 'guest-info-banner';
+    banner.style.cssText = "background-color: #eef2ff; color: #3730a3; padding: 0.75rem 1rem; text-align: center; font-size: 0.9rem; display: flex; justify-content: center; align-items: center; gap: 1rem; flex-wrap: wrap;";
+    banner.innerHTML = `
+        <span>Bienvenido de nuevo, <strong>${guestEmail}</strong>. Tus descuentos acumulados están activos.</span>
+        <button onclick="clearGuestData()" style="background: none; border: 1px solid #c7d2fe; color: #4338ca; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">No soy yo</button>
+    `;
+
+    // Insertar el banner al principio del body
+    document.body.insertBefore(banner, document.body.firstChild);
+}
+
+window.clearGuestData = function() {
+    if (confirm('¿Quieres borrar tu correo y el historial de pedidos de este navegador? Perderás los descuentos acumulados como invitado.')) {
+        localStorage.removeItem('lvs_guest_email');
+        localStorage.removeItem('lvs_guest_orders');
+        location.reload();
+    }
+}
+
 async function checkUserSession() {
     try {
         const response = await fetch('/api/auth/status');
@@ -102,6 +127,9 @@ async function checkUserSession() {
             }
 
             userMenu.innerHTML = `${guestLink}<a href="login.html" style="text-decoration: none; color: var(--primary); font-weight: 600; font-size: 0.9rem; border: 1px solid #000; padding: 5px 10px; border-radius: 4px;">Iniciar Sesión</a>`;
+        
+            // Mostrar banner si hay datos de invitado guardados
+            handleGuestData();
         }
 
         // Calcular compras pasadas para aplicar descuento acumulativo
@@ -129,10 +157,18 @@ async function fetchPastOrders() {
             // Si es usuario registrado, filtramos por su email
             relevantOrders = allOrders.filter(o => o.customer && o.customer.email === window.currentUser.email);
         } else {
-            // Si es invitado, filtramos por los IDs guardados en su navegador
-            const guestIds = JSON.parse(localStorage.getItem('lvs_guest_orders')) || [];
-            if (guestIds.length > 0) {
-                relevantOrders = allOrders.filter(o => guestIds.includes(o.id));
+            // Si es invitado...
+            // 1. Intentamos usar el email guardado en localStorage (Más efectivo)
+            const guestEmail = localStorage.getItem('lvs_guest_email');
+            
+            if (guestEmail) {
+                relevantOrders = allOrders.filter(o => o.customer && o.customer.email === guestEmail);
+            } else {
+                // 2. Si no hay email, usamos los IDs de pedidos locales (Fallback)
+                const guestIds = JSON.parse(localStorage.getItem('lvs_guest_orders')) || [];
+                if (guestIds.length > 0) {
+                    relevantOrders = allOrders.filter(o => guestIds.includes(o.id));
+                }
             }
         }
 
@@ -180,24 +216,45 @@ function renderProducts() {
         ? `<img src="${product.image}" alt="${product.name}">` 
         : `<span>${product.name}</span>`;
 
-    // Calcular precio con descuento si existe
-    const hasDiscount = product.discount && product.discount > 0;
-    let finalPrice = hasDiscount ? product.price * (1 - product.discount / 100) : product.price;
-    
-    // Aplicar 5% extra si es socio
-    if (isPromoActive) {
-        finalPrice = finalPrice * 0.95;
-    }
+    // --- LÓGICA DE PRECIOS OPTIMIZADA ---
+    const isPromoProduct = product.id == globalSettings.promo_product_id;
+    let displayPrice = product.price;
+    let originalPriceHtml = '';
+    let promoMsg = '';
 
-    let priceHtml = '';
-    if (hasDiscount || isPromoActive) {
-        priceHtml = `<div class="price-container"><span class="original-price">$${product.price.toFixed(2)}</span><span class="sale-price">$${finalPrice.toFixed(2)}</span> ${isPromoActive ? '<small style="color:green; display:block; font-size:0.7rem;">¡Precio Socio!</small>' : ''}</div>`;
+    if (isPromoProduct) {
+        // Calculamos cuánto le costará la SIGUIENTE unidad (Marginal)
+        // Esto motiva al usuario mostrándole el precio rebajado inmediato
+        const nextUnitIndex = pastPromoPurchases + 1;
+        const cycleLength = Math.ceil(product.price);
+        const step = ((nextUnitIndex - 1) % cycleLength) + 1;
+        
+        let discount = (step >= 2) ? step : 0;
+        displayPrice = Math.max(0, product.price - discount);
+
+        if (displayPrice < product.price) {
+            originalPriceHtml = `<span class="original-price" style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">$${product.price.toFixed(2)}</span>`;
+            promoMsg = `<small style="color:#ef4444; display:block; font-weight:bold; font-size:0.75rem; margin-top:4px;">¡Precio especial por tu unidad n.º ${nextUnitIndex}!</small>`;
+        }
     } else {
-        priceHtml = `<div class="price-container"><span class="product-price">$${product.price.toFixed(2)}</span></div>`;
+        // Lógica normal (Descuento fijo + Socio)
+        const hasDiscount = product.discount && product.discount > 0;
+        let base = hasDiscount ? product.price * (1 - product.discount / 100) : product.price;
+        
+        if (isPromoActive) {
+            base = base * 0.95;
+            promoMsg = '<small style="color:green; display:block; font-size:0.7rem;">¡Precio Socio!</small>';
+        }
+        displayPrice = base;
+
+        if (displayPrice < product.price) {
+            originalPriceHtml = `<span class="original-price" style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">$${product.price.toFixed(2)}</span>`;
+        }
     }
+    
+    const priceHtml = `<div class="price-container">${originalPriceHtml}<span class="product-price" style="color:${(isPromoProduct && displayPrice < product.price) ? '#ef4444' : '#000'}">$${displayPrice.toFixed(2)}</span>${promoMsg}</div>`;
 
     // Añadir insignia si es el producto con promoción progresiva
-    const isPromoProduct = product.id == globalSettings.promo_product_id;
     const promoBadge = isPromoProduct 
         ? `<div class="promo-badge" style="position: absolute; top: 10px; right: 10px; background: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold;">OFERTA</div>`
         : '';
@@ -233,21 +290,24 @@ function calculateItemPrice(product, quantity) {
         // Si el producto es gratis o tiene precio inválido, no aplicar descuento.
         if (cycleLength <= 0) return basePrice;
 
-        // El descuento es igual a la cantidad, pero se reinicia en ciclos.
-        // Ej: Si el producto cuesta $10, el descuento va de $1 a $10 para las cantidades 1-10,
-        // y luego se reinicia para la cantidad 11.
-        // SUMAMOS LAS COMPRAS PASADAS A LA CANTIDAD ACTUAL
-        const totalQuantity = quantity + pastPromoPurchases;
-        const step = ((totalQuantity - 1) % cycleLength) + 1;
-        
-        // Regla: 1 unidad = Precio normal. 2 unidades = $2 menos. 3 unidades = $3 menos...
-        let discountAmount = 0;
-        if (step >= 2) {
-            discountAmount = step;
+        // --- CÁLCULO DE PRECIO PROMEDIO ---
+        // Calculamos el costo real de cada unidad individualmente y sacamos el promedio.
+        // Esto evita que el precio "salte" si se reinicia el ciclo.
+        let totalCost = 0;
+
+        for (let i = 1; i <= quantity; i++) {
+            // Índice absoluto de la unidad en la historia del usuario
+            const unitIndex = pastPromoPurchases + i;
+            
+            // Calcular descuento para ESTA unidad específica
+            const step = ((unitIndex - 1) % cycleLength) + 1;
+            const discount = (step >= 2) ? step : 0;
+            
+            totalCost += Math.max(0, basePrice - discount);
         }
 
-        let newPrice = basePrice - discountAmount;
-        return Math.max(0, newPrice); // El precio no puede ser negativo.
+        // Retornamos el precio unitario promedio
+        return totalCost / quantity;
     }
 
     // 2. Lógica normal (Descuento base + Socio)
