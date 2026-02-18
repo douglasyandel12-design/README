@@ -92,14 +92,8 @@ async function checkUserSession() {
             renderProducts();
         } else {
             // Si es invitado, verificamos si tiene pedidos locales
-            const guestOrders = JSON.parse(localStorage.getItem('lvs_guest_orders')) || [];
-            let guestLink = '';
-            
-            if (guestOrders.length > 0) {
-                guestLink = `<a href="rastreo.html?id=${guestOrders[guestOrders.length-1]}" style="margin-right:10px; text-decoration:none; font-size:0.9rem; color:#2563eb;">📦 Mis Pedidos</a>`;
-            }
-
-            userMenu.innerHTML = `${guestLink}<a href="login.html" style="text-decoration: none; color: var(--primary); font-weight: 600; font-size: 0.9rem; border: 1px solid #000; padding: 5px 10px; border-radius: 4px;">Iniciar Sesión</a>`;
+            // Ya no mostramos el link de "Mis Pedidos" a invitados para evitar confusión.
+            userMenu.innerHTML = `<a href="login.html" style="text-decoration: none; color: var(--primary); font-weight: 600; font-size: 0.9rem; border: 1px solid #000; padding: 5px 10px; border-radius: 4px;">Iniciar Sesión</a>`;
         }
     } catch (error) {
         console.error('Error al verificar sesión:', error);
@@ -147,10 +141,18 @@ function renderProducts() {
         priceHtml = `<div class="price-container"><span class="product-price">$${product.price.toFixed(2)}</span></div>`;
     }
 
+    // Añadir insignia si es el producto con promoción progresiva
+    const isPromoProduct = product.id == globalSettings.promo_product_id;
+    const promoBadge = isPromoProduct 
+        ? `<div class="promo-badge" style="position: absolute; top: 10px; right: 10px; background: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold;">OFERTA</div>`
+        : '';
+
     const card = document.createElement('div');
     card.className = 'product-card';
+    card.style.position = 'relative'; // Necesario para la insignia
     card.style.animationDelay = `${index * 0.1}s`; // Animación escalonada
     card.innerHTML = `
+        ${promoBadge}
         <div class="product-image">${imgContent}</div>
         <div class="product-info">
             <h3 class="product-title">${product.name}</h3>
@@ -277,7 +279,14 @@ function updateCartUI() {
             <div class="cart-item">
                 <div class="cart-item-details">
                     <span style="font-weight:600;">${item.name}</span>
-                    <span style="font-size:0.8rem; color:#666;">Cant: ${item.quantity} x $${item.price.toFixed(2)}</span>
+                    <span style="font-size:0.8rem; color:#666;">
+                        Cant: ${item.quantity} x 
+                        ${
+                            (item.originalPrice && item.price < item.originalPrice)
+                            ? `<span style="text-decoration: line-through; color: #999;">$${item.originalPrice.toFixed(2)}</span> <strong style="color: #ef4444;">$${item.price.toFixed(2)}</strong>`
+                            : `$${item.price.toFixed(2)}`
+                        }
+                    </span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="font-weight:bold;">$${(item.price * item.quantity).toFixed(2)}</span>
