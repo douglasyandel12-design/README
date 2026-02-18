@@ -134,6 +134,9 @@ async function checkUserSession() {
 
         // Calcular compras pasadas para aplicar descuento acumulativo
         await fetchPastOrders();
+        
+        // Recalcular precios del carrito (por si entró un socio o cambiaron reglas)
+        recalculateCartPrices();
 
     } catch (error) {
         console.error('Error al verificar sesión:', error);
@@ -192,6 +195,24 @@ async function fetchPastOrders() {
     }
 }
 
+function recalculateCartPrices() {
+    let updated = false;
+    cart.forEach(item => {
+        const product = products.find(p => p.id == item.id);
+        if (product) {
+            const newPrice = calculateItemPrice(product, item.quantity);
+            if (Math.abs(item.price - newPrice) > 0.001) {
+                item.price = newPrice;
+                updated = true;
+            }
+        }
+    });
+    if (updated) {
+        saveCart();
+        updateCartUI();
+    }
+}
+
 function toggleDropdown() {
     const dropdown = document.getElementById('profile-dropdown');
     if (dropdown) {
@@ -222,13 +243,23 @@ function renderProducts() {
     // Mostramos el precio de lista (o con descuento fijo si tiene), sin calcular progresivos ni socio aquí
     let displayPrice = product.price;
     let originalPriceHtml = '';
+    let promoMsg = '';
 
     if (product.discount && product.discount > 0) {
         displayPrice = product.price * (1 - product.discount / 100);
         originalPriceHtml = `<span class="original-price" style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">$${product.price.toFixed(2)}</span>`;
     }
     
-    const priceHtml = `<div class="price-container">${originalPriceHtml}<span class="product-price">$${displayPrice.toFixed(2)}</span></div>`;
+    // Aplicar descuento de socio (3%) para visualización si está activo
+    if (isPromoActive) {
+        displayPrice = displayPrice * 0.97;
+        if (!originalPriceHtml && displayPrice < product.price) {
+            originalPriceHtml = `<span class="original-price" style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">$${product.price.toFixed(2)}</span>`;
+        }
+        promoMsg = `<small style="color:green; display:block; font-size:0.7rem; margin-top:2px;">+ 3% Descuento Socio</small>`;
+    }
+    
+    const priceHtml = `<div class="price-container">${originalPriceHtml}<span class="product-price">$${displayPrice.toFixed(2)}</span>${promoMsg}</div>`;
 
     // Añadir insignia si es el producto con promoción progresiva
     const promoBadge = isPromoProduct
