@@ -99,6 +99,12 @@ async function addProduct(e) {
     const discount = parseFloat(document.getElementById('prod-discount').value) || 0;
     const fileInput = document.getElementById('prod-img-file');
     const urlInput = document.getElementById('prod-img-url');
+
+    // Validar que el nombre no exista ya (ignorando mayúsculas/minúsculas y espacios)
+    if (products.some(p => p.name.trim().toLowerCase() === name.trim().toLowerCase())) {
+        alert('Error: Ya existe un producto con este nombre. Los nombres de producto deben ser únicos.');
+        return;
+    }
     
     let imageSrc = urlInput.value;
 
@@ -149,15 +155,22 @@ async function saveToCloud() {
             body: JSON.stringify(products)
         });
         if (!res.ok) {
-            const data = await res.json();
-            // Mostramos el error específico que nos manda el servidor
-            alert('Error: ' + (data.details || 'No se pudo guardar'));
+            let errorMsg = 'No se pudo guardar';
+            try {
+                // Intenta obtener un error más detallado del cuerpo de la respuesta
+                const errorBody = await res.json();
+                // Busca propiedades comunes de error
+                errorMsg = errorBody.details || errorBody.message || JSON.stringify(errorBody);
+            } catch (e) {
+                // Si el cuerpo no es JSON o está vacío, usa el texto de estado del HTTP
+                errorMsg = `El servidor respondió con el código ${res.status} (${res.statusText})`;
+            }
+            alert('Error: ' + errorMsg);
         }
     } catch (e) {
-        alert('Error de conexión');
+        alert('Error de conexión. No se pudo contactar al servidor para guardar los cambios.');
     }
 }
-
 async function deleteProduct(id) {
     if(confirm('¿Estás seguro de eliminar este producto?')) {
         products = products.filter(p => p.id != id); // Usamos != para permitir borrar IDs viejos (numéricos) y nuevos (texto)
@@ -330,10 +343,22 @@ async function saveEdit(e) {
     const productIndex = products.findIndex(p => p.id == idInput);
     
     if (productIndex > -1) {
+        const newName = document.getElementById('edit-name').value.trim();
+
+        // Validar que el nuevo nombre no esté en uso por OTRO producto
+        const isDuplicate = products.some((p, idx) => 
+            idx !== productIndex && p.name.trim().toLowerCase() === newName.toLowerCase()
+        );
+
+        if (isDuplicate) {
+            alert('Error: Ya existe otro producto con ese nombre. Los nombres deben ser únicos.');
+            return;
+        }
+
         const p = products[productIndex];
         const oldId = p.id;
 
-        p.name = document.getElementById('edit-name').value;
+        p.name = newName;
         p.price = parseFloat(document.getElementById('edit-price').value);
         p.discount = parseFloat(document.getElementById('edit-discount').value) || 0;
         
