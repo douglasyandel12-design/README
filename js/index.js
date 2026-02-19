@@ -34,8 +34,42 @@ async function init() {
         .btn-outline:hover { border-color: #000; background: #fff; }
         .product-card { border: 1px solid #f0f0f0; box-shadow: none; transition: transform 0.3s, box-shadow 0.3s; border-radius: 0; }
         .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
-        .hero { background: #f4f4f4; color: #000; text-align: center; padding: 4rem 1rem; }
+        .hero { 
+            background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+            color: #fff; 
+            text-align: center; 
+            padding: 6rem 1rem;
+        }
         .hero h1 { font-weight: 800; letter-spacing: -1px; }
+
+        /* --- Footer Mejorado --- */
+        footer {
+            background: #fff;
+            color: #666;
+            padding: 3rem 1rem;
+            text-align: center;
+            border-top: 1px solid #f0f0f0;
+            margin-top: 3rem;
+        }
+        .social-links a {
+            color: #333;
+            margin: 0 15px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: color 0.3s;
+        }
+        .social-links a:hover { color: #000; }
+        .footer-links { margin-top: 1.5rem; }
+        .footer-links a {
+            color: #666;
+            margin: 0 10px;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        .footer-links a:hover { text-decoration: underline; }
+        .copyright { font-size: 0.85rem; margin-top: 1.5rem; color: #999; }
     `;
     document.head.appendChild(style);
 
@@ -43,6 +77,7 @@ async function init() {
     await loadProducts();
     updateCartUI();
     checkUserSession();
+    renderFooter(); // Renderizar el nuevo footer
 }
 init();
 
@@ -68,6 +103,29 @@ async function loadProducts() {
         console.error('Error cargando productos:', error);
         grid.innerHTML = '<p>Error al cargar el catálogo.</p>';
     }
+}
+
+function renderFooter() {
+    const footer = document.querySelector('footer');
+    if (!footer) return;
+
+    footer.innerHTML = `
+        <div class="footer-container">
+            <div class="social-links">
+                <a href="#" title="Facebook">Facebook</a>
+                <a href="#" title="Instagram">Instagram</a>
+                <a href="#" title="Twitter">X (Twitter)</a>
+            </div>
+            <div class="footer-links">
+                <a href="#">Términos de Servicio</a>
+                <a href="#">Política de Privacidad</a>
+                <a href="#">Contacto</a>
+            </div>
+            <div class="copyright">
+                &copy; ${new Date().getFullYear()} LVS² Shop. Todos los derechos reservados.
+            </div>
+        </div>
+    `;
 }
 
 function handleGuestData() {
