@@ -21,6 +21,24 @@ cart = cart.map(item => item.quantity ? item : { ...item, quantity: 1 });
 
 // Función de inicio
 async function init() {
+    // --- ESTILOS GLOBALES B&W Y CONFIANZA ---
+    const style = document.createElement('style');
+    style.innerHTML = `
+        :root { --primary: #000000; --accent: #333333; --bg: #ffffff; --text: #111111; }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: #fff; color: #111; }
+        header { background: #fff; border-bottom: 1px solid #eee; box-shadow: none; }
+        .logo { color: #000; font-weight: 800; letter-spacing: -1px; }
+        .btn { background-color: #000; color: #fff; border-radius: 4px; border: 1px solid #000; font-weight: 500; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; padding: 10px 20px; }
+        .btn:hover { background-color: #333; border-color: #333; }
+        .btn-outline { background: transparent; color: #000; border: 1px solid #e5e5e5; }
+        .btn-outline:hover { border-color: #000; background: #fff; }
+        .product-card { border: 1px solid #f0f0f0; box-shadow: none; transition: transform 0.3s, box-shadow 0.3s; border-radius: 0; }
+        .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+        .hero { background: #f4f4f4; color: #000; text-align: center; padding: 4rem 1rem; }
+        .hero h1 { font-weight: 800; letter-spacing: -1px; }
+    `;
+    document.head.appendChild(style);
+
     await loadSettings(); // Cargar configuración primero
     await loadProducts();
     updateCartUI();
@@ -263,7 +281,7 @@ function renderProducts() {
 
     // Añadir insignia si es el producto con promoción progresiva
     const promoBadge = isPromoProduct
-        ? `<div class="promo-badge" style="position: absolute; top: 10px; right: 10px; background: #ef4444; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: bold;">OFERTA</div>`
+        ? `<div class="promo-badge" style="position: absolute; top: 10px; right: 10px; background: #000; color: white; padding: 4px 10px; font-size: 0.7rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">Destacado</div>`
         : '';
 
     const card = document.createElement('div');

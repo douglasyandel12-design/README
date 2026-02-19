@@ -4,6 +4,36 @@ const totalEl = document.getElementById('order-total');
 
 // Función para auto-rellenar datos del usuario desde el backend
 async function prefillUserData() {
+    // --- INYECCIÓN DE ESTILOS DE CONFIANZA (B&W) ---
+    const style = document.createElement('style');
+    style.innerHTML = `
+        :root { --primary: #000; --bg: #fff; --text: #111; --border: #e5e5e5; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: var(--text); background: #f9f9f9; }
+        .container { background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); max-width: 800px; margin: 2rem auto; }
+        h2 { text-align: center; font-weight: 300; letter-spacing: 1px; margin-bottom: 2rem; }
+        input, select { border: 1px solid var(--border); padding: 12px; border-radius: 4px; width: 100%; box-sizing: border-box; transition: border 0.3s; }
+        input:focus, select:focus { border-color: #000; outline: none; }
+        label { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; display: block; color: #333; }
+        .btn { background: #000; color: #fff; padding: 15px; border-radius: 4px; width: 100%; font-size: 1rem; font-weight: bold; letter-spacing: 0.5px; border: none; cursor: pointer; transition: background 0.3s; }
+        .btn:hover { background: #333; }
+        .item-row { display: flex; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid #f0f0f0; }
+        #order-total { font-size: 1.5rem; font-weight: 700; }
+        .trust-badge { text-align: center; margin-top: 1rem; font-size: 0.8rem; color: #666; display: flex; align-items: center; justify-content: center; gap: 5px; }
+    `;
+    document.head.appendChild(style);
+
+    // --- FORZAR MÉTODO DE PAGO ---
+    const paymentSelect = document.getElementById('client-payment');
+    if (paymentSelect) {
+        paymentSelect.innerHTML = '<option value="Pagar al recibir">💵 Pagar al recibir (Efectivo/Transferencia)</option>';
+        // Bloqueamos visualmente pero permitimos el envío
+        paymentSelect.style.backgroundColor = "#f9fafb";
+        paymentSelect.style.cursor = "not-allowed";
+        
+        // Mensaje de confianza debajo del input
+        paymentSelect.insertAdjacentHTML('afterend', '<small style="color: #166534; display: block; margin-top: 5px;">✅ Método seguro: No pagas nada hasta tener el producto en tus manos.</small>');
+    }
+
     try {
         const response = await fetch('/api/auth/status');
         const data = await response.json();
@@ -62,7 +92,7 @@ async function submitOrder(e) {
             email: document.getElementById('client-email').value,
             phone: document.getElementById('client-phone').value,
             address: document.getElementById('client-address').value,
-            payment: document.getElementById('client-payment').value
+            payment: 'Pagar al recibir' // Forzamos el valor en el objeto del pedido
         },
         items: cart,
         total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
