@@ -35,7 +35,7 @@ async function init() {
         .product-card { border: 1px solid #f0f0f0; box-shadow: none; transition: transform 0.3s, box-shadow 0.3s; border-radius: 0; }
         .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
         .hero { 
-            background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('img/portada.jpg');
+            background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('img/Portada.jpg');
             background-size: cover;
             background-position: center;
             color: #fff; 
@@ -75,7 +75,6 @@ async function init() {
 
     await loadSettings(); // Cargar configuración primero
     await loadProducts();
-    await loadAndRenderBestsellers(); // Cargar y mostrar los más vendidos
     updateCartUI();
     checkUserSession();
     renderFooter(); // Renderizar el nuevo footer
@@ -103,98 +102,6 @@ async function loadProducts() {
     } catch (error) {
         console.error('Error cargando productos:', error);
         grid.innerHTML = '<p>Error al cargar el catálogo.</p>';
-    }
-}
-
-async function loadAndRenderBestsellers() {
-    const bestsellersGrid = document.getElementById('bestsellers-grid');
-    if (!bestsellersGrid) return;
-    bestsellersGrid.innerHTML = '<p style="text-align:center; color:#666;">Cargando más vendidos...</p>';
-
-    try {
-        const res = await fetch('/api/orders');
-        if (!res.ok) throw new Error('No se pudieron cargar los pedidos');
-        const allOrders = await res.json();
-
-        if (allOrders.length === 0) {
-            bestsellersGrid.innerHTML = '<p style="text-align:center; color:#666;">Aún no hay productos populares.</p>';
-            return;
-        }
-
-        const productCounts = {};
-        allOrders.forEach(order => {
-            if (order.items) {
-                order.items.forEach(item => {
-                    productCounts[item.id] = (productCounts[item.id] || 0) + item.quantity;
-                });
-            }
-        });
-
-        const sortedProductIds = Object.keys(productCounts).sort((a, b) => productCounts[b] - productCounts[a]);
-        
-        const bestsellerProducts = sortedProductIds
-            .map(id => products.find(p => p.id == id))
-            .filter(p => p)
-            .slice(0, 4);
-
-        if (bestsellerProducts.length === 0) {
-            bestsellersGrid.innerHTML = '<p style="text-align:center; color:#666;">Aún no hay productos populares.</p>';
-            return;
-        }
-        
-        bestsellersGrid.innerHTML = ''; // Limpiar "cargando"
-        bestsellerProducts.forEach((product, index) => {
-            const isPromoActive = globalSettings.promo_login_5 === true && window.currentUser;
-            const imgContent = product.image 
-                ? `<img src="${product.image}" alt="${product.name}">` 
-                : `<span>${product.name}</span>`;
-            const isPromoProduct = product.id == globalSettings.promo_product_id;
-            
-            let displayPrice = product.price;
-            let originalPriceHtml = '';
-            let promoMsg = '';
-
-            if (product.discount && product.discount > 0) {
-                displayPrice = product.price * (1 - product.discount / 100);
-                originalPriceHtml = `<span class="original-price" style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">$${product.price.toFixed(2)}</span>`;
-            }
-            
-            if (isPromoActive) {
-                displayPrice = displayPrice * 0.97;
-                if (!originalPriceHtml && displayPrice < product.price) {
-                    originalPriceHtml = `<span class="original-price" style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">$${product.price.toFixed(2)}</span>`;
-                }
-                promoMsg = `<small style="color:green; display:block; font-size:0.7rem; margin-top:2px;">+ 3% Descuento Socio</small>`;
-            }
-            
-            const priceHtml = `<div class="price-container">${originalPriceHtml}<span class="product-price">$${displayPrice.toFixed(2)}</span>${promoMsg}</div>`;
-
-            const promoBadge = isPromoProduct
-                ? `<div class="promo-badge" style="position: absolute; top: 10px; right: 10px; background: #000; color: white; padding: 4px 10px; font-size: 0.7rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">Destacado</div>`
-                : '';
-
-            const card = document.createElement('div');
-            card.className = 'product-card';
-            card.style.position = 'relative';
-            card.style.animationDelay = `${index * 0.1}s`;
-            card.innerHTML = `
-                ${promoBadge}
-                <div class="product-image">${imgContent}</div>
-                <div class="product-info">
-                    <h3 class="product-title">${product.name}</h3>
-                    ${priceHtml}
-                    <div class="btn-container">
-                        <button class="btn btn-outline" onclick="addToCart(${product.id})">Añadir</button>
-                        <button class="btn" onclick="orderNow(${product.id})">Pedir ahora</button>
-                    </div>
-                </div>
-            `;
-            bestsellersGrid.appendChild(card);
-        });
-
-    } catch (error) {
-        console.error('Error cargando los más vendidos:', error);
-        bestsellersGrid.innerHTML = ''; // Ocultar en caso de error
     }
 }
 
