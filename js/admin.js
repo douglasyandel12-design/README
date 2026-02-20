@@ -11,7 +11,8 @@ async function initAdmin() {
             products = await res.json();
             renderTable();
             renderSettingsPanel(); // Cargar panel de configuración
-            renderOrders(); // Cargar pedidos desde la API
+            await renderOrders(); // Cargar pedidos y esperar
+            renderDashboardStats(); // Renderizar tarjetas de estadísticas
         }
     } catch (e) {
         console.error("Error cargando productos", e);
@@ -173,23 +174,89 @@ async function deleteProduct(id) {
     }
 }
 
-async function renderOrders() {
+function renderDashboardStats() {
+    const container = document.querySelector('main.container') || document.body;
+    // Crear contenedor de stats si no existe
+    if (!document.getElementById('kpi-dashboard')) {
+        const dashboard = document.createElement('div');
+        dashboard.id = 'kpi-dashboard';
+        dashboard.style.cssText = "display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;";
+        
+        // Insertar después del título o al principio
+        const title = container.querySelector('h1');
+        if (title) title.insertAdjacentElement('afterend', dashboard);
+        else container.insertBefore(dashboard, container.firstChild);
+    }
+
+    const dashboard = document.getElementById('kpi-dashboard');
+    
+    // Cálculos
+    const totalIncome = allOrders.reduce((sum, o) => sum + (o.status !== 'Cancelado' ? o.total : 0), 0);
+    const pendingOrders = allOrders.filter(o => o.status === 'En progreso' || o.status === 'Pendiente').length;
+    const completedOrders = allOrders.filter(o => o.status === 'Entregado').length;
+    const avgTicket = allOrders.length ? (totalIncome / allOrders.length) : 0;
+
+    // Función helper para tarjetas
+    const createCard = (title, value, color, icon) => `
+        <div style="background: white; padding: 1.5rem; border-radius: 8px; border-left: 5px solid ${color}; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <div style="font-size: 0.9rem; color: #666; margin-bottom: 0.5rem;">${title}</div>
+            <div style="font-size: 1.8rem; font-weight: bold; color: #333;">${value}</div>
+        </div>
+    `;
+
+    dashboard.innerHTML = `
+        ${createCard('💰 Ingresos Totales', `$${totalIncome.toFixed(2)}`, '#10b981')}
+        ${createCard('⏳ Pedidos Pendientes', pendingOrders, '#f59e0b')}
+        ${createCard('✅ Entregados', completedOrders, '#3b82f6')}
+        ${createCard('📊 Ticket Promedio', `$${avgTicket.toFixed(2)}`, '#6366f1')}
+    `;
+}
+
+async function renderOrders(filterText = '') {
     const container = document.getElementById('orders-list');
-    container.innerHTML = '<p>Cargando pedidos...</p>';
+    if(!filterText) container.innerHTML = '<p>Cargando pedidos...</p>';
 
     try {
-        const response = await fetch('/api/orders');
-        if (!response.ok) throw new Error('No se pudieron cargar los pedidos del servidor.');
-        // Guardamos en la variable global para usarla al exportar
-        allOrders = await response.json();
-
+        // Si ya tenemos pedidos cargados y solo estamos filtrando, no hacemos fetch de nuevo
         if (allOrders.length === 0) {
+            const response = await fetch('/api/orders');
+            if (!response.ok) throw new Error('No se pudieron cargar los pedidos del servidor.');
+            allOrders = await response.json();
+        }
+
+        // Filtrar pedidos
+        const filteredOrders = allOrders.filter(order => {
+            const search = filterText.toLowerCase();
+            return (
+                order.id.toLowerCase().includes(search) ||
+                order.customer.name.toLowerCase().includes(search) ||
+                order.customer.email.toLowerCase().includes(search)
+            );
+        });
+
+        // Inyectar buscador si no existe
+        if (!document.getElementById('order-search')) {
+            const searchContainer = document.createElement('div');
+            searchContainer.style.marginBottom = '1rem';
+            searchContainer.innerHTML = `
+                <input type="text" id="order-search" placeholder="🔍 Buscar pedido por ID, Nombre o Email..." 
+                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+            `;
+            container.parentNode.insertBefore(searchContainer, container);
+            
+            // Evento de búsqueda
+            document.getElementById('order-search').addEventListener('input', (e) => {
+                renderOrders(e.target.value);
+            });
+        }
+
+        if (filteredOrders.length === 0) {
             container.innerHTML = '<p style="color: #666;">No hay pedidos registrados aún.</p>';
             return;
         }
 
         // La API ya los devuelve ordenados (más recientes primero)
-        container.innerHTML = allOrders.map(order => `
+        container.innerHTML = filteredOrders.map(order => `
             <div class="order-card">
                 <div class="order-header">
                     <span>📅 ${order.date}</span>

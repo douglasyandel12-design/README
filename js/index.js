@@ -34,15 +34,33 @@ async function init() {
         .btn-outline:hover { border-color: #000; background: #fff; }
         .product-card { border: 1px solid #f0f0f0; box-shadow: none; transition: transform 0.3s, box-shadow 0.3s; border-radius: 0; }
         .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
-        .hero { 
-            background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('img/Portada.jpg');
-            background-size: cover;
-            background-position: center;
-            color: #fff; 
-            text-align: center; 
-            padding: 6rem 1rem;
+        
+        /* --- Hero / Portada Mejorada --- */
+        .hero-wrapper {
+            max-width: 1200px;
+            margin: 2rem auto 3rem auto;
+            padding: 0 1rem;
+            text-align: center;
+            position: relative;
         }
-        .hero h1 { font-weight: 800; letter-spacing: -1px; }
+        @keyframes fadeInHero {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .hero-img {
+            width: 100%;
+            height: auto;
+            border-radius: 16px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.08); /* Sombra suave para resaltar */
+            display: block;
+            animation: fadeInHero 1.2s ease-out;
+        }
+        .hero-btn {
+            margin-top: 1.5rem;
+            padding: 12px 30px;
+            font-size: 1rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
 
         /* --- Footer Mejorado --- */
         footer {
