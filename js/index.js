@@ -35,31 +35,43 @@ async function init() {
         .product-card { border: 1px solid #f0f0f0; box-shadow: none; transition: transform 0.3s, box-shadow 0.3s; border-radius: 0; }
         .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
         
-        /* --- Hero / Portada Mejorada --- */
-        .hero-wrapper {
-            max-width: 1200px;
-            margin: 2rem auto 3rem auto;
-            padding: 0 1rem;
+        /* --- Hero / Portada Estilo Fondo --- */
+        .hero { 
+            background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('img/Portada.jpg');
+            background-size: cover;
+            background-position: center;
+            height: 60vh; /* Altura considerable */
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #fff; 
             text-align: center;
-            position: relative;
+            margin-bottom: 3rem;
         }
-        @keyframes fadeInHero {
+        .hero h1 { font-size: 3rem; font-weight: 800; margin: 0 0 1rem 0; letter-spacing: -1px; text-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+        .hero p { font-size: 1.2rem; margin-bottom: 2rem; opacity: 0.9; }
+        .hero-btn {
+            background: #fff; color: #000; border: none; padding: 15px 35px; font-size: 1rem; font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .hero-btn:hover { transform: scale(1.05); background: #fff; color: #000; box-shadow: 0 5px 15px rgba(255,255,255,0.3); }
+
+        /* --- Barra de Herramientas (Búsqueda y Filtros) --- */
+        .toolbar { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; justify-content: center; }
+        .search-input { padding: 10px 15px; border: 1px solid #ddd; border-radius: 50px; width: 100%; max-width: 300px; outline: none; transition: border-color 0.3s; }
+        .search-input:focus { border-color: #000; }
+        .filter-chip { 
+            padding: 8px 16px; border-radius: 50px; background: #f3f4f6; color: #333; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; border: 1px solid transparent;
+        }
+        .filter-chip:hover { background: #e5e7eb; }
+        .filter-chip.active { background: #000; color: #fff; }
+
+        /* Animación de entrada para productos */
+        @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
-        }
-        .hero-img {
-            width: 100%;
-            height: auto;
-            border-radius: 16px;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.08); /* Sombra suave para resaltar */
-            display: block;
-            animation: fadeInHero 1.2s ease-out;
-        }
-        .hero-btn {
-            margin-top: 1.5rem;
-            padding: 12px 30px;
-            font-size: 1rem;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
         }
 
         /* --- Footer Mejorado --- */
@@ -115,12 +127,40 @@ async function loadProducts() {
         const res = await fetch('/api/products');
         if (res.ok) {
             products = await res.json();
+            renderToolbar(); // Renderizar barra de búsqueda y filtros
             renderProducts();
         }
     } catch (error) {
         console.error('Error cargando productos:', error);
         grid.innerHTML = '<p>Error al cargar el catálogo.</p>';
     }
+}
+
+let currentFilter = 'all';
+let searchTerm = '';
+
+function renderToolbar() {
+    // Insertar barra de herramientas antes del grid
+    if (document.querySelector('.toolbar')) return;
+    
+    const toolbar = document.createElement('div');
+    toolbar.className = 'toolbar';
+    toolbar.innerHTML = `
+        <input type="text" class="search-input" placeholder="🔍 Buscar producto..." oninput="handleSearch(this.value)">
+        <div style="display:flex; gap:0.5rem;">
+            <div class="filter-chip active" onclick="setFilter('all', this)">Todos</div>
+            <div class="filter-chip" onclick="setFilter('offers', this)">Ofertas</div>
+        </div>
+    `;
+    grid.parentNode.insertBefore(toolbar, grid);
+}
+
+window.handleSearch = (val) => { searchTerm = val.toLowerCase(); renderProducts(); }
+window.setFilter = (type, el) => {
+    currentFilter = type;
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    renderProducts();
 }
 
 function renderFooter() {
@@ -325,7 +365,17 @@ function renderProducts() {
     // Verificar si aplica promo de socio (Usuario logueado + Config activa)
     const isPromoActive = globalSettings.promo_login_5 === true && window.currentUser;
 
-    products.forEach((product, index) => {
+    // --- FILTRADO DINÁMICO ---
+    const filteredProducts = products.filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(searchTerm);
+        let matchesFilter = true;
+        if (currentFilter === 'offers') matchesFilter = (p.discount && p.discount > 0) || (globalSettings.promo_product_id == p.id);
+        return matchesSearch && matchesFilter;
+    });
+
+    if(filteredProducts.length === 0) grid.innerHTML = '<p style="text-align:center; width:100%; color:#666;">No se encontraron productos.</p>';
+
+    filteredProducts.forEach((product, index) => {
     // Determinar si mostrar imagen o placeholder
     const imgContent = product.image 
         ? `<img src="${product.image}" alt="${product.name}">` 
@@ -363,7 +413,7 @@ function renderProducts() {
     const card = document.createElement('div');
     card.className = 'product-card';
     card.style.position = 'relative'; // Necesario para la insignia
-    card.style.animationDelay = `${index * 0.1}s`; // Animación escalonada
+    card.style.animation = `fadeInUp 0.5s ease forwards ${index * 0.05}s`; // Animación mejorada
     card.innerHTML = `
         ${promoBadge}
         <div class="product-image">${imgContent}</div>

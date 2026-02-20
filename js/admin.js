@@ -20,6 +20,25 @@ async function initAdmin() {
 }
 initAdmin();
 
+// Inyectar estilos para los botones de estado
+const adminStyle = document.createElement('style');
+adminStyle.innerHTML = `
+    .status-btn-group { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
+    .status-btn {
+        border: 1px solid #ddd; background: #fff; padding: 5px 10px; border-radius: 20px;
+        font-size: 0.75rem; cursor: pointer; transition: all 0.2s; color: #555;
+    }
+    .status-btn:hover { background: #f9f9f9; transform: translateY(-1px); }
+    
+    /* Estados Activos */
+    .status-btn.active { color: white; border-color: transparent; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .status-btn.active[data-status="En progreso"] { background-color: #3b82f6; } /* Azul */
+    .status-btn.active[data-status="Aceptado"] { background-color: #8b5cf6; } /* Violeta */
+    .status-btn.active[data-status="Enviado"] { background-color: #f59e0b; } /* Naranja */
+    .status-btn.active[data-status="Entregado"] { background-color: #10b981; } /* Verde */
+`;
+document.head.appendChild(adminStyle);
+
 // --- LÓGICA DE CONFIGURACIÓN (PROMOCIONES) ---
 async function renderSettingsPanel() {
     const container = document.querySelector('main.container') || document.body;
@@ -263,13 +282,16 @@ async function renderOrders(filterText = '') {
                     <span>Total: $${order.total.toFixed(2)}</span>
                 </div>
                 <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: #eef2ff; border-radius: 4px;">
-                    <strong>Estado:</strong>
-                    <select onchange="updateOrderStatus('${order.id}', this.value)" style="padding: 0.25rem; border-radius: 4px; border: 1px solid #ccc;">
-                        <option value="En progreso" ${order.status === 'En progreso' ? 'selected' : ''}>En progreso</option>
-                        <option value="Aceptado" ${order.status === 'Aceptado' ? 'selected' : ''}>Aceptado</option>
-                        <option value="Enviado" ${order.status === 'Enviado' ? 'selected' : ''}>Enviado</option>
-                        <option value="Entregado" ${order.status === 'Entregado' ? 'selected' : ''}>Entregado</option>
-                    </select>
+                    <strong style="display:block; margin-bottom:5px; font-size:0.85rem; color:#4b5563;">Cambiar Estado:</strong>
+                    <div class="status-btn-group">
+                        ${['En progreso', 'Aceptado', 'Enviado', 'Entregado'].map(status => `
+                            <button class="status-btn ${order.status === status ? 'active' : ''}" 
+                                    data-status="${status}"
+                                    onclick="updateOrderStatus('${order.id}', '${status}')">
+                                ${status === 'Entregado' ? '✅' : ''} ${status}
+                            </button>
+                        `).join('')}
+                    </div>
                 </div>
                 <div style="font-size: 0.9rem; line-height: 1.6;">
                     <p><strong>Cliente:</strong> ${order.customer.name}</p>
@@ -299,7 +321,8 @@ async function updateOrderStatus(id, newStatus) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: newStatus })
         });
-        // No hace falta recargar todo, el usuario ya ve el cambio en el select
+        // Recargar para ver el cambio visual en los botones
+        renderOrders(document.getElementById('order-search')?.value || '');
     } catch (error) {
         alert('Error al actualizar el estado en la base de datos.');
     }
