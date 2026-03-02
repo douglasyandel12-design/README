@@ -9,6 +9,28 @@ async function initAdmin() {
         const res = await fetch('/api/products');
         if (res.ok) {
             products = await res.json();
+            
+            // --- INYECCIÓN DE UI PARA STOCK ---
+            // 1. Header de la tabla
+            const tableHead = document.querySelector('thead tr');
+            if (tableHead && !tableHead.querySelector('.th-stock')) {
+                const th = document.createElement('th');
+                th.className = 'th-stock';
+                th.innerText = 'Stock';
+                tableHead.insertBefore(th, tableHead.lastElementChild); // Insertar antes de Acciones
+            }
+            // 2. Input en el formulario de agregar (si existe el de precio)
+            const priceInput = document.getElementById('prod-price');
+            if (priceInput && !document.getElementById('prod-stock')) {
+                const stockInput = document.createElement('input');
+                stockInput.type = 'number';
+                stockInput.id = 'prod-stock';
+                stockInput.placeholder = 'Stock';
+                stockInput.style.cssText = "padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 80px; margin-left: 0.5rem;";
+                priceInput.parentNode.insertBefore(stockInput, priceInput.nextSibling);
+            }
+            // ----------------------------------
+
             renderTable();
             renderSettingsPanel(); // Cargar panel de configuración
             await renderOrders(); // Cargar pedidos y esperar
@@ -23,6 +45,46 @@ initAdmin();
 // Inyectar estilos para los botones de estado
 const adminStyle = document.createElement('style');
 adminStyle.innerHTML = `
+    /* --- Estética General del Panel --- */
+    main.container {
+        background-color: #f9fafb; /* Fondo gris claro para contraste */
+    }
+    .admin-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        margin-bottom: 2rem;
+        border: 1px solid #e5e7eb;
+    }
+    .admin-section h3 {
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        font-size: 1.25rem;
+        border-bottom: 1px solid #e5e7eb;
+        padding-bottom: 1rem;
+    }
+
+    /* --- Modal de Edición Mejorado --- */
+    #edit-modal .modal-content { max-width: 500px; }
+    #edit-modal form { display: grid; gap: 1rem; }
+    #edit-modal label { font-weight: 600; font-size: 0.9rem; color: #374151; margin-bottom: -0.5rem; }
+    #edit-modal input[type="text"],
+    #edit-modal input[type="number"],
+    #edit-modal input[type="file"] {
+        width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box;
+    }
+    #edit-modal input[type="file"] { padding: 5px; }
+    #edit-modal .btn { justify-self: end; width: auto; padding: 10px 20px; }
+
+    /* Sección para editar imagen en el modal */
+    #edit-image-container { border-top: 1px solid #e5e7eb; padding-top: 1rem; display: grid; gap: 0.75rem; }
+    #edit-image-container small { text-align: center; color: #6b7280; font-weight: 500; }
+    #edit-image-container img {
+        max-width: 100px; max-height: 100px; display: block; margin-bottom: 0.5rem; border-radius: 4px; border: 1px solid #ddd;
+    }
+
+    /* --- Estilos para Botones de Estado (sin cambios) --- */
     .status-btn-group { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
     .status-btn {
         border: 1px solid #ddd; background: #fff; padding: 5px 10px; border-radius: 20px;
@@ -45,8 +107,8 @@ async function renderSettingsPanel() {
     // Insertar panel antes de la tabla si no existe
     if (!document.getElementById('settings-panel')) {
         const panel = document.createElement('div');
+        panel.className = 'admin-section';
         panel.id = 'settings-panel';
-        panel.style.cssText = "background: #f3f4f6; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; border: 1px solid #ddd;";
         
         // Obtener estado actual
         let isPromoActive = false;
@@ -58,7 +120,7 @@ async function renderSettingsPanel() {
         } catch(e) { console.error(e); }
 
         panel.innerHTML = `
-            <h3>⚙️ Configuración Global</h3>
+            <h3>⚙️ Promociones Globales</h3>
             <div>
                 <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
                     <input type="checkbox" id="promo-toggle" ${isPromoActive ? 'checked' : ''} style="transform: scale(1.5);">
@@ -102,6 +164,7 @@ function renderTable() {
                     $${p.price.toFixed(2)}
                     ${p.discount > 0 ? `<br><small style="color:#ef4444; font-weight:bold;">-${p.discount}% OFF</small>` : ''}
                 </td>
+                <td>${p.stock || 0}</td>
                 <td>
                     <button class="btn" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem; margin-right: 0.5rem; background-color: #2563eb;" onclick="openEditModal('${p.id}')">Editar</button>
                     <button class="btn btn-danger" onclick="deleteProduct('${p.id}')">Borrar</button>
@@ -117,6 +180,7 @@ async function addProduct(e) {
     const name = document.getElementById('prod-name').value;
     const price = parseFloat(document.getElementById('prod-price').value);
     const discount = parseFloat(document.getElementById('prod-discount').value) || 0;
+    const stock = parseInt(document.getElementById('prod-stock')?.value) || 0;
     const fileInput = document.getElementById('prod-img-file');
     const urlInput = document.getElementById('prod-img-url');
 
@@ -127,21 +191,22 @@ async function addProduct(e) {
         const file = fileInput.files[0];
         const reader = new FileReader();
         reader.onloadend = function() {
-            saveProductToStorage(name, price, reader.result, discount);
+            saveProductToStorage(name, price, reader.result, discount, stock);
         }
         reader.readAsDataURL(file);
     } else {
-        saveProductToStorage(name, price, imageSrc, discount);
+        saveProductToStorage(name, price, imageSrc, discount, stock);
     }
 }
 
-async function saveProductToStorage(name, price, image, discount) {
+async function saveProductToStorage(name, price, image, discount, stock = 0) {
     const newProduct = {
         id: Date.now(), // ID único basado en tiempo (Revertido para estabilidad)
         name: name,
         price: price,
         image: image,
-        discount: discount
+        discount: discount,
+        stock: stock
     };
     
     products.push(newProduct);
@@ -155,6 +220,7 @@ async function saveProductToStorage(name, price, image, discount) {
     document.getElementById('prod-discount').value = '';
     document.getElementById('prod-img-file').value = '';
     document.getElementById('prod-img-url').value = '';
+    if(document.getElementById('prod-stock')) document.getElementById('prod-stock').value = '';
     
     renderTable();
     alert('Producto agregado correctamente');
@@ -389,6 +455,43 @@ function openEditModal(id) {
     document.getElementById('edit-price').value = product.price;
     document.getElementById('edit-discount').value = product.discount || 0;
 
+    // --- Inyectar campo STOCK en Modal ---
+    const form = document.querySelector('#edit-modal form');
+    let stockContainer = document.getElementById('edit-stock-container');
+    if (!stockContainer) {
+        stockContainer = document.createElement('div');
+        stockContainer.id = 'edit-stock-container';
+        stockContainer.innerHTML = `<label for="edit-stock">Stock Disponible</label><input type="number" id="edit-stock" class="input-field">`;
+        // Insertar antes del contenedor de imagen
+        const imageContainer = document.getElementById('edit-image-container');
+        form.insertBefore(stockContainer, imageContainer || form.lastElementChild);
+    }
+    document.getElementById('edit-stock').value = product.stock || 0;
+
+    // --- Inyectar campos para CAMBIAR IMAGEN ---
+    const form = document.querySelector('#edit-modal form');
+    let imageContainer = document.getElementById('edit-image-container');
+    if (!imageContainer) {
+        imageContainer = document.createElement('div');
+        imageContainer.id = 'edit-image-container';
+        // Insertar antes del contenedor de la promo para agrupar campos de producto
+        const promoContainer = document.getElementById('edit-promo-container');
+        form.insertBefore(imageContainer, promoContainer || form.lastElementChild);
+    }
+
+    const currentImageHTML = product.image ? `<img src="${product.image}" alt="Imagen actual">` : '<small>Sin imagen actual.</small>';
+    const imageUrl = product.image && product.image.startsWith('http') ? product.image : '';
+
+    imageContainer.innerHTML = `
+        <label>Imagen Actual</label>
+        ${currentImageHTML}
+        <label for="edit-img-file">Subir nueva imagen</label>
+        <input type="file" id="edit-img-file" accept="image/*">
+        <small>o</small>
+        <label for="edit-img-url">Pegar URL de la imagen</label>
+        <input type="text" id="edit-img-url" placeholder="https://ejemplo.com/imagen.jpg" value="${imageUrl}">
+    `;
+
     // --- Inyectar Checkbox de Promoción ---
     const form = document.querySelector('#edit-modal form');
     let promoContainer = document.getElementById('edit-promo-container');
@@ -428,12 +531,32 @@ async function saveEdit(e) {
     
     if (productIndex > -1) {
         const p = products[productIndex];
-        
+
         p.name = document.getElementById('edit-name').value;
         p.price = parseFloat(document.getElementById('edit-price').value);
         p.discount = parseFloat(document.getElementById('edit-discount').value) || 0;
+        p.stock = parseInt(document.getElementById('edit-stock').value) || 0;
         
-        // --- Lógica de Promoción ---
+        // --- Lógica para Guardar la IMAGEN ---
+        const fileInput = document.getElementById('edit-img-file');
+        const urlInput = document.getElementById('edit-img-url');
+
+        // Si se subió un archivo, tiene prioridad.
+        if (fileInput.files && fileInput.files[0]) {
+            const readImageAsBase64 = (file) => new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+            p.image = await readImageAsBase64(fileInput.files[0]);
+        } else {
+            // Si no hay archivo, la URL es la fuente de verdad.
+            // Esto permite cambiar la URL o borrar la imagen si el campo se deja vacío.
+            p.image = urlInput.value;
+        }
+
+        // --- Lógica de Promoción (sin cambios) ---
         const isPromoChecked = document.getElementById('edit-is-promo').checked;
         
         if (isPromoChecked) {
