@@ -9,7 +9,30 @@ async function initAdmin() {
         const res = await fetch('/api/products');
         if (res.ok) {
             products = await res.json();
+            
+            // --- INYECCIÓN DE UI PARA STOCK ---
+            // 1. Header de la tabla
+            const tableHead = document.querySelector('thead tr');
+            if (tableHead && !tableHead.querySelector('.th-stock')) {
+                const th = document.createElement('th');
+                th.className = 'th-stock';
+                th.innerText = 'Stock';
+                tableHead.insertBefore(th, tableHead.lastElementChild); // Insertar antes de Acciones
+            }
+            // 2. Input en el formulario de agregar (si existe el de precio)
+            const priceInput = document.getElementById('prod-price');
+            if (priceInput && !document.getElementById('prod-stock')) {
+                const stockInput = document.createElement('input');
+                stockInput.type = 'number';
+                stockInput.id = 'prod-stock';
+                stockInput.placeholder = 'Stock (Opcional)';
+                stockInput.style.cssText = "padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 120px; margin-left: 0.5rem;";
+                priceInput.parentNode.insertBefore(stockInput, priceInput.nextSibling);
+            }
+            // ----------------------------------
+
             renderTable();
+            checkStockAlerts(); // Verificar alertas de stock
             renderSettingsPanel(); // Cargar panel de configuración
             await renderOrders(); // Cargar pedidos y esperar
             renderDashboardStats(); // Renderizar tarjetas de estadísticas
@@ -102,6 +125,7 @@ function renderTable() {
                     $${p.price.toFixed(2)}
                     ${p.discount > 0 ? `<br><small style="color:#ef4444; font-weight:bold;">-${p.discount}% OFF</small>` : ''}
                 </td>
+                <td>${(p.stock !== undefined && p.stock !== null && p.stock !== "") ? p.stock : '∞'}</td>
                 <td>
                     <button class="btn" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem; margin-right: 0.5rem; background-color: #2563eb;" onclick="openEditModal('${p.id}')">Editar</button>
                     <button class="btn btn-danger" onclick="deleteProduct('${p.id}')">Borrar</button>
@@ -117,6 +141,8 @@ async function addProduct(e) {
     const name = document.getElementById('prod-name').value;
     const price = parseFloat(document.getElementById('prod-price').value);
     const discount = parseFloat(document.getElementById('prod-discount').value) || 0;
+    const stockVal = document.getElementById('prod-stock')?.value;
+    const stock = (stockVal === "" || stockVal === undefined) ? null : parseInt(stockVal);
     const fileInput = document.getElementById('prod-img-file');
     const urlInput = document.getElementById('prod-img-url');
 
@@ -127,21 +153,22 @@ async function addProduct(e) {
         const file = fileInput.files[0];
         const reader = new FileReader();
         reader.onloadend = function() {
-            saveProductToStorage(name, price, reader.result, discount);
+            saveProductToStorage(name, price, reader.result, discount, stock);
         }
         reader.readAsDataURL(file);
     } else {
-        saveProductToStorage(name, price, imageSrc, discount);
+        saveProductToStorage(name, price, imageSrc, discount, stock);
     }
 }
 
-async function saveProductToStorage(name, price, image, discount) {
+async function saveProductToStorage(name, price, image, discount, stock) {
     const newProduct = {
         id: Date.now(), // ID único basado en tiempo (Revertido para estabilidad)
         name: name,
         price: price,
         image: image,
-        discount: discount
+        discount: discount,
+        stock: stock
     };
     
     products.push(newProduct);
@@ -155,8 +182,10 @@ async function saveProductToStorage(name, price, image, discount) {
     document.getElementById('prod-discount').value = '';
     document.getElementById('prod-img-file').value = '';
     document.getElementById('prod-img-url').value = '';
+    if(document.getElementById('prod-stock')) document.getElementById('prod-stock').value = '';
     
     renderTable();
+    checkStockAlerts();
     alert('Producto agregado correctamente');
 }
 
@@ -190,6 +219,7 @@ async function deleteProduct(id) {
         products = products.filter(p => p.id != id); // Usamos != para permitir borrar IDs viejos (numéricos) y nuevos (texto)
         await saveToCloud();
         renderTable();
+        checkStockAlerts();
     }
 }
 
@@ -376,6 +406,28 @@ function exportOrdersToCSV() {
     document.body.removeChild(link);
 }
 
+// --- FUNCIÓN DE ALERTA DE STOCK ---
+function checkStockAlerts() {
+    const outOfStock = products.filter(p => p.stock !== null && p.stock !== undefined && p.stock !== "" && parseInt(p.stock) <= 0);
+    const alertBox = document.getElementById('stock-alert');
+    
+    if (outOfStock.length > 0) {
+        const msg = `<strong>⚠️ Alerta de Stock:</strong> Hay ${outOfStock.length} producto(s) agotado(s) que no se muestran en la tienda.`;
+        if (!alertBox) {
+            const div = document.createElement('div');
+            div.id = 'stock-alert';
+            div.style.cssText = "background: #fee2e2; color: #991b1b; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; border: 1px solid #fca5a5; display: flex; align-items: center; gap: 10px;";
+            div.innerHTML = msg;
+            const container = document.querySelector('main.container') || document.body;
+            container.insertBefore(div, container.firstChild);
+        } else {
+            alertBox.innerHTML = msg;
+        }
+    } else if (alertBox) {
+        alertBox.remove();
+    }
+}
+
 // Funciones del Modal de Edición
 const editModal = document.getElementById('edit-modal');
 
@@ -388,6 +440,17 @@ function openEditModal(id) {
     document.getElementById('edit-name').value = product.name;
     document.getElementById('edit-price').value = product.price;
     document.getElementById('edit-discount').value = product.discount || 0;
+
+    // --- Inyectar campo STOCK en Modal ---
+    const form = document.querySelector('#edit-modal form');
+    let stockContainer = document.getElementById('edit-stock-container');
+    if (!stockContainer) {
+        stockContainer = document.createElement('div');
+        stockContainer.id = 'edit-stock-container';
+        stockContainer.innerHTML = `<label for="edit-stock">Stock (Dejar vacío para infinito)</label><input type="number" id="edit-stock" class="input-field" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">`;
+        form.insertBefore(stockContainer, form.querySelector('#edit-promo-container') || form.lastElementChild);
+    }
+    document.getElementById('edit-stock').value = (product.stock !== undefined && product.stock !== null) ? product.stock : '';
 
     // --- Inyectar Checkbox de Promoción ---
     const form = document.querySelector('#edit-modal form');
@@ -432,6 +495,8 @@ async function saveEdit(e) {
         p.name = document.getElementById('edit-name').value;
         p.price = parseFloat(document.getElementById('edit-price').value);
         p.discount = parseFloat(document.getElementById('edit-discount').value) || 0;
+        const stockVal = document.getElementById('edit-stock').value;
+        p.stock = (stockVal === "" || stockVal === undefined) ? null : parseInt(stockVal);
         
         // --- Lógica de Promoción ---
         const isPromoChecked = document.getElementById('edit-is-promo').checked;
@@ -448,6 +513,7 @@ async function saveEdit(e) {
         
         await saveToCloud();
         renderTable();
+        checkStockAlerts();
         closeEditModal();
     }
 }
