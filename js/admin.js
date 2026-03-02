@@ -36,6 +36,7 @@ async function initAdmin() {
             renderSettingsPanel(); // Cargar panel de configuración
             await renderOrders(); // Cargar pedidos y esperar
             renderDashboardStats(); // Renderizar tarjetas de estadísticas
+            renderSalesChart(); // Renderizar gráfico de ventas
         }
     } catch (e) {
         console.error("Error cargando productos", e);
@@ -453,7 +454,6 @@ function openEditModal(id) {
     document.getElementById('edit-stock').value = (product.stock !== undefined && product.stock !== null) ? product.stock : '';
 
     // --- Inyectar Checkbox de Promoción ---
-    const form = document.querySelector('#edit-modal form');
     let promoContainer = document.getElementById('edit-promo-container');
     
     if (!promoContainer) {
@@ -518,12 +518,23 @@ async function saveEdit(e) {
     }
 }
 
-renderTable();
-renderSalesChart();
-
 function renderSalesChart() {
-    const orders = JSON.parse(localStorage.getItem('lvs_orders')) || [];
+    const orders = allOrders;
     if (orders.length === 0) return;
+
+    // Crear contenedor del gráfico si no existe para evitar errores
+    if (!document.getElementById('sales-chart-container')) {
+        const container = document.querySelector('main.container') || document.body;
+        const chartDiv = document.createElement('div');
+        chartDiv.id = 'sales-chart-container';
+        chartDiv.style.cssText = "background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-top: 2rem;";
+        chartDiv.innerHTML = '<canvas id="salesChart"></canvas>';
+        
+        // Insertar después del dashboard de KPIs
+        const kpi = document.getElementById('kpi-dashboard');
+        if (kpi) kpi.parentNode.insertBefore(chartDiv, kpi.nextSibling);
+        else container.appendChild(chartDiv);
+    }
 
     const salesByDate = orders.reduce((acc, order) => {
         // Normalizamos la fecha para agrupar correctamente
