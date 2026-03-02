@@ -51,7 +51,7 @@ async function init() {
             margin-bottom: 3rem;
         }
         .hero h1 { font-size: 3rem; font-weight: 800; margin: 0 0 1rem 0; letter-spacing: -1px; text-shadow: 0 2px 10px rgba(0,0,0,0.3); }
-        .hero p { font-size: 1.2rem; margin-bottom: 2rem; opacity: 0.9; }
+        .hero p { display: none; }
         .hero-btn {
             background: #fff; color: #000; border: none; padding: 15px 35px; font-size: 1rem; font-weight: bold;
             transition: transform 0.2s, box-shadow 0.2s;
