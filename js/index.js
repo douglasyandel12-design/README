@@ -380,6 +380,9 @@ function renderProducts() {
 
     // --- FILTRADO DINÁMICO ---
     const filteredProducts = products.filter(p => {
+        // Filtro de Stock: Si el stock es 0, el producto no se muestra
+        if (p.stock !== undefined && p.stock !== null && p.stock !== "" && parseInt(p.stock) <= 0) return false;
+
         const matchesSearch = p.name.toLowerCase().includes(searchTerm);
         let matchesFilter = true;
         if (currentFilter === 'offers') matchesFilter = (p.discount && p.discount > 0) || (globalSettings.promo_product_id == p.id);
