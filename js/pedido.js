@@ -116,6 +116,33 @@ async function submitOrder(e) {
             throw new Error('El servidor no pudo procesar el pedido.');
         }
 
+        // --- ACTUALIZAR STOCK (Descontar productos comprados) ---
+        try {
+            const prodRes = await fetch('/api/products');
+            if (prodRes.ok) {
+                const products = await prodRes.json();
+                let stockUpdated = false;
+
+                cart.forEach(item => {
+                    const product = products.find(p => p.id == item.id);
+                    // Si el producto existe y tiene stock controlado (no es infinito/null)
+                    if (product && product.stock !== null && product.stock !== undefined && product.stock !== "") {
+                        const currentStock = parseInt(product.stock);
+                        product.stock = Math.max(0, currentStock - item.quantity);
+                        stockUpdated = true;
+                    }
+                });
+
+                if (stockUpdated) {
+                    await fetch('/api/products', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(products)
+                    });
+                }
+            }
+        } catch (e) { console.error("Error actualizando stock:", e); }
+
         await Swal.fire('¡Pedido Confirmado!', `Tu número de pedido es: ${order.id}`, 'success');
         
         localStorage.removeItem('lvs_cart'); // Limpiar carrito
