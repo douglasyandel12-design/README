@@ -59,9 +59,13 @@ async function init() {
         .hero-btn:hover { transform: scale(1.05); background: #fff; color: #000; box-shadow: 0 5px 15px rgba(255,255,255,0.3); }
 
         /* --- Barra de Herramientas (Búsqueda y Filtros) --- */
-        .toolbar { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; justify-content: center; }
-        .search-input { padding: 10px 15px; border: 1px solid #ddd; border-radius: 50px; width: 100%; max-width: 300px; outline: none; transition: border-color 0.3s; }
-        .search-input:focus { border-color: #000; }
+        .header-search-container { flex: 1; margin: 0 2rem; max-width: 600px; }
+        .search-input { width: 100%; padding: 12px 20px; border: 1px solid #eaeaea; border-radius: 50px; background: #f9f9f9; outline: none; transition: all 0.3s; font-size: 0.95rem; }
+        .search-input:focus { background: #fff; border-color: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        
+        .filter-container { display: flex; justify-content: center; gap: 0.5rem; margin-bottom: 2rem; }
+        @media (max-width: 768px) { .header-search-container { order: 3; margin: 1rem 0 0 0; min-width: 100%; } nav { flex-wrap: wrap; } }
+
         .filter-chip { 
             padding: 8px 16px; border-radius: 50px; background: #f3f4f6; color: #333; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; border: 1px solid transparent;
         }
@@ -140,19 +144,28 @@ let currentFilter = 'all';
 let searchTerm = '';
 
 function renderToolbar() {
-    // Insertar barra de herramientas antes del grid
-    if (document.querySelector('.toolbar')) return;
+    // 1. Inyectar Buscador en el Header (Nav)
+    const nav = document.querySelector('nav');
+    const navRight = document.querySelector('.nav-right'); 
     
-    const toolbar = document.createElement('div');
-    toolbar.className = 'toolbar';
-    toolbar.innerHTML = `
-        <input type="text" class="search-input" placeholder="🔍 Buscar producto..." oninput="handleSearch(this.value)">
-        <div style="display:flex; gap:0.5rem;">
-            <div class="filter-chip active" onclick="setFilter('all', this)">Todos</div>
-            <div class="filter-chip" onclick="setFilter('offers', this)">Ofertas</div>
-        </div>
+    if (nav && !document.getElementById('header-search')) {
+        const searchContainer = document.createElement('div');
+        searchContainer.className = 'header-search-container';
+        searchContainer.innerHTML = `<input type="text" id="header-search" class="search-input" placeholder="🔍 Buscar productos..." oninput="handleSearch(this.value)">`;
+        
+        if (navRight) nav.insertBefore(searchContainer, navRight);
+        else nav.appendChild(searchContainer);
+    }
+
+    // 2. Insertar Filtros antes del grid
+    if (document.querySelector('.filter-container')) return;
+    const filters = document.createElement('div');
+    filters.className = 'filter-container';
+    filters.innerHTML = `
+        <div class="filter-chip active" onclick="setFilter('all', this)">Todos</div>
+        <div class="filter-chip" onclick="setFilter('offers', this)">Ofertas</div>
     `;
-    grid.parentNode.insertBefore(toolbar, grid.parentNode.firstChild);
+    grid.parentNode.insertBefore(filters, grid);
 }
 
 window.handleSearch = (val) => { searchTerm = val.toLowerCase(); renderProducts(); }
