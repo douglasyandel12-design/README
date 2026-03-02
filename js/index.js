@@ -152,7 +152,7 @@ function renderToolbar() {
             <div class="filter-chip" onclick="setFilter('offers', this)">Ofertas</div>
         </div>
     `;
-    grid.parentNode.insertBefore(toolbar, grid);
+    grid.parentNode.insertBefore(toolbar, grid.parentNode.firstChild);
 }
 
 window.handleSearch = (val) => { searchTerm = val.toLowerCase(); renderProducts(); }
