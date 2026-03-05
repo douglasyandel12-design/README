@@ -2,6 +2,8 @@
 let products = [];
 let allOrders = []; // Variable para guardar los pedidos cargados
 let globalPromoProductId = ''; // Variable para saber cuál es el producto en promo
+let quillAdd; // Editor para agregar
+let quillEdit; // Editor para editar
 
 // Cargar productos desde la nube al iniciar
 async function initAdmin() {
@@ -9,6 +11,14 @@ async function initAdmin() {
         const res = await fetch('/api/products');
         if (res.ok) {
             products = await res.json();
+            
+            // --- CARGAR EDITOR TIPO WORD (Quill.js) ---
+            if (!document.getElementById('quill-css')) {
+                const link = document.createElement('link'); link.id = 'quill-css'; link.rel = 'stylesheet'; link.href = 'https://cdn.quilljs.com/1.3.6/quill.snow.css'; document.head.appendChild(link);
+                const script = document.createElement('script'); script.src = 'https://cdn.quilljs.com/1.3.6/quill.js'; 
+                script.onload = initEditors; // Iniciar editores cuando cargue el script
+                document.head.appendChild(script);
+            }
             
             // --- INYECCIÓN DE UI PARA STOCK ---
             // NOTA DE REVISIÓN: La inyección dinámica de HTML como esta es frágil.
@@ -47,6 +57,32 @@ async function initAdmin() {
     }
 }
 initAdmin();
+
+// Función para iniciar los editores de texto
+function initEditors() {
+    // 1. Editor para el formulario de AGREGAR
+    const addFormName = document.getElementById('prod-name');
+    if (addFormName && !document.getElementById('editor-container')) {
+        const editorDiv = document.createElement('div');
+        editorDiv.innerHTML = `<label style="display:block; margin-top:10px;">Descripción del Producto</label><div id="editor-container" style="height: 150px; background: white;"></div>`;
+        addFormName.parentNode.insertBefore(editorDiv, addFormName.nextSibling);
+        
+        quillAdd = new Quill('#editor-container', {
+            theme: 'snow', placeholder: 'Escribe la descripción aquí (como en Word)...'
+        });
+    }
+
+    // 2. Editor para el modal de EDITAR (se inicializa oculto, se usa al abrir modal)
+    const editFormName = document.getElementById('edit-name');
+    if (editFormName && !document.getElementById('edit-editor-wrapper')) {
+        const editorDiv = document.createElement('div');
+        editorDiv.id = 'edit-editor-wrapper';
+        editorDiv.innerHTML = `<label style="display:block; margin-top:10px;">Descripción</label><div id="edit-editor-container" style="height: 150px; background: white;"></div>`;
+        editFormName.parentNode.insertBefore(editorDiv, editFormName.nextSibling);
+        
+        quillEdit = new Quill('#edit-editor-container', { theme: 'snow' });
+    }
+}
 
 // Inyectar estilos para los botones de estado
 const adminStyle = document.createElement('style');
@@ -150,6 +186,7 @@ async function addProduct(e) {
     const stock = (stockVal === "" || stockVal === undefined) ? null : parseInt(stockVal);
     const fileInput = document.getElementById('prod-img-file');
     const urlInput = document.getElementById('prod-img-url');
+    const description = quillAdd ? quillAdd.root.innerHTML : ''; // Obtener HTML del editor
 
     let imageSrc = urlInput.value;
 
@@ -158,19 +195,20 @@ async function addProduct(e) {
         const file = fileInput.files[0];
         const reader = new FileReader();
         reader.onloadend = function() {
-            saveProductToStorage(name, price, reader.result, discount, stock);
+            saveProductToStorage(name, price, reader.result, discount, stock, description);
         }
         reader.readAsDataURL(file);
     } else {
-        saveProductToStorage(name, price, imageSrc, discount, stock);
+        saveProductToStorage(name, price, imageSrc, discount, stock, description);
     }
 }
 
-async function saveProductToStorage(name, price, image, discount, stock) {
+async function saveProductToStorage(name, price, image, discount, stock, description) {
     const newProduct = {
         id: Date.now(), // ID único basado en tiempo (Revertido para estabilidad)
         name: name,
         price: price,
+        description: description, // Guardamos la descripción
         image: image,
         discount: discount,
         stock: stock
@@ -188,6 +226,7 @@ async function saveProductToStorage(name, price, image, discount, stock) {
     document.getElementById('prod-img-file').value = '';
     document.getElementById('prod-img-url').value = '';
     if(document.getElementById('prod-stock')) document.getElementById('prod-stock').value = '';
+    if(quillAdd) quillAdd.setContents([]); // Limpiar editor
     
     renderTable();
     checkStockAlerts();
@@ -460,6 +499,9 @@ function openEditModal(id) {
     document.getElementById('edit-name').value = product.name;
     document.getElementById('edit-price').value = product.price;
     document.getElementById('edit-discount').value = product.discount || 0;
+    
+    // Cargar descripción en el editor
+    if (quillEdit) quillEdit.root.innerHTML = product.description || '';
 
     // --- Inyectar campo STOCK en Modal ---
     const form = document.querySelector('#edit-modal form');
@@ -516,6 +558,7 @@ async function saveEdit(e) {
         p.discount = parseFloat(document.getElementById('edit-discount').value) || 0;
         const stockVal = document.getElementById('edit-stock').value;
         p.stock = (stockVal === "" || stockVal === undefined) ? null : parseInt(stockVal);
+        p.description = quillEdit ? quillEdit.root.innerHTML : ''; // Guardar descripción editada
         
         // --- Lógica de Promoción ---
         const isPromoChecked = document.getElementById('edit-is-promo').checked;

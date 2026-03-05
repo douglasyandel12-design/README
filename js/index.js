@@ -104,6 +104,41 @@ async function init() {
         }
         .footer-links a:hover { text-decoration: underline; }
         .copyright { font-size: 0.85rem; margin-top: 1.5rem; color: #999; }
+
+        /* --- ESTILOS DEL MODAL DE PRODUCTO (TIPO SHOPIFY) --- */
+        .product-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 2000; display: none;
+            justify-content: center; align-items: center; padding: 20px;
+            backdrop-filter: blur(5px);
+        }
+        .product-modal-overlay.active { display: flex; animation: fadeIn 0.3s; }
+        .product-modal-content {
+            background: #fff; width: 100%; max-width: 900px; max-height: 90vh;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;
+            border-radius: 8px; overflow: hidden; position: relative;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+        }
+        .pm-image-container { background: #f9f9f9; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+        .pm-image-container img { max-width: 100%; max-height: 500px; object-fit: contain; mix-blend-mode: multiply; }
+        .pm-details { padding: 3rem 2rem; overflow-y: auto; display: flex; flex-direction: column; }
+        .pm-close { position: absolute; top: 15px; right: 20px; font-size: 2rem; cursor: pointer; z-index: 10; line-height: 1; }
+        .pm-title { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; line-height: 1.1; }
+        .pm-price { font-size: 1.5rem; font-weight: 500; margin-bottom: 1.5rem; color: #333; }
+        .pm-description { color: #555; line-height: 1.6; margin-bottom: 2rem; font-size: 0.95rem; }
+        .pm-description ul { padding-left: 20px; margin-bottom: 1rem; }
+        
+        .pm-actions { margin-top: auto; display: flex; gap: 10px; align-items: center; }
+        .qty-selector { display: flex; border: 1px solid #ddd; border-radius: 4px; }
+        .qty-btn { background: none; border: none; padding: 10px 15px; cursor: pointer; font-size: 1.2rem; }
+        .qty-input { width: 40px; text-align: center; border: none; font-weight: bold; font-size: 1rem; -moz-appearance: textfield; }
+        
+        @media (max-width: 768px) {
+            .product-modal-content { grid-template-columns: 1fr; max-height: 95vh; overflow-y: auto; }
+            .pm-image-container { padding: 1rem; height: 300px; }
+            .pm-details { padding: 1.5rem; }
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     `;
     document.head.appendChild(style);
 
@@ -112,6 +147,7 @@ async function init() {
     updateCartUI();
     checkUserSession();
     renderFooter(); // Renderizar el nuevo footer
+    createProductModal(); // Crear estructura del modal
 }
 init();
 
@@ -197,6 +233,84 @@ function renderFooter() {
             </div>
         </div>
     `;
+}
+
+// --- CREACIÓN Y LÓGICA DEL MODAL DE PRODUCTO ---
+function createProductModal() {
+    if (document.getElementById('product-modal')) return;
+    const modal = document.createElement('div');
+    modal.id = 'product-modal';
+    modal.className = 'product-modal-overlay';
+    modal.innerHTML = `
+        <div class="product-modal-content">
+            <span class="pm-close" onclick="closeProductModal()">&times;</span>
+            <div class="pm-image-container" id="pm-img-container"></div>
+            <div class="pm-details">
+                <h2 class="pm-title" id="pm-title"></h2>
+                <div class="pm-price" id="pm-price"></div>
+                <div class="pm-description" id="pm-desc"></div>
+                
+                <div class="pm-actions">
+                    <div class="qty-selector">
+                        <button class="qty-btn" onclick="updateModalQty(-1)">-</button>
+                        <input type="number" id="pm-qty" class="qty-input" value="1" readonly>
+                        <button class="qty-btn" onclick="updateModalQty(1)">+</button>
+                    </div>
+                    <button class="btn" id="pm-add-btn" style="flex:1; padding: 15px;">Añadir al Carrito</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // Cerrar al hacer click fuera
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeProductModal();
+    });
+}
+
+window.currentModalProductId = null;
+
+window.viewProductDetails = function(id) {
+    const product = products.find(p => p.id == id);
+    if (!product) return;
+
+    window.currentModalProductId = id;
+    document.getElementById('pm-title').textContent = product.name;
+    
+    // Precio
+    const price = product.discount ? product.price * (1 - product.discount/100) : product.price;
+    document.getElementById('pm-price').innerHTML = `$${price.toFixed(2)} ${product.discount ? `<small style="color:#ef4444; font-size:0.8rem">(-${product.discount}%)</small>` : ''}`;
+    
+    // Descripción (HTML seguro)
+    document.getElementById('pm-desc').innerHTML = product.description || 'Sin descripción detallada.';
+    
+    // Imagen
+    const img = product.image ? `<img src="${product.image}">` : `<span>${product.name}</span>`;
+    document.getElementById('pm-img-container').innerHTML = img;
+    
+    // Reset cantidad
+    document.getElementById('pm-qty').value = 1;
+    
+    // Configurar botón
+    document.getElementById('pm-add-btn').onclick = () => {
+        const qty = parseInt(document.getElementById('pm-qty').value);
+        addToCart(id, qty);
+        closeProductModal();
+    };
+
+    document.getElementById('product-modal').classList.add('active');
+}
+
+window.closeProductModal = function() {
+    document.getElementById('product-modal').classList.remove('active');
+}
+
+window.updateModalQty = function(change) {
+    const input = document.getElementById('pm-qty');
+    let val = parseInt(input.value) + change;
+    if (val < 1) val = 1;
+    input.value = val;
 }
 
 function handleGuestData() {
@@ -432,7 +546,7 @@ function renderProducts() {
     card.style.animation = `fadeInUp 0.5s ease forwards ${index * 0.05}s`; // Animación mejorada
     card.innerHTML = `
         ${promoBadge}
-        <div class="product-image">${imgContent}</div>
+        <div class="product-image" onclick="viewProductDetails(${product.id})" style="cursor:pointer;">${imgContent}</div>
         <div class="product-info">
             <h3 class="product-title">${product.name}</h3>
             ${priceHtml}
@@ -476,7 +590,7 @@ function calculateItemPrice(product, quantity) {
     return priceAfterPrimaryDiscount;
 }
 
-function addToCart(id) {
+function addToCart(id, quantityToAdd = 1) {
     // Usamos '==' para asegurar compatibilidad si el ID viene como texto o número
     const product = products.find(p => p.id == id);
     
@@ -485,7 +599,7 @@ function addToCart(id) {
 
     // Lógica de agrupación
     const existingItem = cart.find(item => item.id == id);
-    const newQuantity = existingItem ? existingItem.quantity + 1 : 1;
+    const newQuantity = existingItem ? existingItem.quantity + quantityToAdd : quantityToAdd;
 
     // Calcular precio dinámicamente
     const finalPrice = calculateItemPrice(product, newQuantity);
@@ -495,14 +609,14 @@ function addToCart(id) {
         existingItem.price = finalPrice; // Actualizar el precio unitario
     } else {
         // Guardamos el precio original por si necesitamos recalcular y el producto ya no está en la lista `products`
-        cart.push({ id: product.id, name: product.name, price: finalPrice, quantity: 1, originalPrice: product.price });
+        cart.push({ id: product.id, name: product.name, price: finalPrice, quantity: quantityToAdd, originalPrice: product.price });
     }
 
     saveCart();
     updateCartUI();
     
     // Mostrar notificación animada en lugar del modal
-    showToast(`¡${product.name} agregado!`);
+    showToast(`¡${quantityToAdd}x ${product.name} agregado!`);
 }
 
 function orderNow(id) {
