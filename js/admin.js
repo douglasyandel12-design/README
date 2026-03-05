@@ -194,8 +194,6 @@ function renderTable() {
                 <td>${imgDisplay}</td>
                 <td>
                     <strong style="font-size: 1rem;">${p.name}</strong>
-                    <br>
-                    <small style="color: #666;">${p.category || 'Sin categoría'}</small>
                 </td>
                 <td>
                     $${p.price.toFixed(2)}
@@ -480,7 +478,6 @@ function openProductModal(id = null) {
         if(modalTitle) modalTitle.innerText = 'Editar Producto';
         document.getElementById('edit-id').value = product.id;
         document.getElementById('edit-name').value = product.name;
-        if(document.getElementById('edit-category')) document.getElementById('edit-category').value = product.category || '';
         document.getElementById('edit-price').value = product.price;
         document.getElementById('edit-discount').value = product.discount || 0;
         
@@ -501,7 +498,6 @@ function openProductModal(id = null) {
         if(modalTitle) modalTitle.innerText = 'Nuevo Producto';
         document.getElementById('edit-id').value = ''; // ID vacío indica nuevo
         document.getElementById('edit-name').value = '';
-        if(document.getElementById('edit-category')) document.getElementById('edit-category').value = '';
         document.getElementById('edit-price').value = '';
         document.getElementById('edit-discount').value = '';
         
@@ -515,20 +511,8 @@ function openProductModal(id = null) {
     
     renderImageManager('edit'); // Renderizar en el modal de edición
 
-    // --- Inyectar campo CATEGORÍA en Modal ---
-    const form = document.querySelector('#edit-modal form');
-    let categoryContainer = document.getElementById('edit-category-container');
-    if (!categoryContainer) {
-        categoryContainer = document.createElement('div');
-        categoryContainer.id = 'edit-category-container';
-        categoryContainer.style.marginBottom = '1rem';
-        categoryContainer.innerHTML = `<label for="edit-category">Categoría</label><input type="text" id="edit-category" class="input-field" placeholder="Ej: Camisetas, Tazas..." style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">`;
-        // Insertar después del nombre
-        const nameInput = document.getElementById('edit-name');
-        if (nameInput) nameInput.parentNode.insertBefore(categoryContainer, nameInput.nextSibling);
-    }
-
     // --- Inyectar campo STOCK en Modal ---
+    const form = document.querySelector('#edit-modal form');
     let stockContainer = document.getElementById('edit-stock-container');
     if (!stockContainer) {
         stockContainer = document.createElement('div');
@@ -599,7 +583,6 @@ async function saveProductModal(e) {
         
         p.name = document.getElementById('edit-name').value;
         p.price = parseFloat(document.getElementById('edit-price').value);
-        p.category = document.getElementById('edit-category').value.trim();
         p.discount = parseFloat(document.getElementById('edit-discount').value) || 0;
         const stockVal = document.getElementById('edit-stock').value;
         p.stock = (stockVal === "" || stockVal === undefined) ? null : parseInt(stockVal);
@@ -625,7 +608,6 @@ async function saveProductModal(e) {
         // --- CREAR NUEVO ---
         const name = document.getElementById('edit-name').value;
         const price = parseFloat(document.getElementById('edit-price').value);
-        const category = document.getElementById('edit-category').value.trim();
         const discount = parseFloat(document.getElementById('edit-discount').value) || 0;
         const stockVal = document.getElementById('edit-stock').value;
         const stock = (stockVal === "" || stockVal === undefined) ? null : parseInt(stockVal);
@@ -636,7 +618,6 @@ async function saveProductModal(e) {
             id: Date.now(),
             name: name,
             price: price,
-            category: category,
             description: description,
             images: [...tempImages],
             image: tempImages.length > 0 ? tempImages[0] : '',
@@ -707,10 +688,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Inyectar en modal de EDITAR
     const editFormBtn = document.querySelector('#edit-modal button[type="submit"]'); // Asumiendo que hay un botón guardar
     if (editFormBtn) {
-        // Cambiar el evento onclick del botón guardar para usar la nueva función unificada
-        const form = document.querySelector('#edit-modal form');
-        if(form) form.onsubmit = saveProductModal; // Reemplazar el submit del form
-        
         const managerHTML = createImageManagerHTML('edit');
         const div = document.createElement('div');
         div.innerHTML = managerHTML;

@@ -31,6 +31,7 @@
                         <tr>
                             <th>Img</th>
                             <th>Nombre</th>
+                            <th>Stock</th>
                             <th>Precio</th>
                             <th>Acción</th>
                         </tr>
@@ -58,7 +59,7 @@
                 <h2>Editar Producto</h2>
                 <button class="close-btn" onclick="closeEditModal()">&times;</button>
             </div>
-            <form onsubmit="saveEdit(event)">
+            <form onsubmit="saveProductModal(event)">
                 <input type="hidden" id="edit-id">
                 <div class="form-group">
                     <label>Nombre</label>

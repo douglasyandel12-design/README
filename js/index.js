@@ -269,13 +269,10 @@ function renderToolbar() {
     // 2. Insertar Filtros antes del grid
     if (document.querySelector('.filter-container')) return;
 
-    // Extraer categorías únicas de los productos
-    const categories = ['all', ...new Set(products.map(p => p.category).filter(Boolean))];
-
     const filters = document.createElement('div');
     filters.className = 'filter-container';
     filters.innerHTML = `
-        ${categories.map(cat => `<div class="filter-chip ${cat === 'all' ? 'active' : ''}" onclick="setCategory('${cat}', this)">${cat === 'all' ? 'Todos' : cat}</div>`).join('')}
+        <div class="filter-chip active" onclick="setCategory('all', this)">Todos</div>
         <div class="filter-chip" onclick="setCategory('offers', this)">🔥 Ofertas</div>
     `;
     grid.parentNode.insertBefore(filters, grid);
@@ -763,8 +760,6 @@ function renderProducts() {
             matchesCategory = true;
         } else if (currentCategory === 'offers') {
             matchesCategory = (p.discount && p.discount > 0) || (globalSettings.promo_product_id == p.id);
-        } else {
-            matchesCategory = p.category && p.category.toLowerCase() === currentCategory.toLowerCase();
         }
         
         return matchesSearch && matchesCategory;
