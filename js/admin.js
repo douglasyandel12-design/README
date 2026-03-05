@@ -4,6 +4,7 @@ let allOrders = []; // Variable para guardar los pedidos cargados
 let globalPromoProductId = ''; // Variable para saber cuál es el producto en promo
 let quillEdit; // Editor para editar
 let tempImages = []; // Array temporal para gestionar imágenes antes de guardar
+let tempVideo = ''; // Variable temporal para el video
 
 // Cargar productos desde la nube al iniciar
 async function initAdmin() {
@@ -20,21 +21,6 @@ async function initAdmin() {
                 document.head.appendChild(script);
             }
             
-            // --- INYECCIÓN DE UI PARA STOCK ---
-            // NOTA DE REVISIÓN: La inyección dinámica de HTML como esta es frágil.
-            // Si la estructura del HTML en admin.html cambia, este código podría romperse.
-            // Sería más robusto tener los elementos ya en el HTML (quizás ocultos)
-            // y usar JS solo para mostrarlos o manipularlos.
-            // 1. Header de la tabla
-            const tableHead = document.querySelector('thead tr');
-            if (tableHead && !tableHead.querySelector('.th-stock')) {
-                const th = document.createElement('th');
-                th.className = 'th-stock';
-                th.innerText = 'Stock';
-                tableHead.insertBefore(th, tableHead.lastElementChild); // Insertar antes de Acciones
-            }
-            // ----------------------------------
-
             renderTable();
             checkStockAlerts(); // Verificar alertas de stock
             renderSettingsPanel(); // Cargar panel de configuración
@@ -499,7 +485,7 @@ function openProductModal(id = null) {
         if (quillEdit) quillEdit.root.innerHTML = product.description || '';
         
         // Video
-        if(document.getElementById('edit-video')) document.getElementById('edit-video').value = product.video || '';
+        tempVideo = product.video || '';
         
         // Stock
         if(document.getElementById('edit-stock')) document.getElementById('edit-stock').value = (product.stock !== undefined && product.stock !== null) ? product.stock : '';
@@ -518,7 +504,7 @@ function openProductModal(id = null) {
         tempImages = [];
         if (quillEdit) quillEdit.setContents([]);
         
-        if(document.getElementById('edit-video')) document.getElementById('edit-video').value = '';
+        tempVideo = '';
         if(document.getElementById('edit-stock')) document.getElementById('edit-stock').value = '';
         if(document.getElementById('edit-is-promo')) document.getElementById('edit-is-promo').checked = false;
     }
@@ -541,9 +527,21 @@ function openProductModal(id = null) {
         videoContainer = document.createElement('div');
         videoContainer.id = 'edit-video-container';
         videoContainer.style.marginBottom = '1rem';
-        videoContainer.innerHTML = `<label for="edit-video">URL del Video (YouTube/Vimeo)</label><input type="text" id="edit-video" class="input-field" placeholder="https://..." style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">`;
+        videoContainer.innerHTML = `
+            <label>Video del Producto</label>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+                <input type="text" id="edit-video" class="input-field" placeholder="URL de YouTube/Vimeo..." style="flex:1; padding:10px; border:1px solid #ddd; border-radius:6px;" oninput="tempVideo = this.value">
+                <div style="flex:0 0 auto;">
+                    <label for="edit-video-file" class="custom-file-upload" style="margin:0;">📂 Subir Video</label>
+                    <input type="file" id="edit-video-file" accept="video/*" style="display:none;" onchange="handleVideoUpload(this)">
+                </div>
+            </div>
+            <div id="video-preview-msg" style="font-size:0.8rem; color:#666; margin-top:5px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"></div>
+        `;
         form.insertBefore(videoContainer, stockContainer);
     }
+    
+    updateVideoUI(); // Actualizar UI del video
 
     // --- Inyectar Checkbox de Promoción ---
     let promoContainer = document.getElementById('edit-promo-container');
@@ -591,7 +589,7 @@ async function saveProductModal(e) {
         p.description = quillEdit ? quillEdit.root.innerHTML : ''; // Guardar descripción editada
         p.images = [...tempImages]; // Guardar array de imágenes
         p.image = tempImages.length > 0 ? tempImages[0] : ''; // Compatibilidad
-        p.video = document.getElementById('edit-video').value; // Guardar video
+        p.video = tempVideo; // Guardar video (URL o Archivo)
         
         // --- Lógica de Promoción ---
         const isPromoChecked = document.getElementById('edit-is-promo').checked;
@@ -614,7 +612,7 @@ async function saveProductModal(e) {
         const stockVal = document.getElementById('edit-stock').value;
         const stock = (stockVal === "" || stockVal === undefined) ? null : parseInt(stockVal);
         const description = quillEdit ? quillEdit.root.innerHTML : '';
-        const video = document.getElementById('edit-video').value;
+        const video = tempVideo;
 
         const newProduct = {
             id: Date.now(),
@@ -770,4 +768,27 @@ window.removeImage = function(index, context) {
 function resetImageManager() {
     tempImages = [];
     renderImageManager('add');
+}
+
+// --- FUNCIONES AUXILIARES VIDEO ---
+function updateVideoUI() {
+    const input = document.getElementById('edit-video');
+    const msg = document.getElementById('video-preview-msg');
+    if(input) input.value = tempVideo.startsWith('data:') ? '' : tempVideo;
+    if(msg) msg.innerText = tempVideo.startsWith('data:') ? '✅ Video cargado desde archivo' : (tempVideo ? '🔗 Video vinculado por URL' : '');
+}
+
+window.handleVideoUpload = function(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const reader = new FileReader();
+        const msg = document.getElementById('video-preview-msg');
+        if(msg) msg.innerText = "Cargando video...";
+        
+        reader.onload = function(e) {
+            tempVideo = e.target.result;
+            updateVideoUI();
+        };
+        reader.readAsDataURL(file);
+    }
 }
