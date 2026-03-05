@@ -4,6 +4,7 @@ let allOrders = []; // Variable para guardar los pedidos cargados
 let globalPromoProductId = ''; // Variable para saber cuál es el producto en promo
 let quillAdd; // Editor para agregar
 let quillEdit; // Editor para editar
+let tempImages = []; // Array temporal para gestionar imágenes antes de guardar
 
 // Cargar productos desde la nube al iniciar
 async function initAdmin() {
@@ -100,6 +101,31 @@ adminStyle.innerHTML = `
     .status-btn.active[data-status="Aceptado"] { background-color: #8b5cf6; } /* Violeta */
     .status-btn.active[data-status="Enviado"] { background-color: #f59e0b; } /* Naranja */
     .status-btn.active[data-status="Entregado"] { background-color: #10b981; } /* Verde */
+
+    /* --- ESTILOS DEL EDITOR MEJORADO Y GALERÍA --- */
+    .admin-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    @media (max-width: 768px) { .admin-form-grid { grid-template-columns: 1fr; } }
+    
+    .image-manager { border: 2px dashed #ddd; padding: 15px; border-radius: 8px; background: #fafafa; margin-top: 10px; }
+    .image-manager h4 { margin-top: 0; font-size: 0.9rem; color: #666; }
+    .img-input-group { display: flex; gap: 10px; margin-bottom: 10px; }
+    .img-preview-list { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px; }
+    .img-preview-item { position: relative; width: 80px; height: 80px; border-radius: 6px; overflow: hidden; border: 1px solid #eee; flex-shrink: 0; }
+    .img-preview-item img { width: 100%; height: 100%; object-fit: cover; }
+    .img-remove-btn { 
+        position: absolute; top: 2px; right: 2px; background: rgba(255,0,0,0.8); color: white; 
+        border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+    }
+    
+    /* Mejoras visuales generales para inputs */
+    input[type="text"], input[type="number"], select {
+        width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 10px; box-sizing: border-box;
+    }
+    label { font-weight: 600; font-size: 0.9rem; color: #374151; margin-bottom: 4px; display: block; }
+    
+    /* Ocultar inputs viejos de imagen para usar el nuevo gestor */
+    #prod-img-url, #prod-img-file, #edit-img-url { display: none; }
 `;
 document.head.appendChild(adminStyle);
 
@@ -152,8 +178,11 @@ function renderTable() {
     
     products.forEach(p => {
         // Si no hay imagen, usar un placeholder de color
-        const imgDisplay = p.image 
-            ? `<img src="${p.image}" class="preview-img">` 
+        // Soporte para array de imágenes o string antiguo
+        const mainImage = (p.images && p.images.length > 0) ? p.images[0] : (p.image || '');
+        
+        const imgDisplay = mainImage 
+            ? `<img src="${mainImage}" class="preview-img">` 
             : `<div class="preview-img" style="display:flex;align-items:center;justify-content:center;font-size:0.7rem;">Sin Foto</div>`;
 
         const row = `
@@ -184,32 +213,20 @@ async function addProduct(e) {
     const discount = parseFloat(document.getElementById('prod-discount').value) || 0;
     const stockVal = document.getElementById('prod-stock')?.value;
     const stock = (stockVal === "" || stockVal === undefined) ? null : parseInt(stockVal);
-    const fileInput = document.getElementById('prod-img-file');
-    const urlInput = document.getElementById('prod-img-url');
     const description = quillAdd ? quillAdd.root.innerHTML : ''; // Obtener HTML del editor
 
-    let imageSrc = urlInput.value;
-
-    // Si hay archivo, convertir a Base64
-    if (fileInput.files && fileInput.files[0]) {
-        const file = fileInput.files[0];
-        const reader = new FileReader();
-        reader.onloadend = function() {
-            saveProductToStorage(name, price, reader.result, discount, stock, description);
-        }
-        reader.readAsDataURL(file);
-    } else {
-        saveProductToStorage(name, price, imageSrc, discount, stock, description);
-    }
+    // Usamos el array temporal de imágenes
+    saveProductToStorage(name, price, tempImages, discount, stock, description);
 }
 
-async function saveProductToStorage(name, price, image, discount, stock, description) {
+async function saveProductToStorage(name, price, images, discount, stock, description) {
     const newProduct = {
         id: Date.now(), // ID único basado en tiempo (Revertido para estabilidad)
         name: name,
         price: price,
         description: description, // Guardamos la descripción
-        image: image,
+        images: images, // Guardamos el array de imágenes
+        image: images.length > 0 ? images[0] : '', // Mantener compatibilidad hacia atrás
         discount: discount,
         stock: stock
     };
@@ -223,10 +240,9 @@ async function saveProductToStorage(name, price, image, discount, stock, descrip
     document.getElementById('prod-name').value = '';
     document.getElementById('prod-price').value = '';
     document.getElementById('prod-discount').value = '';
-    document.getElementById('prod-img-file').value = '';
-    document.getElementById('prod-img-url').value = '';
     if(document.getElementById('prod-stock')) document.getElementById('prod-stock').value = '';
     if(quillAdd) quillAdd.setContents([]); // Limpiar editor
+    resetImageManager(); // Limpiar gestor de imágenes
     
     renderTable();
     checkStockAlerts();
@@ -500,6 +516,10 @@ function openEditModal(id) {
     document.getElementById('edit-price').value = product.price;
     document.getElementById('edit-discount').value = product.discount || 0;
     
+    // Cargar imágenes en el gestor temporal
+    tempImages = product.images || (product.image ? [product.image] : []);
+    renderImageManager('edit'); // Renderizar en el modal de edición
+
     // Cargar descripción en el editor
     if (quillEdit) quillEdit.root.innerHTML = product.description || '';
 
@@ -559,6 +579,8 @@ async function saveEdit(e) {
         const stockVal = document.getElementById('edit-stock').value;
         p.stock = (stockVal === "" || stockVal === undefined) ? null : parseInt(stockVal);
         p.description = quillEdit ? quillEdit.root.innerHTML : ''; // Guardar descripción editada
+        p.images = [...tempImages]; // Guardar array de imágenes
+        p.image = tempImages.length > 0 ? tempImages[0] : ''; // Compatibilidad
         
         // --- Lógica de Promoción ---
         const isPromoChecked = document.getElementById('edit-is-promo').checked;
@@ -625,4 +647,95 @@ function renderSalesChart() {
         },
         options: { scales: { y: { beginAtZero: true } } }
     });
+}
+
+// --- GESTOR DE IMÁGENES (Lógica Nueva) ---
+
+// Inyectar UI del gestor de imágenes al cargar
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Inyectar en formulario de AGREGAR
+    const addFormBtn = document.querySelector('#product-form button[type="submit"]');
+    if (addFormBtn) {
+        const managerHTML = createImageManagerHTML('add');
+        const div = document.createElement('div');
+        div.innerHTML = managerHTML;
+        addFormBtn.parentNode.insertBefore(div, addFormBtn);
+    }
+
+    // 2. Inyectar en modal de EDITAR
+    const editFormBtn = document.querySelector('#edit-modal button[type="submit"]'); // Asumiendo que hay un botón guardar
+    if (editFormBtn) {
+        const managerHTML = createImageManagerHTML('edit');
+        const div = document.createElement('div');
+        div.innerHTML = managerHTML;
+        // Insertar antes de los botones de acción
+        const modalContent = document.querySelector('#edit-modal .modal-content');
+        if(modalContent) {
+             // Insertar después del editor de texto
+             setTimeout(() => {
+                 const editorWrapper = document.getElementById('edit-editor-wrapper');
+                 if(editorWrapper) editorWrapper.insertAdjacentElement('afterend', div);
+             }, 500);
+        }
+    }
+});
+
+function createImageManagerHTML(context) {
+    return `
+        <div class="image-manager">
+            <h4>📸 Galería de Imágenes</h4>
+            <div class="img-input-group">
+                <input type="text" id="img-url-${context}" placeholder="Pegar URL de imagen..." style="margin-bottom:0;">
+                <button type="button" class="btn" onclick="addImageFromUrl('${context}')" style="width:auto; padding: 5px 10px;">+</button>
+            </div>
+            <div style="margin-bottom:10px; text-align:center; font-size:0.8rem; color:#666;">O</div>
+            <input type="file" id="img-file-${context}" accept="image/*" onchange="addImageFromFile('${context}')" style="margin-bottom:10px;">
+            
+            <div id="img-preview-${context}" class="img-preview-list"></div>
+        </div>
+    `;
+}
+
+function renderImageManager(context) {
+    const container = document.getElementById(`img-preview-${context}`);
+    if (!container) return;
+    
+    container.innerHTML = tempImages.map((img, index) => `
+        <div class="img-preview-item">
+            <img src="${img}">
+            <button type="button" class="img-remove-btn" onclick="removeImage(${index}, '${context}')">&times;</button>
+        </div>
+    `).join('');
+}
+
+window.addImageFromUrl = function(context) {
+    const input = document.getElementById(`img-url-${context}`);
+    if (input.value) {
+        tempImages.push(input.value);
+        input.value = '';
+        renderImageManager(context);
+    }
+};
+
+window.addImageFromFile = function(context) {
+    const input = document.getElementById(`img-file-${context}`);
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            tempImages.push(e.target.result);
+            renderImageManager(context);
+            input.value = ''; // Reset input
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+};
+
+window.removeImage = function(index, context) {
+    tempImages.splice(index, 1);
+    renderImageManager(context);
+};
+
+function resetImageManager() {
+    tempImages = [];
+    renderImageManager('add');
 }

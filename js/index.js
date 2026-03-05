@@ -122,6 +122,13 @@ async function init() {
         .pm-image-container { background: #f9f9f9; display: flex; align-items: center; justify-content: center; padding: 2rem; }
         .pm-image-container img { max-width: 100%; max-height: 500px; object-fit: contain; mix-blend-mode: multiply; }
         .pm-details { padding: 3rem 2rem; overflow-y: auto; display: flex; flex-direction: column; }
+        
+        /* Estilos de Galería en Modal */
+        .pm-gallery-wrapper { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+        .pm-thumbnails { display: flex; gap: 10px; overflow-x: auto; padding: 5px 0; justify-content: center; }
+        .pm-thumb { width: 60px; height: 60px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; object-fit: cover; opacity: 0.6; transition: all 0.2s; }
+        .pm-thumb:hover, .pm-thumb.active { opacity: 1; border-color: #000; transform: scale(1.05); }
+        
         .pm-close { position: absolute; top: 15px; right: 20px; font-size: 2rem; cursor: pointer; z-index: 10; line-height: 1; }
         .pm-title { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; line-height: 1.1; }
         .pm-price { font-size: 1.5rem; font-weight: 500; margin-bottom: 1.5rem; color: #333; }
@@ -244,7 +251,9 @@ function createProductModal() {
     modal.innerHTML = `
         <div class="product-modal-content">
             <span class="pm-close" onclick="closeProductModal()">&times;</span>
-            <div class="pm-image-container" id="pm-img-container"></div>
+            <div class="pm-image-container">
+                <div id="pm-gallery-wrapper" class="pm-gallery-wrapper"></div>
+            </div>
             <div class="pm-details">
                 <h2 class="pm-title" id="pm-title"></h2>
                 <div class="pm-price" id="pm-price"></div>
@@ -286,8 +295,27 @@ window.viewProductDetails = function(id) {
     document.getElementById('pm-desc').innerHTML = product.description || 'Sin descripción detallada.';
     
     // Imagen
-    const img = product.image ? `<img src="${product.image}">` : `<span>${product.name}</span>`;
-    document.getElementById('pm-img-container').innerHTML = img;
+    // Soporte para array de imágenes o string antiguo
+    const images = (product.images && product.images.length > 0) ? product.images : (product.image ? [product.image] : []);
+    
+    const galleryContainer = document.getElementById('pm-gallery-wrapper');
+    
+    if (images.length > 0) {
+        // Imagen Principal
+        let html = `<img id="pm-main-img" src="${images[0]}" style="width:100%; height:auto; max-height:400px; object-fit:contain;">`;
+        
+        // Miniaturas (solo si hay más de 1)
+        if (images.length > 1) {
+            html += `<div class="pm-thumbnails">`;
+            images.forEach((img, idx) => {
+                html += `<img src="${img}" class="pm-thumb ${idx===0?'active':''}" onclick="changeModalImage('${img}', this)">`;
+            });
+            html += `</div>`;
+        }
+        galleryContainer.innerHTML = html;
+    } else {
+        galleryContainer.innerHTML = `<span>${product.name}</span>`;
+    }
     
     // Reset cantidad
     document.getElementById('pm-qty').value = 1;
@@ -304,6 +332,13 @@ window.viewProductDetails = function(id) {
 
 window.closeProductModal = function() {
     document.getElementById('product-modal').classList.remove('active');
+}
+
+window.changeModalImage = function(src, thumbEl) {
+    document.getElementById('pm-main-img').src = src;
+    // Actualizar clase active
+    document.querySelectorAll('.pm-thumb').forEach(t => t.classList.remove('active'));
+    thumbEl.classList.add('active');
 }
 
 window.updateModalQty = function(change) {
@@ -506,9 +541,12 @@ function renderProducts() {
     if(filteredProducts.length === 0) grid.innerHTML = '<p style="text-align:center; width:100%; color:#666;">No se encontraron productos.</p>';
 
     filteredProducts.forEach((product, index) => {
+    // Obtener imagen principal (array o string legacy)
+    const mainImage = (product.images && product.images.length > 0) ? product.images[0] : (product.image || '');
+        
     // Determinar si mostrar imagen o placeholder
-    const imgContent = product.image 
-        ? `<img src="${product.image}" alt="${product.name}">` 
+    const imgContent = mainImage 
+        ? `<img src="${mainImage}" alt="${product.name}">` 
         : `<span>${product.name}</span>`;
 
     // --- LÓGICA DE PRECIOS (Solo visualización estándar) ---
