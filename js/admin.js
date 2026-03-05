@@ -234,45 +234,17 @@ function renderTable() {
     });
 }
 
-// Función auxiliar para enviar todo a la nube
-async function saveToCloud() {
-    // NOTA DE REVISIÓN: Esta función envía la lista COMPLETA de productos al servidor
-    // cada vez que se agrega, edita o elimina uno. Esto es muy ineficiente y puede
-    // causar problemas de concurrencia si varios administradores trabajan a la vez.
-    // Lo ideal es que el backend ofrezca endpoints para manejar un solo producto, por ejemplo:
-    // - POST /api/products (para crear uno nuevo)
-    // - PUT /api/products/{id} (para actualizar uno existente)
-    try {
-        const res = await fetch('/api/products', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(products)
-        });
-        if (!res.ok) {
-            let errorMsg = 'No se pudo guardar';
-            try {
-                // Intenta obtener un error más detallado del cuerpo de la respuesta
-                const errorBody = await res.json();
-                // Busca propiedades comunes de error
-                errorMsg = errorBody.details || errorBody.message || JSON.stringify(errorBody);
-            } catch (e) {
-                // Si el cuerpo no es JSON o está vacío, usa el texto de estado del HTTP
-                errorMsg = `El servidor respondió con el código ${res.status} (${res.statusText})`;
-            }
-            alert('Error: ' + errorMsg);
-        }
-    } catch (e) {
-        alert('Error de conexión. No se pudo contactar al servidor para guardar los cambios.');
-    }
-}
 async function deleteProduct(id) {
     if(confirm('¿Estás seguro de eliminar este producto?')) {
-        // NOTA DE REVISIÓN: Se usa '!=' porque los IDs pueden ser números (generados por Date.now()) o texto (de la DB).
-        // Esto es una señal de datos inconsistentes. Todos los IDs deberían tener un tipo uniforme, preferiblemente string.
-        products = products.filter(p => p.id != id);
-        await saveToCloud();
-        renderTable();
-        checkStockAlerts();
+        try {
+            const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('El servidor no pudo eliminar el producto.');
+            products = products.filter(p => p.id != id);
+            renderTable();
+            checkStockAlerts();
+        } catch (e) {
+            alert('Error al eliminar el producto: ' + e.message);
+        }
     }
 }
 
@@ -548,21 +520,25 @@ async function saveProductModal(e) {
     e.preventDefault();
     const idInput = document.getElementById('edit-id').value;
     
+    let productPayload;
+    let url = '/api/products';
+    let method = 'POST';
+
     if (idInput) {
         // --- ACTUALIZAR EXISTENTE ---
-        const productIndex = products.findIndex(p => p.id == idInput);
-        if (productIndex > -1) {
-        const p = products[productIndex];
-        
-        p.name = document.getElementById('edit-name').value;
-        p.price = parseFloat(document.getElementById('edit-price').value);
-        p.discount = parseFloat(document.getElementById('edit-discount').value) || 0;
-        const stockVal = document.getElementById('edit-stock').value;
-        p.stock = (stockVal === "" || stockVal === undefined) ? null : parseInt(stockVal);
-        p.description = quillEdit ? quillEdit.root.innerHTML : ''; // Guardar descripción editada
-        p.images = [...tempImages]; // Guardar array de imágenes
-        p.image = tempImages.length > 0 ? tempImages[0] : ''; // Compatibilidad
-        p.video = tempVideo; // Guardar video (URL o Archivo)
+        url = `/api/products/${idInput}`;
+        method = 'PUT';
+        productPayload = {
+            id: idInput,
+            name: document.getElementById('edit-name').value,
+            price: parseFloat(document.getElementById('edit-price').value),
+            discount: parseFloat(document.getElementById('edit-discount').value) || 0,
+            stock: (document.getElementById('edit-stock').value === "" || document.getElementById('edit-stock').value === undefined) ? null : parseInt(document.getElementById('edit-stock').value),
+            description: quillEdit ? quillEdit.root.innerHTML : '',
+            images: [...tempImages],
+            image: tempImages.length > 0 ? tempImages[0] : '',
+            video: tempVideo
+        };
         
         // --- Lógica de Promoción ---
         const isPromoChecked = document.getElementById('edit-is-promo').checked;
@@ -576,35 +552,50 @@ async function saveProductModal(e) {
             globalPromoProductId = '';
             await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: 'promo_product_id', value: '' }) });
         }
-        }
     } else {
         // --- CREAR NUEVO ---
-        const name = document.getElementById('edit-name').value;
-        const price = parseFloat(document.getElementById('edit-price').value);
-        const discount = parseFloat(document.getElementById('edit-discount').value) || 0;
-        const stockVal = document.getElementById('edit-stock').value;
-        const stock = (stockVal === "" || stockVal === undefined) ? null : parseInt(stockVal);
-        const description = quillEdit ? quillEdit.root.innerHTML : '';
-        const video = tempVideo;
-
-        const newProduct = {
+        productPayload = {
             id: Date.now(),
-            name: name,
-            price: price,
-            description: description,
+            name: document.getElementById('edit-name').value,
+            price: parseFloat(document.getElementById('edit-price').value),
+            discount: parseFloat(document.getElementById('edit-discount').value) || 0,
+            stock: (document.getElementById('edit-stock').value === "" || document.getElementById('edit-stock').value === undefined) ? null : parseInt(document.getElementById('edit-stock').value),
+            description: quillEdit ? quillEdit.root.innerHTML : '',
             images: [...tempImages],
             image: tempImages.length > 0 ? tempImages[0] : '',
-            discount: discount,
-            stock: stock,
-            video: video
+            video: tempVideo
         };
-        products.push(newProduct);
     }
-    
-    await saveToCloud();
-    renderTable();
-    checkStockAlerts();
-    closeEditModal();
+
+    try {
+        const res = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(productPayload)
+        });
+
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.message || `El servidor respondió con un error ${res.status}`);
+        }
+
+        const savedProduct = await res.json();
+
+        if (idInput) { // Si fue una actualización, reemplazamos el producto en el array local
+            const index = products.findIndex(p => p.id == idInput);
+            if (index !== -1) products[index] = savedProduct;
+        } else { // Si fue una creación, lo añadimos
+            products.push(savedProduct);
+        }
+
+        renderTable();
+        checkStockAlerts();
+        closeEditModal();
+
+    } catch (error) {
+        console.error('Error al guardar el producto:', error);
+        alert('No se pudo guardar el producto: ' + error.message);
+    }
 }
 
 function renderSalesChart() {
