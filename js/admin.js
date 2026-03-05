@@ -11,6 +11,10 @@ async function initAdmin() {
             products = await res.json();
             
             // --- INYECCIÓN DE UI PARA STOCK ---
+            // NOTA DE REVISIÓN: La inyección dinámica de HTML como esta es frágil.
+            // Si la estructura del HTML en admin.html cambia, este código podría romperse.
+            // Sería más robusto tener los elementos ya en el HTML (quizás ocultos)
+            // y usar JS solo para mostrarlos o manipularlos.
             // 1. Header de la tabla
             const tableHead = document.querySelector('thead tr');
             if (tableHead && !tableHead.querySelector('.th-stock')) {
@@ -192,6 +196,12 @@ async function saveProductToStorage(name, price, image, discount, stock) {
 
 // Función auxiliar para enviar todo a la nube
 async function saveToCloud() {
+    // NOTA DE REVISIÓN: Esta función envía la lista COMPLETA de productos al servidor
+    // cada vez que se agrega, edita o elimina uno. Esto es muy ineficiente y puede
+    // causar problemas de concurrencia si varios administradores trabajan a la vez.
+    // Lo ideal es que el backend ofrezca endpoints para manejar un solo producto, por ejemplo:
+    // - POST /api/products (para crear uno nuevo)
+    // - PUT /api/products/{id} (para actualizar uno existente)
     try {
         const res = await fetch('/api/products', {
             method: 'POST',
@@ -217,7 +227,9 @@ async function saveToCloud() {
 }
 async function deleteProduct(id) {
     if(confirm('¿Estás seguro de eliminar este producto?')) {
-        products = products.filter(p => p.id != id); // Usamos != para permitir borrar IDs viejos (numéricos) y nuevos (texto)
+        // NOTA DE REVISIÓN: Se usa '!=' porque los IDs pueden ser números (generados por Date.now()) o texto (de la DB).
+        // Esto es una señal de datos inconsistentes. Todos los IDs deberían tener un tipo uniforme, preferiblemente string.
+        products = products.filter(p => p.id != id);
         await saveToCloud();
         renderTable();
         checkStockAlerts();
@@ -375,7 +387,6 @@ async function deleteOrder(id) {
             alert('Error al eliminar el pedido.');
         }
     }
-}
 }
 
 function exportOrdersToCSV() {
