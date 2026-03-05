@@ -544,12 +544,12 @@ function openProductModal(id = null) {
         videoContainer.id = 'edit-video-container';
         videoContainer.style.marginBottom = '1rem';
         videoContainer.innerHTML = `
-            <label>Video del Producto</label>
+            <label>Video o Imagen Principal</label>
             <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
                 <input type="text" id="edit-video" class="input-field" placeholder="URL de YouTube/Vimeo..." style="flex:1; padding:10px; border:1px solid #ddd; border-radius:6px;" oninput="tempVideo = this.value">
                 <div style="flex:0 0 auto;">
-                    <label for="edit-video-file" class="custom-file-upload" style="margin:0;">📂 Subir Video</label>
-                    <input type="file" id="edit-video-file" accept="video/*" style="display:none;" onchange="handleVideoUpload(this)">
+                    <label for="edit-video-file" class="custom-file-upload" style="margin:0;">📂 Subir Archivo</label>
+                    <input type="file" id="edit-video-file" accept="video/*,image/*" style="display:none;" onchange="handleVideoUpload(this)">
                 </div>
             </div>
             <div id="video-preview-msg" style="font-size:0.8rem; color:#666; margin-top:5px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"></div>
@@ -793,7 +793,17 @@ function updateVideoUI() {
     const input = document.getElementById('edit-video');
     const msg = document.getElementById('video-preview-msg');
     if(input) input.value = tempVideo.startsWith('data:') ? '' : tempVideo;
-    if(msg) msg.innerText = tempVideo.startsWith('data:') ? '✅ Video cargado desde archivo' : (tempVideo ? '🔗 Video vinculado por URL' : '');
+    if(msg) {
+        if (tempVideo.startsWith('data:video')) {
+            msg.innerText = '✅ Video cargado desde archivo.';
+        } else if (tempVideo.startsWith('data:image')) {
+            msg.innerText = '✅ Imagen cargada desde archivo.';
+        } else if (tempVideo) {
+            msg.innerText = '🔗 Video vinculado por URL.';
+        } else {
+            msg.innerText = '';
+        }
+    }
 }
 
 window.handleVideoUpload = function(input) {

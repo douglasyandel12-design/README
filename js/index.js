@@ -138,6 +138,68 @@ async function init() {
         .pm-price { font-size: 1.5rem; font-weight: 500; margin-bottom: 1.5rem; color: #333; }
         .pm-description { color: #555; line-height: 1.6; margin-bottom: 2rem; font-size: 0.95rem; }
         .pm-description ul { padding-left: 20px; margin-bottom: 1rem; }
+
+        /* --- Estilos para Reseñas --- */
+        .pm-reviews-section {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #f0f0f0;
+        }
+        .pm-reviews-section h3 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+        .review-item {
+            border-bottom: 1px solid #f5f5f5;
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+        }
+        .review-item:last-child {
+            border-bottom: none;
+        }
+        .review-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 0.5rem;
+        }
+        .review-header strong {
+            font-size: 0.95rem;
+        }
+        .review-stars {
+            color: #f59e0b; /* amber-500 */
+        }
+        .review-comment {
+            color: #444;
+            font-size: 0.9rem;
+        }
+        .review-form textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 80px;
+            margin-bottom: 10px;
+        }
+        .star-rating {
+            display: flex;
+            flex-direction: row-reverse;
+            justify-content: flex-end;
+            gap: 5px;
+            margin-bottom: 1rem;
+        }
+        .star-rating input { display: none; }
+        .star-rating label {
+            font-size: 1.8rem;
+            color: #ccc;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .star-rating input:checked ~ label,
+        .star-rating label:hover,
+        .star-rating label:hover ~ label {
+            color: #f59e0b;
+        }
         
         .pm-actions { margin-top: auto; display: flex; gap: 10px; align-items: center; }
         .qty-selector { display: flex; border: 1px solid #ddd; border-radius: 4px; }
@@ -268,6 +330,7 @@ function createProductModal() {
                 <h2 class="pm-title" id="pm-title"></h2>
                 <div class="pm-price" id="pm-price"></div>
                 <div class="pm-description" id="pm-desc"></div>
+                <div id="pm-reviews-section"></div>
                 
                 <div class="pm-actions">
                     <div class="qty-selector">
@@ -311,6 +374,9 @@ window.viewProductDetails = function(id) {
     // Renderizar la vista de galería por defecto
     renderProductGallery(images, product.video);
     
+    // Renderizar sección de reseñas
+    renderReviews(product);
+
     // Reset cantidad
     document.getElementById('pm-qty').value = 1;
     
@@ -349,7 +415,8 @@ function renderProductGallery(images, videoUrl) {
     }
 
     if (videoUrl) {
-        togglesHtml += `<button id="video-toggle" onclick="toggleMediaView('video', '${videoUrl}')">Video</button>`;
+        const mediaType = videoUrl.startsWith('data:image') ? 'Ver Imagen' : 'Video';
+        togglesHtml += `<button id="video-toggle" onclick="toggleMediaView('video', '${videoUrl}')">${mediaType}</button>`;
     }
 
     mediaContainer.innerHTML = `${galleryHtml}<div class="pm-media-toggle">${togglesHtml}</div><div id="pm-video-player" style="display:none;"></div>`;
@@ -371,6 +438,8 @@ window.toggleMediaView = function(view, videoUrl = '') {
         if (!videoPlayer.innerHTML) {
             if (videoUrl.startsWith('data:video')) {
                 videoPlayer.innerHTML = `<video controls autoplay class="pm-video-container" src="${videoUrl}"></video>`;
+            } else if (videoUrl.startsWith('data:image')) {
+                videoPlayer.innerHTML = `<img src="${videoUrl}" style="width:100%; height:100%; object-fit:contain;">`;
             } else { // Asumimos URL de YouTube/Vimeo
                 let embedUrl = videoUrl;
                 if (videoUrl.includes('youtube.com/watch?v=')) {
@@ -386,6 +455,106 @@ window.toggleMediaView = function(view, videoUrl = '') {
         videoPlayer.innerHTML = ''; // Detener video al cambiar
         if (photoToggle) photoToggle.classList.add('active');
         if (videoToggle) videoToggle.classList.remove('active');
+    }
+}
+
+function renderReviews(product) {
+    const container = document.getElementById('pm-reviews-section');
+    if (!container) return;
+
+    let html = `<h3>⭐ Reseñas de Clientes</h3>`;
+
+    // List existing reviews
+    if (product.reviews && product.reviews.length > 0) {
+        html += `<div class="review-list">`;
+        product.reviews.forEach(review => {
+            html += `
+                <div class="review-item">
+                    <div class="review-header">
+                        <strong>${review.userName || 'Anónimo'}</strong>
+                        <span class="review-stars">${'★'.repeat(review.rating)}${'☆'.repeat(5 - review.rating)}</span>
+                    </div>
+                    <p class="review-comment">${review.comment}</p>
+                </div>
+            `;
+        });
+        html += `</div>`;
+    } else {
+        html += `<p id="no-reviews-msg" style="font-size:0.9rem; color:#666;">Este producto aún no tiene reseñas.</p>`;
+    }
+
+    // Review form for logged-in users
+    if (window.currentUser) {
+        html += `
+            <div class="review-form" style="margin-top: 1.5rem;">
+                <h4>Deja tu opinión</h4>
+                <div class="star-rating">
+                    <input type="radio" id="star5" name="rating" value="5"><label for="star5">★</label>
+                    <input type="radio" id="star4" name="rating" value="4"><label for="star4">★</label>
+                    <input type="radio" id="star3" name="rating" value="3"><label for="star3">★</label>
+                    <input type="radio" id="star2" name="rating" value="2"><label for="star2">★</label>
+                    <input type="radio" id="star1" name="rating" value="1"><label for="star1">★</label>
+                </div>
+                <textarea id="review-comment" placeholder="Escribe tu comentario aquí..."></textarea>
+                <button class="btn" onclick="submitReview('${product.id}')">Enviar Reseña</button>
+            </div>
+        `;
+    } else {
+        html += `<p style="font-size:0.9rem; color:#666; margin-top:1rem;">Debes <a href="login.html" style="color:#000; font-weight:bold;">iniciar sesión</a> para dejar una reseña.</p>`;
+    }
+
+    container.innerHTML = html;
+}
+
+window.submitReview = async function(productId) {
+    const ratingInput = document.querySelector('.star-rating input:checked');
+    const commentInput = document.getElementById('review-comment');
+
+    if (!ratingInput) {
+        alert('Por favor, selecciona una calificación de estrellas.');
+        return;
+    }
+    if (!commentInput.value.trim()) {
+        alert('Por favor, escribe un comentario.');
+        return;
+    }
+
+    const review = {
+        userName: window.currentUser.name,
+        userEmail: window.currentUser.email,
+        rating: parseInt(ratingInput.value),
+        comment: commentInput.value.trim(),
+        date: new Date().toISOString()
+    };
+
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+
+    try {
+        const res = await fetch(`/api/products/${productId}/review`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(review)
+        });
+
+        if (!res.ok) throw new Error('No se pudo guardar la reseña.');
+
+        const updatedProduct = await res.json();
+
+        // Update local state to reflect changes immediately
+        const productIndex = products.findIndex(p => p.id == productId);
+        if (productIndex > -1) {
+            products[productIndex] = updatedProduct;
+        }
+        renderReviews(updatedProduct);
+        showToast('¡Gracias por tu reseña!');
+
+    } catch (error) {
+        console.error('Error al enviar la reseña:', error);
+        alert('Hubo un error al enviar tu reseña. Por favor, inténtalo de nuevo.');
+        btn.disabled = false;
+        btn.textContent = 'Enviar Reseña';
     }
 }
 
