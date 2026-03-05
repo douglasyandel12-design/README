@@ -61,19 +61,56 @@
             </div>
             <form onsubmit="saveProductModal(event)">
                 <input type="hidden" id="edit-id">
-                <div class="form-group">
-                    <label>Nombre</label>
-                    <input type="text" id="edit-name" required>
+                <div class="form-columns">
+                    <!-- Columna Izquierda -->
+                    <div class="form-column">
+                        <div class="form-group">
+                            <label>Nombre</label>
+                            <input type="text" id="edit-name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Descripción</label>
+                            <div id="edit-editor-container" style="height: 150px; background: white;"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Precio</label>
+                                <input type="number" id="edit-price" step="0.01" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Descuento (%)</label>
+                                <input type="number" id="edit-discount" min="0" max="100">
+                            </div>
+                            <div class="form-group">
+                                <label>Stock</label>
+                                <input type="number" id="edit-stock" placeholder="Vacío = ∞">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Columna Derecha -->
+                    <div class="form-column">
+                        <div class="image-manager">
+                            <h4>📸 Galería de Imágenes</h4>
+                            <div class="img-input-group">
+                                <input type="text" id="img-url-edit" placeholder="Pegar URL de imagen..." style="margin-bottom:0;">
+                                <button type="button" class="btn" onclick="addImageFromUrl('edit')" style="width:auto; padding: 5px 10px;">+</button>
+                            </div>
+                            <div style="margin-bottom:10px; text-align:center; font-size:0.8rem; color:#666;">O</div>
+                            <label for="img-file-edit" class="custom-file-upload">Seleccionar imágenes</label>
+                            <input type="file" id="img-file-edit" accept="image/*" multiple onchange="addImageFromFile('edit')">
+                            <div id="img-preview-edit" class="img-preview-list"></div>
+                        </div>
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label>Video o Imagen Principal</label>
+                            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;"><input type="text" id="edit-video" class="input-field" placeholder="URL de YouTube/Vimeo..." oninput="tempVideo = this.value"><div style="flex:0 0 auto;"><label for="edit-video-file" class="custom-file-upload" style="margin:0;">📂 Subir Archivo</label><input type="file" id="edit-video-file" accept="video/*,image/*" onchange="handleVideoUpload(this)"></div></div>
+                            <div id="video-preview-msg" style="font-size:0.8rem; color:#666; margin-top:5px;"></div>
+                        </div>
+                        <div id="edit-promo-container" style="margin-top: 1rem; padding: 0.5rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px;">
+                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color: #166534; font-weight: 500;"><input type="checkbox" id="edit-is-promo"><span>🌟 Activar promoción "Más compras, más barato"</span></label><small style="display:block; margin-top:4px; color:#166534;">Si activas esto, este producto bajará de precio según la cantidad (2 items = $2 menos, etc).</small>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Precio</label>
-                    <input type="number" id="edit-price" step="0.01" required>
-                </div>
-                <div class="form-group">
-                    <label>Descuento (%)</label>
-                    <input type="number" id="edit-discount" min="0" max="100">
-                </div>
-                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                <div class="form-actions">
                     <button type="button" class="btn" style="background: #ccc; color: #333;" onclick="closeEditModal()">Cancelar</button>
                     <button type="submit" class="btn">Guardar Cambios</button>
                 </div>

@@ -37,15 +37,12 @@ initAdmin();
 
 // Función para iniciar los editores de texto
 function initEditors() {
-    // 2. Editor para el modal de EDITAR (se inicializa oculto, se usa al abrir modal)
-    const editFormName = document.getElementById('edit-name');
-    if (editFormName && !document.getElementById('edit-editor-wrapper')) {
-        const editorDiv = document.createElement('div');
-        editorDiv.id = 'edit-editor-wrapper';
-        editorDiv.innerHTML = `<label style="display:block; margin-top:10px;">Descripción</label><div id="edit-editor-container" style="height: 150px; background: white;"></div>`;
-        editFormName.parentNode.insertBefore(editorDiv, editFormName.nextSibling);
-        
-        quillEdit = new Quill('#edit-editor-container', { theme: 'snow' });
+    // Editor para el modal de EDITAR. Se inicializa una vez que el script de Quill ha cargado.
+    if (document.getElementById('edit-editor-container') && !quillEdit) {
+        quillEdit = new Quill('#edit-editor-container', { 
+            theme: 'snow',
+            placeholder: 'Detalles del producto, características, etc.'
+        });
     }
 }
 
@@ -72,6 +69,33 @@ adminStyle.innerHTML = `
         max-height: 90vh; /* Altura máxima */
         overflow-y: auto; /* Scroll si es necesario */
         padding: 2rem;
+    }
+    #edit-modal form {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        grid-template-areas: 
+            "col1 col2"
+            "actions actions";
+    }
+    .form-columns { display: contents; } /* Permite que los hijos directos se unan al grid del form */
+    .form-column { display: flex; flex-direction: column; gap: 1rem; }
+    .form-row { display: flex; gap: 1rem; }
+    .form-row > .form-group { flex: 1; }
+    .form-actions {
+        grid-area: actions;
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+    @media (max-width: 900px) {
+        #edit-modal form {
+            grid-template-columns: 1fr;
+            grid-template-areas: 
+                "col1"
+                "col2"
+                "actions";
+        }
     }
 
     /* --- ESTILOS DEL EDITOR MEJORADO Y GALERÍA --- */
@@ -511,59 +535,8 @@ function openProductModal(id = null) {
     
     renderImageManager('edit'); // Renderizar en el modal de edición
 
-    // --- Inyectar campo STOCK en Modal ---
-    const form = document.querySelector('#edit-modal form');
-    let stockContainer = document.getElementById('edit-stock-container');
-    if (!stockContainer) {
-        stockContainer = document.createElement('div');
-        stockContainer.id = 'edit-stock-container';
-        stockContainer.innerHTML = `<label for="edit-stock">Stock (Dejar vacío para infinito)</label><input type="number" id="edit-stock" class="input-field" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">`;
-        form.insertBefore(stockContainer, form.querySelector('#edit-video-container'));
-    }
-    
-    // --- Inyectar campo VIDEO en Modal ---
-    let videoContainer = document.getElementById('edit-video-container');
-    if (!videoContainer) {
-        videoContainer = document.createElement('div');
-        videoContainer.id = 'edit-video-container';
-        videoContainer.style.marginBottom = '1rem';
-        videoContainer.innerHTML = `
-            <label>Video o Imagen Principal</label>
-            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                <input type="text" id="edit-video" class="input-field" placeholder="URL de YouTube/Vimeo..." style="flex:1; padding:10px; border:1px solid #ddd; border-radius:6px;" oninput="tempVideo = this.value">
-                <div style="flex:0 0 auto;">
-                    <label for="edit-video-file" class="custom-file-upload" style="margin:0;">📂 Subir Archivo</label>
-                    <input type="file" id="edit-video-file" accept="video/*,image/*" style="display:none;" onchange="handleVideoUpload(this)">
-                </div>
-            </div>
-            <div id="video-preview-msg" style="font-size:0.8rem; color:#666; margin-top:5px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"></div>
-        `;
-        form.insertBefore(videoContainer, stockContainer);
-    }
-    
     updateVideoUI(); // Actualizar UI del video
 
-    // --- Inyectar Checkbox de Promoción ---
-    let promoContainer = document.getElementById('edit-promo-container');
-    
-    if (!promoContainer) {
-        promoContainer = document.createElement('div');
-        promoContainer.id = 'edit-promo-container';
-        promoContainer.style.cssText = "margin-top: 1rem; padding: 0.5rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px;";
-        // Insertar antes de los botones (asumiendo que los botones son el último elemento del form)
-        form.insertBefore(promoContainer, form.lastElementChild);
-    }
-    
-    promoContainer.innerHTML = `
-        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color: #166534; font-weight: 500;">
-            <input type="checkbox" id="edit-is-promo">
-            <span>🌟 Activar promoción "Más compras, más barato"</span>
-        </label>
-        <small style="display:block; margin-top:4px; color:#166534;">
-            Si activas esto, este producto bajará de precio según la cantidad (2 items = $2 menos, etc).
-        </small>
-    `;
-    
     editModal.classList.add('active');
 }
 
@@ -682,45 +655,6 @@ function renderSalesChart() {
 }
 
 // --- GESTOR DE IMÁGENES (Lógica Nueva) ---
-
-// Inyectar UI del gestor de imágenes al cargar
-document.addEventListener('DOMContentLoaded', () => {
-    // Inyectar en modal de EDITAR
-    const editFormBtn = document.querySelector('#edit-modal button[type="submit"]'); // Asumiendo que hay un botón guardar
-    if (editFormBtn) {
-        const managerHTML = createImageManagerHTML('edit');
-        const div = document.createElement('div');
-        div.innerHTML = managerHTML;
-        // Insertar antes de los botones de acción
-        const modalContent = document.querySelector('#edit-modal .modal-content');
-        if(modalContent) {
-             // Insertar después del editor de texto
-             setTimeout(() => {
-                 const editorWrapper = document.getElementById('edit-editor-wrapper');
-                 if(editorWrapper) editorWrapper.insertAdjacentElement('afterend', div);
-             }, 500);
-        }
-    }
-});
-
-function createImageManagerHTML(context) {
-    return `
-        <div class="image-manager">
-            <h4>📸 Galería de Imágenes</h4>
-            <div class="img-input-group">
-                <input type="text" id="img-url-${context}" placeholder="Pegar URL de imagen..." style="margin-bottom:0;">
-                <button type="button" class="btn" onclick="addImageFromUrl('${context}')" style="width:auto; padding: 5px 10px;">+</button>
-            </div>
-            <div style="margin-bottom:10px; text-align:center; font-size:0.8rem; color:#666;">O</div>
-            <label for="img-file-${context}" class="custom-file-upload">
-                Seleccionar imágenes
-            </label>
-            <input type="file" id="img-file-${context}" accept="image/*" multiple onchange="addImageFromFile('${context}')">
-            
-            <div id="img-preview-${context}" class="img-preview-list"></div>
-        </div>
-    `;
-}
 
 function renderImageManager(context) {
     const container = document.getElementById(`img-preview-${context}`);
