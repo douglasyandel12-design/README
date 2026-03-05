@@ -34,16 +34,6 @@ async function initAdmin() {
                 th.innerText = 'Stock';
                 tableHead.insertBefore(th, tableHead.lastElementChild); // Insertar antes de Acciones
             }
-            // 2. Input en el formulario de agregar (si existe el de precio)
-            const priceInput = document.getElementById('prod-price');
-            if (priceInput && !document.getElementById('prod-stock')) {
-                const stockInput = document.createElement('input');
-                stockInput.type = 'number';
-                stockInput.id = 'prod-stock';
-                stockInput.placeholder = 'Stock (Opcional)';
-                stockInput.style.cssText = "padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 120px; margin-left: 0.5rem;";
-                priceInput.parentNode.insertBefore(stockInput, priceInput.nextSibling);
-            }
             // ----------------------------------
 
             renderTable();
@@ -61,13 +51,8 @@ initAdmin();
 
 // Función para iniciar los editores de texto
 function initEditors() {
-    // 1. Editor para el formulario de AGREGAR
-    const addFormName = document.getElementById('prod-name');
-    if (addFormName && !document.getElementById('editor-container')) {
-        const editorDiv = document.createElement('div');
-        editorDiv.innerHTML = `<label style="display:block; margin-top:10px;">Descripción del Producto</label><div id="editor-container" style="height: 150px; background: white;"></div>`;
-        addFormName.parentNode.insertBefore(editorDiv, addFormName.nextSibling);
-        
+    // 1. Editor para el formulario de AGREGAR (el contenedor ya fue creado por DOMContentLoaded)
+    if (document.getElementById('editor-container') && !quillAdd) {
         quillAdd = new Quill('#editor-container', {
             theme: 'snow', placeholder: 'Escribe la descripción aquí (como en Word)...'
         });
@@ -102,6 +87,32 @@ adminStyle.innerHTML = `
     .status-btn.active[data-status="Enviado"] { background-color: #f59e0b; } /* Naranja */
     .status-btn.active[data-status="Entregado"] { background-color: #10b981; } /* Verde */
 
+    /* --- REARQUITECTURA VISUAL DEL PANEL DE ADMIN --- */
+    #product-form {
+        background: #fff;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
+        display: grid;
+        grid-template-columns: 1fr 350px; /* Columna principal y una lateral para imágenes */
+        gap: 2rem;
+    }
+    @media (max-width: 900px) {
+        #product-form { grid-template-columns: 1fr; } /* Apilar en pantallas pequeñas */
+    }
+    .form-main-column { display: flex; flex-direction: column; gap: 1rem; }
+    .form-row { display: flex; gap: 1rem; }
+    .form-row > div { flex: 1; }
+
+    /* Hacer el modal de edición más grande y con scroll */
+    #edit-modal .modal-content {
+        max-width: 800px; /* Más ancho */
+        max-height: 90vh; /* Altura máxima */
+        overflow-y: auto; /* Scroll si es necesario */
+        padding: 2rem;
+    }
+
     /* --- ESTILOS DEL EDITOR MEJORADO Y GALERÍA --- */
     .admin-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
     @media (max-width: 768px) { .admin-form-grid { grid-template-columns: 1fr; } }
@@ -118,6 +129,21 @@ adminStyle.innerHTML = `
         display: flex; align-items: center; justify-content: center;
     }
     
+    /* Estilo para el input de archivo personalizado */
+    .custom-file-upload {
+        border: 1px solid #ccc;
+        display: inline-block;
+        padding: 8px 12px;
+        cursor: pointer;
+        background-color: #f9f9f9;
+        border-radius: 6px;
+        text-align: center;
+        width: 100%;
+        font-weight: 500;
+        color: #333;
+    }
+    .custom-file-upload:hover { background-color: #f0f0f0; }
+    
     /* Mejoras visuales generales para inputs */
     input[type="text"], input[type="number"], select {
         width: 100%; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 10px; box-sizing: border-box;
@@ -125,7 +151,7 @@ adminStyle.innerHTML = `
     label { font-weight: 600; font-size: 0.9rem; color: #374151; margin-bottom: 4px; display: block; }
     
     /* Ocultar inputs viejos de imagen para usar el nuevo gestor */
-    #prod-img-url, #prod-img-file, #edit-img-url { display: none; }
+    #prod-img-url, #prod-img-file, #edit-img-url, input[type="file"] { display: none; }
 `;
 document.head.appendChild(adminStyle);
 
@@ -651,6 +677,53 @@ function renderSalesChart() {
 
 // --- GESTOR DE IMÁGENES (Lógica Nueva) ---
 
+// Este listener reestructura el formulario para "Agregar Producto" en cuanto el HTML está listo.
+document.addEventListener('DOMContentLoaded', () => {
+    const productForm = document.getElementById('product-form');
+    if (productForm) {
+        const submitButton = productForm.querySelector('button[type="submit"]');
+        
+        // Reconstruimos el interior del formulario con una estructura de grid más limpia
+        productForm.innerHTML = `
+            <div class="form-main-column">
+                <div>
+                    <label for="prod-name">Nombre del Producto</label>
+                    <input type="text" id="prod-name" placeholder="Ej: Camiseta Negra" required>
+                </div>
+                
+                <div class="form-row">
+                    <div>
+                        <label for="prod-price">Precio</label>
+                        <input type="number" id="prod-price" placeholder="Ej: 25.99" step="0.01" required>
+                    </div>
+                    <div>
+                        <label for="prod-discount">Descuento (%)</label>
+                        <input type="number" id="prod-discount" placeholder="Ej: 10" value="0">
+                    </div>
+                    <div>
+                        <label for="prod-stock">Stock</label>
+                        <input type="number" id="prod-stock" placeholder="Vacío = ∞">
+                    </div>
+                </div>
+
+                <div>
+                    <label>Descripción del Producto</label>
+                    <div id="editor-container" style="height: 200px; background: white; border: 1px solid #ccc; border-radius: 6px;"></div>
+                </div>
+            </div>
+            <div class="form-side-column">
+                ${createImageManagerHTML('add')}
+            </div>
+        `;
+        
+        if (submitButton) {
+            productForm.appendChild(submitButton);
+            submitButton.style.gridColumn = '1 / -1'; // El botón ocupa todo el ancho del grid
+            submitButton.style.marginTop = '1rem';
+        }
+    }
+});
+
 // Inyectar UI del gestor de imágenes al cargar
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Inyectar en formulario de AGREGAR
@@ -689,7 +762,10 @@ function createImageManagerHTML(context) {
                 <button type="button" class="btn" onclick="addImageFromUrl('${context}')" style="width:auto; padding: 5px 10px;">+</button>
             </div>
             <div style="margin-bottom:10px; text-align:center; font-size:0.8rem; color:#666;">O</div>
-            <input type="file" id="img-file-${context}" accept="image/*" onchange="addImageFromFile('${context}')" style="margin-bottom:10px;">
+            <label for="img-file-${context}" class="custom-file-upload">
+                Seleccionar imagen
+            </label>
+            <input type="file" id="img-file-${context}" accept="image/*" onchange="addImageFromFile('${context}')">
             
             <div id="img-preview-${context}" class="img-preview-list"></div>
         </div>
