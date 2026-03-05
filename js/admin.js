@@ -352,6 +352,11 @@ async function updateOrderStatus(id, newStatus) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: newStatus })
         });
+        // Actualizar el estado en allOrders localmente
+        const order = allOrders.find(o => o.id === id);
+        if (order) {
+            order.status = newStatus;
+        }
         // Recargar para ver el cambio visual en los botones
         renderOrders(document.getElementById('order-search')?.value || '');
     } catch (error) {
@@ -363,11 +368,14 @@ async function deleteOrder(id) {
     if(confirm('¿Estás seguro de eliminar este pedido de la base de datos?')) {
         try {
             await fetch(`/api/orders/${id}`, { method: 'DELETE' });
+            // Remover el pedido de allOrders localmente
+            allOrders = allOrders.filter(o => o.id !== id);
             renderOrders(); // Recargar la lista
         } catch (error) {
             alert('Error al eliminar el pedido.');
         }
     }
+}
 }
 
 function exportOrdersToCSV() {
