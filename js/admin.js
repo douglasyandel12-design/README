@@ -2,7 +2,6 @@
 let products = [];
 let allOrders = []; // Variable para guardar los pedidos cargados
 let globalPromoProductId = ''; // Variable para saber cuál es el producto en promo
-let quillAdd; // Editor para agregar
 let quillEdit; // Editor para editar
 let tempImages = []; // Array temporal para gestionar imágenes antes de guardar
 
@@ -39,6 +38,7 @@ async function initAdmin() {
             renderTable();
             checkStockAlerts(); // Verificar alertas de stock
             renderSettingsPanel(); // Cargar panel de configuración
+            renderHeaderActions(); // Botón de agregar producto
             await renderOrders(); // Cargar pedidos y esperar
             renderDashboardStats(); // Renderizar tarjetas de estadísticas
             renderSalesChart(); // Renderizar gráfico de ventas
@@ -51,13 +51,6 @@ initAdmin();
 
 // Función para iniciar los editores de texto
 function initEditors() {
-    // 1. Editor para el formulario de AGREGAR (el contenedor ya fue creado por DOMContentLoaded)
-    if (document.getElementById('editor-container') && !quillAdd) {
-        quillAdd = new Quill('#editor-container', {
-            theme: 'snow', placeholder: 'Escribe la descripción aquí (como en Word)...'
-        });
-    }
-
     // 2. Editor para el modal de EDITAR (se inicializa oculto, se usa al abrir modal)
     const editFormName = document.getElementById('edit-name');
     if (editFormName && !document.getElementById('edit-editor-wrapper')) {
@@ -86,24 +79,6 @@ adminStyle.innerHTML = `
     .status-btn.active[data-status="Aceptado"] { background-color: #8b5cf6; } /* Violeta */
     .status-btn.active[data-status="Enviado"] { background-color: #f59e0b; } /* Naranja */
     .status-btn.active[data-status="Entregado"] { background-color: #10b981; } /* Verde */
-
-    /* --- REARQUITECTURA VISUAL DEL PANEL DE ADMIN --- */
-    #product-form {
-        background: #fff;
-        padding: 2rem;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        border: 1px solid #e5e7eb;
-        display: grid;
-        grid-template-columns: 1fr 350px; /* Columna principal y una lateral para imágenes */
-        gap: 2rem;
-    }
-    @media (max-width: 900px) {
-        #product-form { grid-template-columns: 1fr; } /* Apilar en pantallas pequeñas */
-    }
-    .form-main-column { display: flex; flex-direction: column; gap: 1rem; }
-    .form-row { display: flex; gap: 1rem; }
-    .form-row > div { flex: 1; }
 
     /* Hacer el modal de edición más grande y con scroll */
     #edit-modal .modal-content {
@@ -198,6 +173,23 @@ async function renderSettingsPanel() {
     }
 }
 
+function renderHeaderActions() {
+    const container = document.querySelector('main.container') || document.body;
+    const title = container.querySelector('h1');
+    
+    if (!document.getElementById('add-product-btn')) {
+        const btn = document.createElement('button');
+        btn.id = 'add-product-btn';
+        btn.className = 'btn';
+        btn.innerHTML = '＋ Agregar Nuevo Producto';
+        btn.style.cssText = "margin-bottom: 1rem; background-color: #000; color: #fff; padding: 12px 24px; font-size: 1rem; display: block; width: 100%; max-width: 300px;";
+        btn.onclick = () => openProductModal(); // Abrir modal vacío
+        
+        if (title) title.insertAdjacentElement('afterend', btn);
+        else container.insertBefore(btn, container.firstChild);
+    }
+}
+
 function renderTable() {
     const tbody = document.getElementById('product-table-body');
     tbody.innerHTML = '';
@@ -223,56 +215,13 @@ function renderTable() {
                 </td>
                 <td>${(p.stock !== undefined && p.stock !== null && p.stock !== "") ? p.stock : '∞'}</td>
                 <td>
-                    <button class="btn" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem; margin-right: 0.5rem; background-color: #2563eb;" onclick="openEditModal('${p.id}')">Editar</button>
+                    <button class="btn" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem; margin-right: 0.5rem; background-color: #2563eb;" onclick="openProductModal('${p.id}')">Editar</button>
                     <button class="btn btn-danger" onclick="deleteProduct('${p.id}')">Borrar</button>
                 </td>
             </tr>
         `;
         tbody.innerHTML += row;
     });
-}
-
-async function addProduct(e) {
-    e.preventDefault();
-    const name = document.getElementById('prod-name').value;
-    const price = parseFloat(document.getElementById('prod-price').value);
-    const discount = parseFloat(document.getElementById('prod-discount').value) || 0;
-    const stockVal = document.getElementById('prod-stock')?.value;
-    const stock = (stockVal === "" || stockVal === undefined) ? null : parseInt(stockVal);
-    const description = quillAdd ? quillAdd.root.innerHTML : ''; // Obtener HTML del editor
-
-    // Usamos el array temporal de imágenes
-    saveProductToStorage(name, price, tempImages, discount, stock, description);
-}
-
-async function saveProductToStorage(name, price, images, discount, stock, description) {
-    const newProduct = {
-        id: Date.now(), // ID único basado en tiempo (Revertido para estabilidad)
-        name: name,
-        price: price,
-        description: description, // Guardamos la descripción
-        images: images, // Guardamos el array de imágenes
-        image: images.length > 0 ? images[0] : '', // Mantener compatibilidad hacia atrás
-        discount: discount,
-        stock: stock
-    };
-    
-    products.push(newProduct);
-    
-    // Guardar en la nube
-    await saveToCloud();
-    
-    // Reset form
-    document.getElementById('prod-name').value = '';
-    document.getElementById('prod-price').value = '';
-    document.getElementById('prod-discount').value = '';
-    if(document.getElementById('prod-stock')) document.getElementById('prod-stock').value = '';
-    if(quillAdd) quillAdd.setContents([]); // Limpiar editor
-    resetImageManager(); // Limpiar gestor de imágenes
-    
-    renderTable();
-    checkStockAlerts();
-    alert('Producto agregado correctamente');
 }
 
 // Función auxiliar para enviar todo a la nube
@@ -532,22 +481,49 @@ function checkStockAlerts() {
 // Funciones del Modal de Edición
 const editModal = document.getElementById('edit-modal');
 
-function openEditModal(id) {
-    // Usamos == para encontrarlo ya sea texto o número
-    const product = products.find(p => p.id == id);
-    if (!product) return;
-
-    document.getElementById('edit-id').value = product.id;
-    document.getElementById('edit-name').value = product.name;
-    document.getElementById('edit-price').value = product.price;
-    document.getElementById('edit-discount').value = product.discount || 0;
+function openProductModal(id = null) {
+    const modalTitle = editModal.querySelector('h2') || editModal.querySelector('h3');
     
-    // Cargar imágenes en el gestor temporal
-    tempImages = product.images || (product.image ? [product.image] : []);
-    renderImageManager('edit'); // Renderizar en el modal de edición
+    if (id) {
+        // MODO EDITAR
+        const product = products.find(p => p.id == id);
+        if (!product) return;
+        
+        if(modalTitle) modalTitle.innerText = 'Editar Producto';
+        document.getElementById('edit-id').value = product.id;
+        document.getElementById('edit-name').value = product.name;
+        document.getElementById('edit-price').value = product.price;
+        document.getElementById('edit-discount').value = product.discount || 0;
+        
+        tempImages = product.images || (product.image ? [product.image] : []);
+        if (quillEdit) quillEdit.root.innerHTML = product.description || '';
+        
+        // Video
+        if(document.getElementById('edit-video')) document.getElementById('edit-video').value = product.video || '';
+        
+        // Stock
+        if(document.getElementById('edit-stock')) document.getElementById('edit-stock').value = (product.stock !== undefined && product.stock !== null) ? product.stock : '';
+        
+        // Promo
+        if(document.getElementById('edit-is-promo')) document.getElementById('edit-is-promo').checked = (product.id == globalPromoProductId);
 
-    // Cargar descripción en el editor
-    if (quillEdit) quillEdit.root.innerHTML = product.description || '';
+    } else {
+        // MODO AGREGAR
+        if(modalTitle) modalTitle.innerText = 'Nuevo Producto';
+        document.getElementById('edit-id').value = ''; // ID vacío indica nuevo
+        document.getElementById('edit-name').value = '';
+        document.getElementById('edit-price').value = '';
+        document.getElementById('edit-discount').value = '';
+        
+        tempImages = [];
+        if (quillEdit) quillEdit.setContents([]);
+        
+        if(document.getElementById('edit-video')) document.getElementById('edit-video').value = '';
+        if(document.getElementById('edit-stock')) document.getElementById('edit-stock').value = '';
+        if(document.getElementById('edit-is-promo')) document.getElementById('edit-is-promo').checked = false;
+    }
+    
+    renderImageManager('edit'); // Renderizar en el modal de edición
 
     // --- Inyectar campo STOCK en Modal ---
     const form = document.querySelector('#edit-modal form');
@@ -558,7 +534,16 @@ function openEditModal(id) {
         stockContainer.innerHTML = `<label for="edit-stock">Stock (Dejar vacío para infinito)</label><input type="number" id="edit-stock" class="input-field" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">`;
         form.insertBefore(stockContainer, form.querySelector('#edit-promo-container') || form.lastElementChild);
     }
-    document.getElementById('edit-stock').value = (product.stock !== undefined && product.stock !== null) ? product.stock : '';
+    
+    // --- Inyectar campo VIDEO en Modal ---
+    let videoContainer = document.getElementById('edit-video-container');
+    if (!videoContainer) {
+        videoContainer = document.createElement('div');
+        videoContainer.id = 'edit-video-container';
+        videoContainer.style.marginBottom = '1rem';
+        videoContainer.innerHTML = `<label for="edit-video">URL del Video (YouTube/Vimeo)</label><input type="text" id="edit-video" class="input-field" placeholder="https://..." style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">`;
+        form.insertBefore(videoContainer, stockContainer);
+    }
 
     // --- Inyectar Checkbox de Promoción ---
     let promoContainer = document.getElementById('edit-promo-container');
@@ -570,12 +555,10 @@ function openEditModal(id) {
         // Insertar antes de los botones (asumiendo que los botones son el último elemento del form)
         form.insertBefore(promoContainer, form.lastElementChild);
     }
-
-    const isPromo = product.id == globalPromoProductId;
     
     promoContainer.innerHTML = `
         <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color: #166534; font-weight: 500;">
-            <input type="checkbox" id="edit-is-promo" ${isPromo ? 'checked' : ''}>
+            <input type="checkbox" id="edit-is-promo">
             <span>🌟 Activar promoción "Más compras, más barato"</span>
         </label>
         <small style="display:block; margin-top:4px; color:#166534;">
@@ -590,13 +573,14 @@ function closeEditModal() {
     editModal.classList.remove('active');
 }
 
-async function saveEdit(e) {
+async function saveProductModal(e) {
     e.preventDefault();
     const idInput = document.getElementById('edit-id').value;
-    // Buscar producto (puede ser ID numérico viejo o texto nuevo)
-    const productIndex = products.findIndex(p => p.id == idInput);
     
-    if (productIndex > -1) {
+    if (idInput) {
+        // --- ACTUALIZAR EXISTENTE ---
+        const productIndex = products.findIndex(p => p.id == idInput);
+        if (productIndex > -1) {
         const p = products[productIndex];
         
         p.name = document.getElementById('edit-name').value;
@@ -607,6 +591,7 @@ async function saveEdit(e) {
         p.description = quillEdit ? quillEdit.root.innerHTML : ''; // Guardar descripción editada
         p.images = [...tempImages]; // Guardar array de imágenes
         p.image = tempImages.length > 0 ? tempImages[0] : ''; // Compatibilidad
+        p.video = document.getElementById('edit-video').value; // Guardar video
         
         // --- Lógica de Promoción ---
         const isPromoChecked = document.getElementById('edit-is-promo').checked;
@@ -620,12 +605,35 @@ async function saveEdit(e) {
             globalPromoProductId = '';
             await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: 'promo_product_id', value: '' }) });
         }
-        
-        await saveToCloud();
-        renderTable();
-        checkStockAlerts();
-        closeEditModal();
+        }
+    } else {
+        // --- CREAR NUEVO ---
+        const name = document.getElementById('edit-name').value;
+        const price = parseFloat(document.getElementById('edit-price').value);
+        const discount = parseFloat(document.getElementById('edit-discount').value) || 0;
+        const stockVal = document.getElementById('edit-stock').value;
+        const stock = (stockVal === "" || stockVal === undefined) ? null : parseInt(stockVal);
+        const description = quillEdit ? quillEdit.root.innerHTML : '';
+        const video = document.getElementById('edit-video').value;
+
+        const newProduct = {
+            id: Date.now(),
+            name: name,
+            price: price,
+            description: description,
+            images: [...tempImages],
+            image: tempImages.length > 0 ? tempImages[0] : '',
+            discount: discount,
+            stock: stock,
+            video: video
+        };
+        products.push(newProduct);
     }
+    
+    await saveToCloud();
+    renderTable();
+    checkStockAlerts();
+    closeEditModal();
 }
 
 function renderSalesChart() {
@@ -677,67 +685,15 @@ function renderSalesChart() {
 
 // --- GESTOR DE IMÁGENES (Lógica Nueva) ---
 
-// Este listener reestructura el formulario para "Agregar Producto" en cuanto el HTML está listo.
-document.addEventListener('DOMContentLoaded', () => {
-    const productForm = document.getElementById('product-form');
-    if (productForm) {
-        const submitButton = productForm.querySelector('button[type="submit"]');
-        
-        // Reconstruimos el interior del formulario con una estructura de grid más limpia
-        productForm.innerHTML = `
-            <div class="form-main-column">
-                <div>
-                    <label for="prod-name">Nombre del Producto</label>
-                    <input type="text" id="prod-name" placeholder="Ej: Camiseta Negra" required>
-                </div>
-                
-                <div class="form-row">
-                    <div>
-                        <label for="prod-price">Precio</label>
-                        <input type="number" id="prod-price" placeholder="Ej: 25.99" step="0.01" required>
-                    </div>
-                    <div>
-                        <label for="prod-discount">Descuento (%)</label>
-                        <input type="number" id="prod-discount" placeholder="Ej: 10" value="0">
-                    </div>
-                    <div>
-                        <label for="prod-stock">Stock</label>
-                        <input type="number" id="prod-stock" placeholder="Vacío = ∞">
-                    </div>
-                </div>
-
-                <div>
-                    <label>Descripción del Producto</label>
-                    <div id="editor-container" style="height: 200px; background: white; border: 1px solid #ccc; border-radius: 6px;"></div>
-                </div>
-            </div>
-            <div class="form-side-column">
-                ${createImageManagerHTML('add')}
-            </div>
-        `;
-        
-        if (submitButton) {
-            productForm.appendChild(submitButton);
-            submitButton.style.gridColumn = '1 / -1'; // El botón ocupa todo el ancho del grid
-            submitButton.style.marginTop = '1rem';
-        }
-    }
-});
-
 // Inyectar UI del gestor de imágenes al cargar
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Inyectar en formulario de AGREGAR
-    const addFormBtn = document.querySelector('#product-form button[type="submit"]');
-    if (addFormBtn) {
-        const managerHTML = createImageManagerHTML('add');
-        const div = document.createElement('div');
-        div.innerHTML = managerHTML;
-        addFormBtn.parentNode.insertBefore(div, addFormBtn);
-    }
-
-    // 2. Inyectar en modal de EDITAR
+    // Inyectar en modal de EDITAR
     const editFormBtn = document.querySelector('#edit-modal button[type="submit"]'); // Asumiendo que hay un botón guardar
     if (editFormBtn) {
+        // Cambiar el evento onclick del botón guardar para usar la nueva función unificada
+        const form = document.querySelector('#edit-modal form');
+        if(form) form.onsubmit = saveProductModal; // Reemplazar el submit del form
+        
         const managerHTML = createImageManagerHTML('edit');
         const div = document.createElement('div');
         div.innerHTML = managerHTML;
