@@ -130,6 +130,10 @@ async function init() {
         .pm-thumb:hover, .pm-thumb.active { opacity: 1; border-color: #000; transform: scale(1.05); }
         
         .pm-close { position: absolute; top: 15px; right: 20px; font-size: 2rem; cursor: pointer; z-index: 10; line-height: 1; }
+        .pm-media-toggle { display: flex; justify-content: center; gap: 1rem; margin-top: 1rem; }
+        .pm-media-toggle button { background: #eee; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: 500; }
+        .pm-media-toggle button.active { background: #000; color: #fff; }
+        .pm-video-container { width: 100%; aspect-ratio: 16/9; background: #000; }
         .pm-title { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; line-height: 1.1; }
         .pm-price { font-size: 1.5rem; font-weight: 500; margin-bottom: 1.5rem; color: #333; }
         .pm-description { color: #555; line-height: 1.6; margin-bottom: 2rem; font-size: 0.95rem; }
@@ -183,7 +187,7 @@ async function loadProducts() {
     }
 }
 
-let currentFilter = 'all';
+let currentCategory = 'all';
 let searchTerm = '';
 
 function renderToolbar() {
@@ -202,18 +206,22 @@ function renderToolbar() {
 
     // 2. Insertar Filtros antes del grid
     if (document.querySelector('.filter-container')) return;
+
+    // Extraer categorías únicas de los productos
+    const categories = ['all', ...new Set(products.map(p => p.category).filter(Boolean))];
+
     const filters = document.createElement('div');
     filters.className = 'filter-container';
     filters.innerHTML = `
-        <div class="filter-chip active" onclick="setFilter('all', this)">Todos</div>
-        <div class="filter-chip" onclick="setFilter('offers', this)">Ofertas</div>
+        ${categories.map(cat => `<div class="filter-chip ${cat === 'all' ? 'active' : ''}" onclick="setCategory('${cat}', this)">${cat === 'all' ? 'Todos' : cat}</div>`).join('')}
+        <div class="filter-chip" onclick="setCategory('offers', this)">🔥 Ofertas</div>
     `;
     grid.parentNode.insertBefore(filters, grid);
 }
 
 window.handleSearch = (val) => { searchTerm = val.toLowerCase(); renderProducts(); }
-window.setFilter = (type, el) => {
-    currentFilter = type;
+window.setCategory = (category, el) => {
+    currentCategory = category;
     document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
     el.classList.add('active');
     renderProducts();
@@ -252,7 +260,9 @@ function createProductModal() {
         <div class="product-modal-content">
             <span class="pm-close" onclick="closeProductModal()">&times;</span>
             <div class="pm-image-container">
-                <div id="pm-gallery-wrapper" class="pm-gallery-wrapper"></div>
+                <div id="pm-media-display">
+                    <!-- El contenido (galería o video) se inyectará aquí -->
+                </div>
             </div>
             <div class="pm-details">
                 <h2 class="pm-title" id="pm-title"></h2>
@@ -298,24 +308,8 @@ window.viewProductDetails = function(id) {
     // Soporte para array de imágenes o string antiguo
     const images = (product.images && product.images.length > 0) ? product.images : (product.image ? [product.image] : []);
     
-    const galleryContainer = document.getElementById('pm-gallery-wrapper');
-    
-    if (images.length > 0) {
-        // Imagen Principal
-        let html = `<img id="pm-main-img" src="${images[0]}" style="width:100%; height:auto; max-height:400px; object-fit:contain;">`;
-        
-        // Miniaturas (solo si hay más de 1)
-        if (images.length > 1) {
-            html += `<div class="pm-thumbnails">`;
-            images.forEach((img, idx) => {
-                html += `<img src="${img}" class="pm-thumb ${idx===0?'active':''}" onclick="changeModalImage('${img}', this)">`;
-            });
-            html += `</div>`;
-        }
-        galleryContainer.innerHTML = html;
-    } else {
-        galleryContainer.innerHTML = `<span>${product.name}</span>`;
-    }
+    // Renderizar la vista de galería por defecto
+    renderProductGallery(images, product.video);
     
     // Reset cantidad
     document.getElementById('pm-qty').value = 1;
@@ -331,7 +325,68 @@ window.viewProductDetails = function(id) {
 }
 
 window.closeProductModal = function() {
+    // Detener video al cerrar el modal para que no siga sonando
+    const videoPlayer = document.getElementById('pm-video-player');
+    if (videoPlayer) {
+        videoPlayer.innerHTML = '';
+    }
     document.getElementById('product-modal').classList.remove('active');
+}
+
+function renderProductGallery(images, videoUrl) {
+    const mediaContainer = document.getElementById('pm-media-display');
+    let galleryHtml = '';
+    let togglesHtml = '';
+
+    if (images.length > 0) {
+        galleryHtml = `<div id="pm-gallery-wrapper" class="pm-gallery-wrapper">`;
+        galleryHtml += `<img id="pm-main-img" src="${images[0]}" style="width:100%; height:auto; max-height:400px; object-fit:contain;">`;
+        if (images.length > 1) {
+            galleryHtml += `<div class="pm-thumbnails">${images.map((img, idx) => `<img src="${img}" class="pm-thumb ${idx===0?'active':''}" onclick="changeModalImage('${img}', this)">`).join('')}</div>`;
+        }
+        galleryHtml += `</div>`;
+        togglesHtml += `<button id="photo-toggle" class="active" onclick="toggleMediaView('photo')">Fotos</button>`;
+    }
+
+    if (videoUrl) {
+        togglesHtml += `<button id="video-toggle" onclick="toggleMediaView('video', '${videoUrl}')">Video</button>`;
+    }
+
+    mediaContainer.innerHTML = `${galleryHtml}<div class="pm-media-toggle">${togglesHtml}</div><div id="pm-video-player" style="display:none;"></div>`;
+}
+
+window.toggleMediaView = function(view, videoUrl = '') {
+    const gallery = document.getElementById('pm-gallery-wrapper');
+    const videoPlayer = document.getElementById('pm-video-player');
+    const photoToggle = document.getElementById('photo-toggle');
+    const videoToggle = document.getElementById('video-toggle');
+
+    if (view === 'video') {
+        if (gallery) gallery.style.display = 'none';
+        videoPlayer.style.display = 'block';
+        if (photoToggle) photoToggle.classList.remove('active');
+        if (videoToggle) videoToggle.classList.add('active');
+
+        // Si el video no está cargado, lo cargamos
+        if (!videoPlayer.innerHTML) {
+            if (videoUrl.startsWith('data:video')) {
+                videoPlayer.innerHTML = `<video controls autoplay class="pm-video-container" src="${videoUrl}"></video>`;
+            } else { // Asumimos URL de YouTube/Vimeo
+                let embedUrl = videoUrl;
+                if (videoUrl.includes('youtube.com/watch?v=')) {
+                    const videoId = new URL(videoUrl).searchParams.get('v');
+                    embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+                }
+                videoPlayer.innerHTML = `<iframe class="pm-video-container" src="${embedUrl}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+            }
+        }
+    } else { // view === 'photo'
+        if (gallery) gallery.style.display = 'flex';
+        videoPlayer.style.display = 'none';
+        videoPlayer.innerHTML = ''; // Detener video al cambiar
+        if (photoToggle) photoToggle.classList.add('active');
+        if (videoToggle) videoToggle.classList.remove('active');
+    }
 }
 
 window.changeModalImage = function(src, thumbEl) {
@@ -533,9 +588,17 @@ function renderProducts() {
         if (p.stock !== undefined && p.stock !== null && p.stock !== "" && parseInt(p.stock) <= 0) return false;
 
         const matchesSearch = p.name.toLowerCase().includes(searchTerm);
-        let matchesFilter = true;
-        if (currentFilter === 'offers') matchesFilter = (p.discount && p.discount > 0) || (globalSettings.promo_product_id == p.id);
-        return matchesSearch && matchesFilter;
+        
+        let matchesCategory = true;
+        if (currentCategory === 'all') {
+            matchesCategory = true;
+        } else if (currentCategory === 'offers') {
+            matchesCategory = (p.discount && p.discount > 0) || (globalSettings.promo_product_id == p.id);
+        } else {
+            matchesCategory = p.category && p.category.toLowerCase() === currentCategory.toLowerCase();
+        }
+        
+        return matchesSearch && matchesCategory;
     });
 
     if(filteredProducts.length === 0) grid.innerHTML = '<p style="text-align:center; width:100%; color:#666;">No se encontraron productos.</p>';
