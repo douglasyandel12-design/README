@@ -112,7 +112,7 @@ adminStyle.innerHTML = `
     label { font-weight: 600; font-size: 0.9rem; color: #374151; margin-bottom: 4px; display: block; }
     
     /* Ocultar inputs viejos de imagen para usar el nuevo gestor */
-    #prod-img-url, #prod-img-file, #edit-img-url, input[type="file"] { display: none; }
+    #edit-img-url, input[type="file"] { display: none; }
 `;
 document.head.appendChild(adminStyle);
 
@@ -736,9 +736,9 @@ function createImageManagerHTML(context) {
             </div>
             <div style="margin-bottom:10px; text-align:center; font-size:0.8rem; color:#666;">O</div>
             <label for="img-file-${context}" class="custom-file-upload">
-                Seleccionar imagen
+                Seleccionar imágenes
             </label>
-            <input type="file" id="img-file-${context}" accept="image/*" onchange="addImageFromFile('${context}')">
+            <input type="file" id="img-file-${context}" accept="image/*" multiple onchange="addImageFromFile('${context}')">
             
             <div id="img-preview-${context}" class="img-preview-list"></div>
         </div>
@@ -768,14 +768,18 @@ window.addImageFromUrl = function(context) {
 
 window.addImageFromFile = function(context) {
     const input = document.getElementById(`img-file-${context}`);
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            tempImages.push(e.target.result);
-            renderImageManager(context);
-            input.value = ''; // Reset input
-        };
-        reader.readAsDataURL(input.files[0]);
+    if (input.files && input.files.length > 0) {
+        // Itera sobre todos los archivos seleccionados
+        Array.from(input.files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                tempImages.push(e.target.result);
+                // Re-renderiza la vista previa a medida que cada imagen se carga
+                renderImageManager(context);
+            };
+            reader.readAsDataURL(file);
+        });
+        input.value = ''; // Resetea el input para poder seleccionar los mismos archivos de nuevo
     }
 };
 
@@ -783,11 +787,6 @@ window.removeImage = function(index, context) {
     tempImages.splice(index, 1);
     renderImageManager(context);
 };
-
-function resetImageManager() {
-    tempImages = [];
-    renderImageManager('add');
-}
 
 // --- FUNCIONES AUXILIARES VIDEO ---
 function updateVideoUI() {
