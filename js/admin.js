@@ -842,7 +842,7 @@ async function saveProductModal(e) {
 function compressImage(file, options = {}) {
     return new Promise((resolve, reject) => {
         // Establecemos un umbral seguro (ej. 2.5MB) por debajo del límite de Vercel (4.5MB)
-        const { initialQuality = 0.85, maxWidth = 1280, maxHeight = 1280, targetSizeMB = 2.5 } = options;
+        const { initialQuality = 0.85, maxWidth = 1280, maxHeight = 1280, targetSizeMB = 0.4 } = options;
         const targetSizeBytes = targetSizeMB * 1024 * 1024;
 
         const reader = new FileReader();
