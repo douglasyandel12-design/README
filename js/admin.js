@@ -210,6 +210,29 @@ adminStyle.innerHTML = `
     
     /* Ocultar inputs viejos de imagen para usar el nuevo gestor */
     #edit-img-url, input[type="file"] { display: none; }
+
+    /* --- Estilos para Toast/Notificación --- */
+    .admin-toast {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background-color: #111827; /* gray-900 */
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        z-index: 9999;
+        transform: translateY(100px);
+        opacity: 0;
+        transition: transform 0.5s cubic-bezier(0.215, 0.610, 0.355, 1), opacity 0.5s ease;
+        font-weight: 500;
+    }
+    .admin-toast.show { transform: translateY(0); opacity: 1; }
+    .admin-toast .toast-icon { font-size: 1.2rem; animation: popIn 0.5s cubic-bezier(0.215, 0.610, 0.355, 1) 0.2s forwards; transform: scale(0); }
+    @keyframes popIn { 0% { transform: scale(0); } 80% { transform: scale(1.2); } 100% { transform: scale(1); } }
 `;
 document.head.appendChild(adminStyle);
 
@@ -274,21 +297,46 @@ async function renderSettingsPanel() {
         panel.style.cssText = "background: #f9fafb; padding: 2rem; border-radius: 8px; border: 1px solid #e5e7eb;";
         
         // Obtener estado actual
-        let isPromoActive = false;
+        let settings = {};
         try {
             const res = await fetch('/api/settings');
-            const data = await res.json();
-            isPromoActive = data.promo_login_5 === true;
-            globalPromoProductId = data.promo_product_id || '';
+            settings = await res.json();
+            globalPromoProductId = settings.promo_product_id || '';
         } catch(e) { console.error(e); }
 
+        const isLoginPromoActive = settings.promo_login_5 === true;
+        const isProgressivePromoActive = settings.promo_progressive_active === true;
+
+        // Options for the product selector
+        const productOptions = products.map(p => 
+            `<option value="${p.id}" ${p.id == globalPromoProductId ? 'selected' : ''}>${p.name}</option>`
+        ).join('');
+
         panel.innerHTML = `
-            <h3>⚙️ Configuración Global</h3>
-            <div>
-                <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-                    <input type="checkbox" id="promo-toggle" ${isPromoActive ? 'checked' : ''} style="width: 20px; height: 20px;">
-                    <span>Activar <strong>5% de Descuento</strong> automático para usuarios logueados.</span>
+            <h3>⚙️ Configuración Global de Promociones</h3>
+            
+            <div style="padding: 1rem; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 1.5rem;">
+                <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight: bold;">
+                    <input type="checkbox" id="promo-toggle" ${isLoginPromoActive ? 'checked' : ''} style="width: 20px; height: 20px;">
+                    <span>Activar <strong>Descuento para Socios</strong></span>
                 </label>
+                <p style="font-size: 0.9rem; color: #666; margin: 0.5rem 0 0 30px;">Aplica un 5% de descuento automático a todos los productos para usuarios que han iniciado sesión.</p>
+            </div>
+
+            <div style="padding: 1rem; border: 1px solid #ddd; border-radius: 6px;">
+                 <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight: bold;">
+                    <input type="checkbox" id="progressive-promo-toggle" ${isProgressivePromoActive ? 'checked' : ''} style="width: 20px; height: 20px;">
+                    <span>🌟 Activar promoción "Más compras, más barato"</span>
+                </label>
+                <p style="font-size: 0.9rem; color: #666; margin: 0.5rem 0 1rem 30px;">Si activas esto, el producto seleccionado bajará de precio según la cantidad comprada (2 items = $2 menos, etc.).</p>
+                
+                <div id="progressive-promo-product-selector" style="margin-left: 30px; ${isProgressivePromoActive ? '' : 'display: none;'}">
+                    <label for="promo-product-select" style="font-weight: normal;">Selecciona el producto destacado:</label>
+                    <select id="promo-product-select" style="width: 100%; max-width: 400px; margin-top: 5px;">
+                        <option value="">-- Ninguno --</option>
+                        ${productOptions}
+                    </select>
+                </div>
             </div>
         `;
 
@@ -299,7 +347,43 @@ async function renderSettingsPanel() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ key: 'promo_login_5', value: e.target.checked })
             });
-            alert('Configuración de descuento para socios actualizada.');
+            showAdminToast('Descuento para socios actualizado.');
+        });
+
+        const progressiveToggle = document.getElementById('progressive-promo-toggle');
+        const progressiveSelectorContainer = document.getElementById('progressive-promo-product-selector');
+        const progressiveSelector = document.getElementById('promo-product-select');
+
+        progressiveToggle.addEventListener('change', async (e) => {
+            const isActive = e.target.checked;
+            progressiveSelectorContainer.style.display = isActive ? 'block' : 'none';
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: 'promo_progressive_active', value: isActive })
+            });
+            // If disabling, also clear the selected product
+            if (!isActive) {
+                progressiveSelector.value = '';
+                await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: 'promo_product_id', value: '' })
+                });
+                globalPromoProductId = '';
+            }
+            showAdminToast('Promoción progresiva actualizada.');
+        });
+
+        progressiveSelector.addEventListener('change', async (e) => {
+            const productId = e.target.value;
+            globalPromoProductId = productId;
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: 'promo_product_id', value: productId })
+            });
+            showAdminToast('Producto destacado actualizado.');
         });
     }
 }
@@ -543,6 +627,33 @@ function exportOrdersToCSV() {
     document.body.removeChild(link);
 }
 
+// --- FUNCIÓN DE NOTIFICACIÓN (TOAST) ---
+function showAdminToast(message) {
+    // Eliminar toast anterior si existe para evitar acumulación
+    const existingToast = document.querySelector('.admin-toast');
+    if (existingToast) existingToast.remove();
+
+    const toast = document.createElement('div');
+    toast.className = 'admin-toast';
+    toast.innerHTML = `<span class="toast-icon">✅</span> <span>${message}</span>`;
+    document.body.appendChild(toast);
+
+    // Pequeño delay para permitir que el DOM se actualice antes de la animación
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+
+    // Ocultar y eliminar después de 3 segundos
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 500); // Esperar que la transición de salida termine
+    }, 3000);
+}
+
 // --- FUNCIÓN DE ALERTA DE STOCK ---
 function checkStockAlerts() {
     const outOfStock = products.filter(p => p.stock !== null && p.stock !== undefined && p.stock !== "" && parseInt(p.stock) <= 0);    
@@ -583,9 +694,6 @@ function openProductModal(id = null) {
         // Stock
         if(document.getElementById('edit-stock')) document.getElementById('edit-stock').value = (product.stock !== undefined && product.stock !== null) ? product.stock : '';
         
-        // Promo
-        if(document.getElementById('edit-is-promo')) document.getElementById('edit-is-promo').checked = (product.id == globalPromoProductId);
-
     } else {
         // MODO AGREGAR
         if(modalTitle) modalTitle.innerText = 'Nuevo Producto';
@@ -599,7 +707,6 @@ function openProductModal(id = null) {
         
         tempVideo = '';
         if(document.getElementById('edit-stock')) document.getElementById('edit-stock').value = '';
-        if(document.getElementById('edit-is-promo')) document.getElementById('edit-is-promo').checked = false;
     }
     
     // Renderizar gestores de imagen separados
@@ -636,19 +743,6 @@ async function saveProductModal(e) {
             image: tempImages.length > 0 ? tempImages[0] : '',
             video: tempVideo
         };
-        
-        // --- Lógica de Promoción ---
-        const isPromoChecked = document.getElementById('edit-is-promo').checked;
-        
-        if (isPromoChecked) {
-            // Si se marca, este producto es el nuevo "Producto Estrella"
-            globalPromoProductId = p.id;
-            await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: 'promo_product_id', value: p.id }) });
-        } else if (globalPromoProductId == p.id) {
-            // Si se desmarca Y era el producto estrella, quitamos la promo
-            globalPromoProductId = '';
-            await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: 'promo_product_id', value: '' }) });
-        }
     } else {
         // --- CREAR NUEVO ---
         productPayload = {
