@@ -79,23 +79,25 @@ async function submitOrder(e) {
         return;
     }
 
-    // NOTA: Se eliminó la verificación obligatoria de sesión (verifySession)
-    // para permitir compras de invitados.
+    // 1. Validar campos y recolectar datos del cliente
+    const customer = {
+        name: document.getElementById('client-name').value,
+        email: document.getElementById('client-email').value,
+        phone: document.getElementById('client-phone').value,
+        address: document.getElementById('client-address').value,
+        payment: 'Pagar al recibir'
+    };
 
-    // Crear objeto de pedido con toda la info
-    const order = {
-        id: 'ORD-' + Math.floor(100000 + Math.random() * 900000),
-        status: 'En progreso',
-        date: new Date().toLocaleString(),
-        customer: {
-            name: document.getElementById('client-name').value,
-            email: document.getElementById('client-email').value,
-            phone: document.getElementById('client-phone').value,
-            address: document.getElementById('client-address').value,
-            payment: 'Pagar al recibir' // Forzamos el valor en el objeto del pedido
-        },
-        items: cart,
-        total: cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+    if (!customer.name || !customer.email || !customer.phone || !customer.address) {
+        Swal.fire('Campos Incompletos', 'Por favor, rellena todos los datos de envío para continuar.', 'error');
+        return;
+    }
+
+    // 2. Crear un payload simplificado. El servidor se encargará del total y el stock.
+    const orderPayload = {
+        customer,
+        // Enviamos solo los datos necesarios para que el backend verifique y procese.
+        items: cart.map(item => ({ id: item.id, name: item.name, quantity: item.quantity }))
     };
 
     // Desactivar botón para prevenir clics múltiples
@@ -103,47 +105,25 @@ async function submitOrder(e) {
     submitButton.disabled = true;
     submitButton.textContent = 'Procesando...';
 
-    try {
-        // 1. Enviar el pedido a nuestro nuevo backend (Netlify Function)
+    try { // 3. Enviar el pedido al backend para un procesamiento seguro
         const response = await fetch('/api/orders', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(order)
+            body: JSON.stringify(orderPayload)
         });
 
+        const result = await response.json();
+
         if (!response.ok) {
-            // Si el servidor falla, mostramos un error pero no perdemos los datos del cliente
-            throw new Error('El servidor no pudo procesar el pedido.');
+            // El servidor ahora puede devolver errores específicos (ej: falta de stock)
+            throw new Error(result.message || 'El servidor no pudo procesar el pedido.');
         }
 
-        // --- ACTUALIZAR STOCK (Descontar productos comprados) ---
-        try {
-            const prodRes = await fetch('/api/products');
-            if (prodRes.ok) {
-                const products = await prodRes.json();
-                let stockUpdated = false;
+        // ¡Éxito! El backend procesó todo correctamente.
+        // El bloque de actualización de stock del cliente se elimina por completo.
 
-                cart.forEach(item => {
-                    const product = products.find(p => p.id == item.id);
-                    // Si el producto existe y tiene stock controlado (no es infinito/null)
-                    if (product && product.stock !== null && product.stock !== undefined && product.stock !== "") {
-                        const currentStock = parseInt(product.stock);
-                        product.stock = Math.max(0, currentStock - item.quantity);
-                        stockUpdated = true;
-                    }
-                });
-
-                if (stockUpdated) {
-                    await fetch('/api/products', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(products)
-                    });
-                }
-            }
-        } catch (e) { console.error("Error actualizando stock:", e); }
-
-        await Swal.fire('¡Pedido Confirmado!', `Tu número de pedido es: ${order.id}`, 'success');
+        const serverOrder = result.order;
+        await Swal.fire('¡Pedido Confirmado!', `Tu número de pedido es: ${serverOrder.id}`, 'success');
         
         localStorage.removeItem('lvs_cart'); // Limpiar carrito
 
@@ -151,22 +131,22 @@ async function submitOrder(e) {
         const isLogged = await verifySession();
         if (!isLogged) {
             const guestOrders = JSON.parse(localStorage.getItem('lvs_guest_orders')) || [];
-            guestOrders.push(order.id);
+            guestOrders.push(serverOrder.id);
             localStorage.setItem('lvs_guest_orders', JSON.stringify(guestOrders));
 
             // Guardar email del invitado para futuros descuentos, SOLO SI EL USUARIO DIO SU CONSENTIMIENTO
-            const rememberEmail = document.getElementById('remember-email').checked;
-            if (rememberEmail) {
-                localStorage.setItem('lvs_guest_email', order.customer.email);
+            const rememberEmailCheckbox = document.getElementById('remember-email');
+            if (rememberEmailCheckbox && rememberEmailCheckbox.checked) {
+                localStorage.setItem('lvs_guest_email', customer.email);
             }
         }
 
         // Redirigir "de una" a la página de rastreo con el ID en la URL
-        window.location.href = `rastreo.html?id=${order.id}`;
+        window.location.href = `rastreo.html?id=${serverOrder.id}`;
 
     } catch (error) {
         console.error('Error al enviar el pedido:', error);
-        Swal.fire('Error', 'Hubo un problema al procesar tu pedido. Por favor, intenta de nuevo más tarde.', 'error');
+        Swal.fire('Error', `Hubo un problema: ${error.message}`, 'error');
         // Reactivar el botón si hubo un error
         submitButton.disabled = false;
         submitButton.textContent = 'Confirmar Pedido';

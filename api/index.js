@@ -106,6 +106,14 @@ const router = express.Router();
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
+// Middleware para proteger rutas que requieren autenticación
+const isAuthenticated = (req, res, next) => {
+  if (req.user) {
+    return next();
+  }
+  res.status(401).json({ error: 'No autenticado. Por favor, inicie sesión.' });
+};
+
 // --- RUTAS ---
 // Ruta de prueba para verificar que la API está online
 router.get('/', (req, res) => res.send('API Online y funcionando 🚀'));
@@ -218,15 +226,76 @@ router.post('/settings', async (req, res) => {
 });
 
 router.post('/orders', async (req, res) => {
-  try {
-    await connectToDatabase();
-    const newOrder = new Order(req.body);
-    await newOrder.save();
-    res.status(200).json({ message: 'Pedido guardado.', orderId: req.body.id });
-  } catch (error) {
-    if (error.code === 11000) return res.status(409).json({ error: 'ID duplicado.' });
-    res.status(500).json({ error: 'Error al guardar pedido.' });
-  }
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+        await connectToDatabase();
+        const { customer, items } = req.body;
+
+        // 1. Validar datos de entrada
+        if (!customer || !items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ message: 'Faltan datos del cliente o productos en el pedido.' });
+        }
+
+        const productIds = items.map(item => item.id);
+        const productsInDB = await Product.find({ 'id': { $in: productIds } }).session(session);
+
+        let serverTotal = 0;
+        const stockUpdates = [];
+
+        for (const item of items) {
+            const product = productsInDB.find(p => p.id == item.id);
+            if (!product) {
+                throw new Error(`El producto "${item.name}" ya no está disponible.`);
+            }
+
+            // 2. Validar stock en el servidor
+            if (product.stock !== null && product.stock !== undefined && product.stock < item.quantity) {
+                throw new Error(`Stock insuficiente para ${product.name}. Disponible: ${product.stock}, Pedido: ${item.quantity}.`);
+            }
+
+            // 3. Calcular el total de forma segura en el servidor
+            // NOTA: Esta es una simplificación. La lógica de precios complejos (promociones, etc.) debe vivir aquí.
+            const price = product.discount ? product.price * (1 - product.discount / 100) : product.price;
+            serverTotal += price * item.quantity;
+
+            // 4. Preparar la actualización de stock
+            if (product.stock !== null && product.stock !== undefined && product.stock !== "") {
+                stockUpdates.push({
+                    updateOne: {
+                        filter: { id: product.id },
+                        update: { $inc: { stock: -item.quantity } }
+                    }
+                });
+            }
+        }
+
+        // 5. Crear y guardar el nuevo pedido
+        const newOrder = new Order({
+            id: 'ORD-' + Math.floor(100000 + Math.random() * 900000), // NOTA: Es mejor usar una librería como `nanoid` para IDs únicos.
+            status: 'En progreso',
+            date: new Date().toISOString(), // Usar formato estándar
+            customer,
+            items,
+            total: serverTotal // Usar el total calculado en el servidor
+        });
+        await newOrder.save({ session });
+
+        // 6. Ejecutar las actualizaciones de stock
+        if (stockUpdates.length > 0) {
+            await Product.bulkWrite(stockUpdates, { session });
+        }
+
+        await session.commitTransaction();
+        res.status(201).json({ message: 'Pedido guardado.', order: newOrder }); // Devolver el pedido completo
+
+    } catch (error) {
+        await session.abortTransaction();
+        console.error('Error procesando el pedido:', error);
+        res.status(400).json({ message: error.message || 'Error al guardar el pedido.' });
+    } finally {
+        session.endSession();
+    }
 });
 
 router.get('/orders', async (req, res) => {
@@ -236,6 +305,18 @@ router.get('/orders', async (req, res) => {
     res.json(orders);
   } catch (error) {
     res.status(500).json({ error: 'Error al cargar pedidos.' });
+  }
+});
+
+// GET current user's orders (Protected)
+router.get('/my-orders', isAuthenticated, async (req, res) => {
+  try {
+    await connectToDatabase();
+    const userEmail = req.user.email;
+    const orders = await Order.find({ 'customer.email': userEmail }).sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al cargar mis pedidos.' });
   }
 });
 

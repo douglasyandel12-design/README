@@ -19,7 +19,7 @@ cart = cart.filter(item => item != null);
 cart = cart.map(item => item.quantity ? item : { ...item, quantity: 1 });
 
 // Función de inicio
-async function init() {
+function init() {
     // --- ESTILOS GLOBALES B&W Y CONFIANZA ---
     const style = document.createElement('style');
     style.innerHTML = `
@@ -152,37 +152,42 @@ async function init() {
     `;
     document.head.appendChild(style);
 
-    await loadSettings(); // Cargar configuración primero
-    await loadProducts();
-    updateCartUI();
-    checkUserSession();
-    renderFooter(); // Renderizar el nuevo footer
-    createProductModal(); // Crear estructura del modal
+    // Cargar todos los datos críticos en paralelo para mejorar el tiempo de carga inicial.
+    loadAndRender();
 }
 init();
 
-// Cargar configuraciones globales
-async function loadSettings() {
-    try {
-        const res = await fetch('/api/settings');
-        if (res.ok) globalSettings = await res.json();
-    } catch (error) {
-        console.error('Error cargando settings', error);
-    }
-}
+// Nueva función para centralizar la carga y el renderizado inicial
+async function loadAndRender() {
+    const grid = document.getElementById('product-grid');
+    grid.innerHTML = '<p style="text-align:center; width:100%; color:#666;">Cargando catálogo...</p>'; // Mostrar un estado de carga
 
-// Cargar productos desde la Nube (Base de Datos)
-async function loadProducts() {
     try {
-        const res = await fetch('/api/products');
-        if (res.ok) {
-            products = await res.json();
-            renderToolbar(); // Renderizar barra de búsqueda y filtros
-            renderProducts();
-        }
+        // 1. Cargar todos los datos necesarios en paralelo
+        const [settingsResponse, productsResponse, sessionResponse] = await Promise.all([
+            fetch('/api/settings'),
+            fetch('/api/products'),
+            fetch('/api/auth/status')
+        ]);
+
+        // 2. Procesar las respuestas
+        globalSettings = settingsResponse.ok ? await settingsResponse.json() : {};
+        products = productsResponse.ok ? await productsResponse.json() : [];
+        const sessionData = sessionResponse.ok ? await sessionResponse.json() : { user: null };
+        window.currentUser = sessionData.user;
+
+        // 3. Renderizar la UI una vez que todos los datos están listos
+        renderToolbar();
+        renderProducts(); // Renderiza los productos una sola vez
+        updateCartUI();
+        renderUserMenu(sessionData); // Nueva función para manejar el menú de usuario
+        renderFooter();
+        createProductModal();
+        recalculateCartPrices(); // Recalcula precios del carrito con los datos de promos y usuario ya cargados
+
     } catch (error) {
-        console.error('Error cargando productos:', error);
-        grid.innerHTML = '<p>Error al cargar el catálogo.</p>';
+        console.error('Error en la carga inicial:', error);
+        grid.innerHTML = '<p style="text-align:center; width:100%; color:#ef4444;">Error al cargar el catálogo. Por favor, intente de nuevo más tarde.</p>';
     }
 }
 
@@ -438,67 +443,48 @@ window.clearGuestData = function() {
     }
 }
 
-async function checkUserSession() {
-    try {
-        const response = await fetch('/api/auth/status');
-        const data = await response.json();
-        if (data.user) {
-            window.currentUser = data.user; // Guardar usuario globalmente para usarlo en render
-            const user = data.user;
-            
-            // Configuración visual para Admin vs Usuario Normal
-            let iconHtml = '';
-            let adminOption = '';
+// La función checkUserSession se reemplaza por renderUserMenu y la carga en init.
+// Esta nueva función es SÍNCRONA y solo se encarga de renderizar la UI.
+function renderUserMenu(sessionData) {
+    const user = sessionData.user;
+    if (user) {
+        // Misma lógica que estaba en checkUserSession para usuario logueado
+        let iconHtml = '';
+        let adminOption = '';
 
-            if (user.isAdmin) {
-                // Icono "A" para el admin
-                iconHtml = `<div class="profile-icon" onclick="toggleDropdown()" style="background: #000; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem;">A</div>`;
-                // Opción extra en el menú
-                adminOption = `<a href="admin.html" style="color: #2563eb; font-weight: bold; border-bottom: 1px solid #eee;">Entrar al panel de control</a>`;
-            } else {
-                // Foto normal de Google
-                iconHtml = `<div class="profile-icon" onclick="toggleDropdown()"><img src="${user.picture}" alt="Foto"></div>`;
-            }
-
-            userMenu.innerHTML = `
-                ${iconHtml}
-                <div class="dropdown-menu" id="profile-dropdown">
-                    <div class="user-info">
-                        <p>${user.name}</p>
-                        <small>${user.email}</small>
-                    </div>
-                    ${adminOption}
-                    <a href="perfil.html" style="font-weight: 600; color: #2563eb;">📦 Mis Pedidos</a>
-                    <a href="perfil.html">Mi Perfil</a>
-                    <a href="configuracion.html">Configuración</a>
-                    <a href="/api/auth/logout" class="logout">Cerrar Sesión</a>
-                </div>
-            `;
-            
-            // Re-renderizar productos para aplicar descuentos de socio si aplica
-            renderProducts();
+        if (user.isAdmin) {
+            iconHtml = `<div class="profile-icon" onclick="toggleDropdown()" style="background: #000; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem;">A</div>`;
+            adminOption = `<a href="admin.html" style="color: #2563eb; font-weight: bold; border-bottom: 1px solid #eee;">Entrar al panel de control</a>`;
         } else {
-            // Si es invitado, verificamos si tiene pedidos locales
-            const guestOrders = JSON.parse(localStorage.getItem('lvs_guest_orders')) || [];
-            let guestLink = '';
-            
-            if (guestOrders.length > 0) {
-                // Se vuelve a agregar el enlace para que los invitados puedan rastrear su último pedido.
-                guestLink = `<a href="rastreo.html?id=${guestOrders[guestOrders.length-1]}" style="margin-right:10px; text-decoration:none; font-size:0.9rem; color:#2563eb;">📦 Mis Pedidos</a>`;
-            }
-
-            userMenu.innerHTML = `${guestLink}<a href="login.html" style="text-decoration: none; color: var(--primary); font-weight: 600; font-size: 0.9rem; border: 1px solid #000; padding: 5px 10px; border-radius: 4px;">Iniciar Sesión</a>`;
-        
-            // Mostrar banner si hay datos de invitado guardados
-            handleGuestData();
+            iconHtml = `<div class="profile-icon" onclick="toggleDropdown()"><img src="${user.picture}" alt="Foto"></div>`;
         }
 
-        // Recalcular precios del carrito (por si entró un socio o cambiaron reglas)
-        recalculateCartPrices();
+        userMenu.innerHTML = `
+            ${iconHtml}
+            <div class="dropdown-menu" id="profile-dropdown">
+                <div class="user-info">
+                    <p>${user.name}</p>
+                    <small>${user.email}</small>
+                </div>
+                ${adminOption}
+                <a href="perfil.html" style="font-weight: 600; color: #2563eb;">📦 Mis Pedidos</a>
+                <a href="perfil.html">Mi Perfil</a>
+                <a href="configuracion.html">Configuración</a>
+                <a href="/api/auth/logout" class="logout">Cerrar Sesión</a>
+            </div>
+        `;
+    } else {
+        // Misma lógica para invitado
+        const guestOrders = JSON.parse(localStorage.getItem('lvs_guest_orders')) || [];
+        let guestLink = '';
+        
+        if (guestOrders.length > 0) {
+            guestLink = `<a href="rastreo.html?id=${guestOrders[guestOrders.length-1]}" style="margin-right:10px; text-decoration:none; font-size:0.9rem; color:#2563eb;">📦 Mis Pedidos</a>`;
+        }
 
-    } catch (error) {
-        console.error('Error al verificar sesión:', error);
-        userMenu.innerHTML = `<a href="login.html" style="text-decoration: none; color: var(--primary); font-weight: 600; font-size: 0.9rem; border: 1px solid #000; padding: 5px 10px; border-radius: 4px;">Iniciar Sesión</a>`;
+        userMenu.innerHTML = `${guestLink}<a href="login.html" style="text-decoration: none; color: var(--primary); font-weight: 600; font-size: 0.9rem; border: 1px solid #000; padding: 5px 10px; border-radius: 4px;">Iniciar Sesión</a>`;
+    
+        handleGuestData();
     }
 }
 
@@ -533,8 +519,8 @@ function logout() {
 
 // Renderizar productos
 function renderProducts() {
-    grid.innerHTML = ''; // Limpiar grid
-    
+    const fragment = document.createDocumentFragment(); // Usar un fragmento para mejorar rendimiento
+
     // Verificar si aplica promo de socio (Usuario logueado + Config activa)
     const isPromoActive = globalSettings.promo_login_5 === true && window.currentUser;
 
@@ -555,15 +541,19 @@ function renderProducts() {
         return matchesSearch && matchesCategory;
     });
 
-    if(filteredProducts.length === 0) grid.innerHTML = '<p style="text-align:center; width:100%; color:#666;">No se encontraron productos.</p>';
+    if(filteredProducts.length === 0) {
+        grid.innerHTML = '<p style="text-align:center; width:100%; color:#666;">No se encontraron productos.</p>';
+        return; // Salir si no hay productos
+    }
 
     filteredProducts.forEach((product, index) => {
     // Obtener imagen principal (array o string legacy)
     const mainImage = (product.images && product.images.length > 0) ? product.images[0] : (product.image || '');
         
     // Determinar si mostrar imagen o placeholder
+    // MEJORA: Añadimos loading="lazy" para que las imágenes solo se carguen cuando sean visibles.
     const imgContent = mainImage 
-        ? `<img src="${mainImage}" alt="${product.name}">` 
+        ? `<img src="${mainImage}" alt="${product.name}" loading="lazy" decoding="async">` 
         : `<span>${product.name}</span>`;
 
     // --- LÓGICA DE PRECIOS (Solo visualización estándar) ---
@@ -607,8 +597,11 @@ function renderProducts() {
             </div>
         </div>
     `;
-    grid.appendChild(card);
+        fragment.appendChild(card); // Añadir al fragmento en lugar de al DOM directamente
     });
+
+    grid.innerHTML = ''; // Limpiar grid justo antes de añadir el contenido nuevo
+    grid.appendChild(fragment); // Añadir el fragmento al DOM una sola vez
 }
 
 // Función auxiliar para calcular precio (incluye la nueva lógica progresiva)

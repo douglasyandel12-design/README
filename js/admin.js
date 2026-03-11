@@ -5,6 +5,16 @@ let quillEdit; // Editor para editar
 let tempImages = []; // Array temporal para gestionar imágenes antes de guardar
 let tempVideo = ''; // Variable temporal para el video
 
+// Helper function for debouncing, add at the top of the file
+function debounce(func, delay) {
+    let timeout;
+    return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), delay);
+    };
+}
+
 // Cargar productos desde la nube al iniciar
 async function initAdmin() {
     try {
@@ -341,11 +351,25 @@ function renderOrdersView() {
     const container = document.getElementById('orders-view');
     container.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
-            <div id="order-search-container" style="flex-grow: 1;"></div>
-            <button class="btn" onclick="exportOrdersToCSV()" style="padding: 10px 15px; font-size: 0.9rem;">Exportar a CSV</button>
+            <div id="order-search-container" style="flex-grow: 1;">
+                <input type="text" id="order-search" placeholder="🔍 Buscar pedido por ID, Nombre o Email..." 
+                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn" onclick="forceRefreshOrders()" title="Recargar la lista de pedidos desde el servidor" style="padding: 10px 15px; font-size: 0.9rem; background-color: #f3f4f6; color: #374151; border-color: #d1d5db;">🔄 Refrescar</button>
+                <button class="btn" onclick="exportOrdersToCSV()" style="padding: 10px 15px; font-size: 0.9rem;">Exportar a CSV</button>
+            </div>
         </div>
         <div id="orders-list"></div>
     `;
+    
+    // Attach listener ONCE with debounce
+    const debouncedRender = debounce((value) => renderOrders(value), 300);
+    document.getElementById('order-search').addEventListener('input', (e) => {
+        debouncedRender(e.target.value);
+    });
+
+    // Initial render
     renderOrders();
 }
 
@@ -514,7 +538,6 @@ function renderDashboardStats() {
 
 async function renderOrders(filterText = '') {
     const listContainer = document.getElementById('orders-list');
-    const searchContainer = document.getElementById('order-search-container');
     if(!filterText && listContainer) listContainer.innerHTML = '<p>Cargando pedidos...</p>';
 
     try {
@@ -535,19 +558,6 @@ async function renderOrders(filterText = '') {
             );
         });
 
-        // Inyectar buscador si no existe
-        if (searchContainer && !searchContainer.querySelector('#order-search')) {
-            searchContainer.innerHTML = `
-                <input type="text" id="order-search" placeholder="🔍 Buscar pedido por ID, Nombre o Email..." 
-                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
-            `;
-            
-            // Evento de búsqueda
-            document.getElementById('order-search').addEventListener('input', (e) => {
-                renderOrders(e.target.value);
-            });
-        }
-
         if (filteredOrders.length === 0 && listContainer) {
             listContainer.innerHTML = '<p style="color: #666; text-align: center; padding: 2rem;">No se encontraron pedidos.</p>';
             return;
@@ -555,7 +565,7 @@ async function renderOrders(filterText = '') {
 
         // La API ya los devuelve ordenados (más recientes primero)
         if (listContainer) listContainer.innerHTML = filteredOrders.map(order => `
-            <div class="order-card">
+            <div class="order-card" id="order-card-${order.id}">
                 <div class="order-header">
                     <span>📅 ${order.date}</span>
                     <span>Total: $${order.total.toFixed(2)}</span>
@@ -566,7 +576,7 @@ async function renderOrders(filterText = '') {
                         ${['En progreso', 'Aceptado', 'Enviado', 'Entregado'].map(status => `
                             <button class="status-btn ${order.status === status ? 'active' : ''}" 
                                     data-status="${status}"
-                                    onclick="updateOrderStatus('${order.id}', '${status}')">
+                                    onclick="updateOrderStatus(this, '${order.id}', '${status}')">
                                 ${status === 'Entregado' ? '✅' : ''} ${status}
                             </button>
                         `).join('')}
@@ -593,36 +603,106 @@ async function renderOrders(filterText = '') {
     }
 }
 
-async function updateOrderStatus(id, newStatus) {
+async function updateOrderStatus(button, id, newStatus) {
+    const buttonGroup = button.parentElement;
+    const buttons = buttonGroup.querySelectorAll('.status-btn');
+    const originalText = button.innerHTML;
+
+    buttons.forEach(btn => btn.disabled = true);
+    button.innerHTML = '...';
+
     try {
-        await fetch(`/api/orders/${id}`, {
+        const res = await fetch(`/api/orders/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: newStatus })
         });
-        // Actualizar el estado en allOrders localmente
+
+        if (!res.ok) throw new Error('El servidor no pudo actualizar el estado.');
+
         const order = allOrders.find(o => o.id === id);
-        if (order) {
-            order.status = newStatus;
-        }
-        // Recargar para ver el cambio visual en los botones
-        renderOrders(document.getElementById('order-search')?.value || '');
+        if (order) order.status = newStatus;
+
+        buttons.forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        
+        showAdminToast('Estado del pedido actualizado.');
+
     } catch (error) {
-        alert('Error al actualizar el estado en la base de datos.');
+        console.error('Error al actualizar el estado:', error);
+        showAdminToast('❌ Error al actualizar.');
+        button.innerHTML = originalText; // Restore original text on failure
+    } finally {
+        buttons.forEach(btn => {
+            btn.disabled = false;
+            // Restore all button texts in case they were changed
+            const status = btn.dataset.status;
+            btn.innerHTML = `${status === 'Entregado' ? '✅' : ''} ${status}`;
+        });
     }
 }
 
 async function deleteOrder(id) {
-    if(confirm('¿Estás seguro de eliminar este pedido de la base de datos?')) {
-        try {
-            await fetch(`/api/orders/${id}`, { method: 'DELETE' });
-            // Remover el pedido de allOrders localmente
-            allOrders = allOrders.filter(o => o.id !== id);
-            renderOrders(); // Recargar la lista
-        } catch (error) {
-            alert('Error al eliminar el pedido.');
+    if (typeof Swal === 'undefined') {
+        if(confirm('¿Estás seguro de eliminar este pedido? Esta acción no se puede deshacer.')) {
+            try {
+                await fetch(`/api/orders/${id}`, { method: 'DELETE' });
+                allOrders = allOrders.filter(o => o.id !== id);
+                renderOrders();
+                showAdminToast('Pedido eliminado.');
+            } catch (error) {
+                alert('Error al eliminar el pedido.');
+            }
         }
+        return;
     }
+
+    Swal.fire({
+        title: '¿Eliminar este pedido?',
+        text: "Esta acción es permanente y no se puede deshacer.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch(`/api/orders/${id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('El servidor no pudo eliminar el pedido.');
+
+                allOrders = allOrders.filter(o => o.id !== id);
+                
+                const orderCard = document.getElementById(`order-card-${id}`);
+                if (orderCard) {
+                    orderCard.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    orderCard.style.opacity = '0';
+                    orderCard.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        orderCard.remove();
+                        renderDashboardStats(); // Update stats after removing
+                    }, 300);
+                }
+
+                showAdminToast('Pedido eliminado con éxito.');
+
+            } catch (error) {
+                Swal.fire('Error', 'No se pudo eliminar el pedido: ' + error.message, 'error');
+            }
+        }
+    });
+}
+
+async function forceRefreshOrders() {
+    const listContainer = document.getElementById('orders-list');
+    const searchInput = document.getElementById('order-search');
+    
+    if(listContainer) listContainer.innerHTML = '<p>Refrescando pedidos...</p>';
+    
+    allOrders = []; // Clear local cache
+    await renderOrders(searchInput ? searchInput.value : ''); // Re-fetch and render
+    showAdminToast('Lista de pedidos actualizada.');
 }
 
 function exportOrdersToCSV() {
@@ -860,8 +940,8 @@ async function saveProductModal(e) {
 // --- FUNCIÓN PARA COMPRIMIR IMÁGENES ---
 function compressImage(file, options = {}) {
     return new Promise((resolve, reject) => {
-        // Establecemos un umbral más estricto para evitar superar el límite de Vercel
-        const { initialQuality = 0.85, maxWidth = 1280, maxHeight = 1280, targetSizeMB = 0.1 } = options;
+        // Hacemos la compresión más agresiva para asegurar que quepa en el plan gratuito de Vercel.
+        const { initialQuality = 0.8, maxWidth = 1024, maxHeight = 1024, targetSizeMB = 0.15 } = options; // 150KB por imagen como objetivo
         const targetSizeBytes = targetSizeMB * 1024 * 1024;
 
         const reader = new FileReader();
@@ -872,7 +952,7 @@ function compressImage(file, options = {}) {
                 let width = img.width;
                 let height = img.height;
  
-                // Calcular nuevas dimensiones si la imagen es muy grande
+                // Redimensionar si es necesario
                 if (width > height) {
                     if (width > maxWidth) {
                         height = Math.round((height * maxWidth) / width);
@@ -896,10 +976,15 @@ function compressImage(file, options = {}) {
  
                 // Bucle para reducir la calidad si la imagen supera el umbral
                 while (dataUrl.length > targetSizeBytes && quality > 0.1) {
-                    quality -= 0.1; // Reducir la calidad
+                    quality -= 0.1;
                     dataUrl = canvas.toDataURL('image/jpeg', quality);
                 }
  
+                // Si después de la compresión máxima sigue siendo muy grande, rechazamos.
+                if (dataUrl.length > targetSizeBytes) {
+                    return reject(new Error(`La imagen es demasiado pesada incluso después de comprimirla al máximo. Por favor, use una imagen más pequeña o de menor resolución.`));
+                }
+
                 resolve(dataUrl);
             };
             img.onerror = reject;
@@ -1039,7 +1124,7 @@ window.setMainImageFromFile = async function(input) {
             renderMainImagePreview();
         } catch (error) {
             console.error("Error comprimiendo la imagen:", error);
-            alert("Hubo un error al procesar la imagen. Intente con otra.");
+            alert(`Error al procesar la imagen: ${error.message}`);
         } finally {
             input.value = '';
         }
@@ -1074,7 +1159,7 @@ window.addGalleryImageFromFile = function(input) {
                 renderGalleryImagePreview();
             } catch (error) {
                 console.error("Error comprimiendo la imagen de galería:", error);
-                // Podríamos mostrar un toast de error aquí si quisiéramos
+                alert(`Error al procesar una de las imágenes de la galería: ${error.message}`);
             }
         });
         input.value = '';
