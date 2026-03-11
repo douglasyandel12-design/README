@@ -100,7 +100,8 @@ passport.use(new GoogleStrategy({
 ));
 
 const router = express.Router();
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 // --- RUTAS ---
 // Ruta de prueba para verificar que la API está online

@@ -389,10 +389,21 @@ window.toggleMediaView = function(view, videoUrl = '') {
 }
 
 window.changeModalImage = function(src, thumbEl) {
-    document.getElementById('pm-main-img').src = src;
-    // Actualizar clase active
-    document.querySelectorAll('.pm-thumb').forEach(t => t.classList.remove('active'));
-    thumbEl.classList.add('active');
+    const mainImg = document.getElementById('pm-main-img');
+    if (!mainImg) {
+        console.error('Elemento de imagen principal #pm-main-img no encontrado.');
+        return;
+    }
+    mainImg.src = src;
+
+    // Quitar 'active' de todos los thumbnails
+    const thumbnails = document.querySelectorAll('.pm-thumb');
+    thumbnails.forEach(t => t.classList.remove('active'));
+
+    // Añadir 'active' al thumbnail seleccionado, si existe
+    if (thumbEl) {
+        thumbEl.classList.add('active');
+    }
 }
 
 window.updateModalQty = function(change) {
@@ -573,7 +584,7 @@ function renderProducts() {
     
     // Aplicar descuento de socio (5%) para visualización si está activo
     if (isPromoActive) {
-        displayPrice = displayPrice * 0.97;
+        displayPrice = displayPrice * 0.95;
         if (!originalPriceHtml && displayPrice < product.price) {
             originalPriceHtml = `<span class="original-price" style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">$${product.price.toFixed(2)}</span>`;
         }

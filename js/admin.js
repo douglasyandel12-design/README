@@ -708,6 +708,14 @@ const editModal = document.getElementById('edit-modal');
 
 function openProductModal(id = null) {
     const modalTitle = editModal.querySelector('h2') || editModal.querySelector('h3');
+
+    // Ocultar el toggle de promoción individual que ya no se usa, ahora es global.
+    // Esto es un parche porque el elemento HTML sigue existiendo en el archivo estático.
+    const promoToggleEl = document.getElementById('edit-is-promo');
+    if (promoToggleEl && promoToggleEl.parentElement) {
+        // Ocultamos el elemento padre para ocultar también la etiqueta (label).
+        promoToggleEl.parentElement.style.display = 'none';
+    }
     
     if (id) {
         // MODO EDITAR
