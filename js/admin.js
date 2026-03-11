@@ -811,6 +811,7 @@ async function saveProductModal(e) {
 
     const payloadString = JSON.stringify(productPayload);
     const payloadSizeMB = new Blob([payloadString]).size / 1024 / 1024;
+    console.log(`DEBUG: Tamaño del payload a enviar: ${payloadSizeMB.toFixed(2)} MB`);
 
     // Vercel's limit is 4.5MB. Usamos un umbral de seguridad muy estricto de 2.5MB.
     if (payloadSizeMB > 2.5) {

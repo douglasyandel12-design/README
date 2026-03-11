@@ -100,8 +100,11 @@ passport.use(new GoogleStrategy({
 ));
 
 const router = express.Router();
-app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ limit: '100mb', extended: true }));
+
+// Aumentamos el límite del body-parser. Vercel tiene un límite estricto de ~4.5MB.
+// Este límite se aplica en el servidor de Express, pero Vercel puede bloquear la solicitud antes si es muy grande.
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // --- RUTAS ---
 // Ruta de prueba para verificar que la API está online
