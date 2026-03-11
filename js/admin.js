@@ -982,7 +982,7 @@ function compressImage(file, options = {}) {
  
                 // Si después de la compresión máxima sigue siendo muy grande, rechazamos.
                 if (dataUrl.length > targetSizeBytes) {
-                    return reject(new Error(`La imagen es demasiado pesada incluso después de comprimirla al máximo. Por favor, use una imagen más pequeña o de menor resolución.`));
+                    return reject(new Error(`La imagen es muy pesada. Para reducir su tamaño, es recomendable tomarle una captura de pantalla a la imagen y subir la captura.`));
                 }
 
                 resolve(dataUrl);
@@ -1124,7 +1124,12 @@ window.setMainImageFromFile = async function(input) {
             renderMainImagePreview();
         } catch (error) {
             console.error("Error comprimiendo la imagen:", error);
-            alert(`Error al procesar la imagen: ${error.message}`);
+            Swal.fire({
+                icon: 'warning',
+                title: 'Imagen muy pesada',
+                text: error.message,
+                confirmButtonColor: '#000'
+            });
         } finally {
             input.value = '';
         }
@@ -1159,7 +1164,12 @@ window.addGalleryImageFromFile = function(input) {
                 renderGalleryImagePreview();
             } catch (error) {
                 console.error("Error comprimiendo la imagen de galería:", error);
-                alert(`Error al procesar una de las imágenes de la galería: ${error.message}`);
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Problema con una imagen',
+                    text: error.message,
+                    confirmButtonColor: '#000'
+                });
             }
         });
         input.value = '';
