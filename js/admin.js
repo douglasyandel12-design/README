@@ -838,6 +838,49 @@ async function saveProductModal(e) {
     }
 }
 
+// --- FUNCIÓN PARA COMPRIMIR IMÁGENES ---
+function compressImage(file, options = {}) {
+    return new Promise((resolve, reject) => {
+        const { quality = 0.8, maxWidth = 1280, maxHeight = 1280 } = options;
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                let width = img.width;
+                let height = img.height;
+
+                // Calcular nuevas dimensiones si la imagen es muy grande
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width = Math.round((width * maxHeight) / height);
+                        height = maxHeight;
+                    }
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Obtener la URL de datos como JPEG comprimido
+                const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                resolve(dataUrl);
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
 function renderSalesChart() {
     const orders = allOrders;
     const chartContainer = document.getElementById('sales-chart-container');
@@ -949,15 +992,19 @@ window.setMainImageFromUrl = function() {
     }
 }
 
-window.setMainImageFromFile = function(input) {
+window.setMainImageFromFile = async function(input) {
     if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            tempImages.length > 0 ? tempImages[0] = e.target.result : tempImages.unshift(e.target.result);
+        const file = input.files[0];
+        try {
+            const compressedImage = await compressImage(file);
+            tempImages.length > 0 ? tempImages[0] = compressedImage : tempImages.unshift(compressedImage);
             renderMainImagePreview();
-        };
-        reader.readAsDataURL(input.files[0]);
-        input.value = '';
+        } catch (error) {
+            console.error("Error comprimiendo la imagen:", error);
+            alert("Hubo un error al procesar la imagen. Intente con otra.");
+        } finally {
+            input.value = '';
+        }
     }
 }
 
@@ -972,13 +1019,15 @@ window.addGalleryImageFromUrl = function() {
 
 window.addGalleryImageFromFile = function(input) {
     if (input.files && input.files.length > 0) {
-        Array.from(input.files).forEach(file => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                tempImages.push(e.target.result);
+        Array.from(input.files).forEach(async file => {
+            try {
+                const compressedImage = await compressImage(file);
+                tempImages.push(compressedImage);
                 renderGalleryImagePreview();
-            };
-            reader.readAsDataURL(file);
+            } catch (error) {
+                console.error("Error comprimiendo la imagen de galería:", error);
+                // Podríamos mostrar un toast de error aquí si quisiéramos
+            }
         });
         input.value = '';
     }
