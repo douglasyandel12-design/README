@@ -841,7 +841,10 @@ async function saveProductModal(e) {
 // --- FUNCIÓN PARA COMPRIMIR IMÁGENES ---
 function compressImage(file, options = {}) {
     return new Promise((resolve, reject) => {
-        const { quality = 0.8, maxWidth = 1280, maxHeight = 1280 } = options;
+        // Establecemos un umbral seguro (ej. 2.5MB) por debajo del límite de Vercel (4.5MB)
+        const { initialQuality = 0.85, maxWidth = 1280, maxHeight = 1280, targetSizeMB = 2.5 } = options;
+        const targetSizeBytes = targetSizeMB * 1024 * 1024;
+
         const reader = new FileReader();
         
         reader.onload = (e) => {
@@ -849,7 +852,7 @@ function compressImage(file, options = {}) {
             img.onload = () => {
                 let width = img.width;
                 let height = img.height;
-
+ 
                 // Calcular nuevas dimensiones si la imagen es muy grande
                 if (width > height) {
                     if (width > maxWidth) {
@@ -862,15 +865,22 @@ function compressImage(file, options = {}) {
                         height = maxHeight;
                     }
                 }
-
+ 
                 const canvas = document.createElement('canvas');
                 canvas.width = width;
                 canvas.height = height;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, width, height);
-
-                // Obtener la URL de datos como JPEG comprimido
-                const dataUrl = canvas.toDataURL('image/jpeg', quality);
+ 
+                let quality = initialQuality;
+                let dataUrl = canvas.toDataURL('image/jpeg', quality);
+ 
+                // Bucle para reducir la calidad si la imagen supera el umbral
+                while (dataUrl.length > targetSizeBytes && quality > 0.15) {
+                    quality -= 0.1; // Reducir la calidad
+                    dataUrl = canvas.toDataURL('image/jpeg', quality);
+                }
+ 
                 resolve(dataUrl);
             };
             img.onerror = reject;
