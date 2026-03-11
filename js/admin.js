@@ -21,19 +21,59 @@ async function initAdmin() {
                 document.head.appendChild(script);
             }
             
-            renderTable();
-            checkStockAlerts(); // Verificar alertas de stock
-            renderSettingsPanel(); // Cargar panel de configuración
-            renderHeaderActions(); // Botón de agregar producto
+            // Nueva estructura con pestañas
+            renderAdminLayout();
+
+            checkStockAlerts(); // Verificar alertas de stock (se mostrará arriba de las pestañas)
+            
+            // Cargar datos principales
             await renderOrders(); // Cargar pedidos y esperar
-            renderDashboardStats(); // Renderizar tarjetas de estadísticas
-            renderSalesChart(); // Renderizar gráfico de ventas
+
+            // Poblar las pestañas con su contenido
+            renderDashboardView();
+            renderProductsView();
+            renderOrdersView();
+            renderSettingsView();
         }
     } catch (e) {
         console.error("Error cargando productos", e);
     }
 }
 initAdmin();
+
+// --- LÓGICA DE PESTAÑAS ---
+window.switchAdminTab = function(tabName) {
+    // Botones
+    document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+    // Paneles
+    document.querySelectorAll('.admin-tab-pane').forEach(pane => {
+        pane.classList.toggle('active', pane.id === `${tabName}-view`);
+    });
+}
+
+function renderAdminLayout() {
+    const container = document.querySelector('main.container') || document.body;
+    container.innerHTML = `
+        <h1>Panel de Control</h1>
+        <div id="stock-alert-container"></div>
+        
+        <div class="admin-tabs">
+            <button class="admin-tab-btn active" data-tab="dashboard" onclick="switchAdminTab('dashboard')">📈 Dashboard</button>
+            <button class="admin-tab-btn" data-tab="products" onclick="switchAdminTab('products')">📦 Productos</button>
+            <button class="admin-tab-btn" data-tab="orders" onclick="switchAdminTab('orders')">🛒 Pedidos</button>
+            <button class="admin-tab-btn" data-tab="settings" onclick="switchAdminTab('settings')">⚙️ Configuración</button>
+        </div>
+
+        <div id="admin-tab-content">
+            <div id="dashboard-view" class="admin-tab-pane active"></div>
+            <div id="products-view" class="admin-tab-pane"></div>
+            <div id="orders-view" class="admin-tab-pane"></div>
+            <div id="settings-view" class="admin-tab-pane"></div>
+        </div>
+    `;
+}
 
 // Función para iniciar los editores de texto
 function initEditors() {
@@ -49,6 +89,39 @@ function initEditors() {
 // Inyectar estilos para los botones de estado
 const adminStyle = document.createElement('style');
 adminStyle.innerHTML = `
+    /* --- Estilos para Pestañas del Admin --- */
+    .admin-tabs {
+        display: flex;
+        gap: 0.5rem;
+        border-bottom: 2px solid #e5e7eb;
+        margin-bottom: 2rem;
+    }
+    .admin-tab-btn {
+        padding: 1rem 1.5rem;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #6b7280;
+        position: relative;
+        transition: color 0.2s;
+    }
+    .admin-tab-btn:hover { color: #111827; }
+    .admin-tab-btn.active { color: #111827; }
+    .admin-tab-btn.active::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background-color: #111827;
+    }
+    .admin-tab-pane { display: none; }
+    .admin-tab-pane.active { display: block; animation: fadeIn 0.5s; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
     .status-btn-group { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
     .status-btn {
         border: 1px solid #ddd; background: #fff; padding: 5px 10px; border-radius: 20px;
@@ -140,14 +213,65 @@ adminStyle.innerHTML = `
 `;
 document.head.appendChild(adminStyle);
 
+// --- FUNCIONES PARA POBLAR PESTAÑAS ---
+function renderDashboardView() {
+    const container = document.getElementById('dashboard-view');
+    container.innerHTML = `
+        <div id="kpi-dashboard"></div>
+        <div id="sales-chart-container" style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-top: 2rem;">
+            <canvas id="salesChart"></canvas>
+        </div>
+    `;
+    renderDashboardStats();
+    renderSalesChart();
+}
+
+function renderProductsView() {
+    const container = document.getElementById('products-view');
+    container.innerHTML = `
+        <div id="header-actions"></div>
+        <div class="table-container">
+            <table class="product-table">
+                <thead>
+                    <tr>
+                        <th>Imagen</th>
+                        <th>Nombre</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="product-table-body"></tbody>
+            </table>
+        </div>
+    `;
+    renderHeaderActions();
+    renderTable();
+}
+
+function renderOrdersView() {
+    const container = document.getElementById('orders-view');
+    container.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+            <div id="order-search-container" style="flex-grow: 1;"></div>
+            <button class="btn" onclick="exportOrdersToCSV()" style="padding: 10px 15px; font-size: 0.9rem;">Exportar a CSV</button>
+        </div>
+        <div id="orders-list"></div>
+    `;
+    renderOrders();
+}
+
+function renderSettingsView() {
+    const container = document.getElementById('settings-view');
+    container.innerHTML = `<div id="settings-panel"></div>`;
+    renderSettingsPanel();
+}
+
 // --- LÓGICA DE CONFIGURACIÓN (PROMOCIONES) ---
 async function renderSettingsPanel() {
-    const container = document.querySelector('main.container') || document.body;
-    // Insertar panel antes de la tabla si no existe
-    if (!document.getElementById('settings-panel')) {
-        const panel = document.createElement('div');
-        panel.id = 'settings-panel';
-        panel.style.cssText = "background: #f3f4f6; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; border: 1px solid #ddd;";
+    const panel = document.getElementById('settings-panel');
+    if (panel) {
+        panel.style.cssText = "background: #f9fafb; padding: 2rem; border-radius: 8px; border: 1px solid #e5e7eb;";
         
         // Obtener estado actual
         let isPromoActive = false;
@@ -162,14 +286,11 @@ async function renderSettingsPanel() {
             <h3>⚙️ Configuración Global</h3>
             <div>
                 <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-                    <input type="checkbox" id="promo-toggle" ${isPromoActive ? 'checked' : ''} style="transform: scale(1.5);">
+                    <input type="checkbox" id="promo-toggle" ${isPromoActive ? 'checked' : ''} style="width: 20px; height: 20px;">
                     <span>Activar <strong>5% de Descuento</strong> automático para usuarios logueados.</span>
                 </label>
             </div>
         `;
-        
-        // Insertar al principio del contenedor principal
-        container.insertBefore(panel, container.firstChild);
 
         // Evento de cambio
         document.getElementById('promo-toggle').addEventListener('change', async (e) => {
@@ -184,19 +305,15 @@ async function renderSettingsPanel() {
 }
 
 function renderHeaderActions() {
-    const container = document.querySelector('main.container') || document.body;
-    const title = container.querySelector('h1');
-    
-    if (!document.getElementById('add-product-btn')) {
+    const container = document.getElementById('header-actions');
+    if (container && !container.querySelector('#add-product-btn')) {
         const btn = document.createElement('button');
         btn.id = 'add-product-btn';
         btn.className = 'btn';
         btn.innerHTML = '＋ Agregar Nuevo Producto';
-        btn.style.cssText = "margin-bottom: 1rem; background-color: #000; color: #fff; padding: 12px 24px; font-size: 1rem; display: block; width: 100%; max-width: 300px;";
+        btn.style.cssText = "margin-bottom: 1.5rem; background-color: #000; color: #fff; padding: 12px 24px; font-size: 1rem;";
         btn.onclick = () => openProductModal(); // Abrir modal vacío
-        
-        if (title) title.insertAdjacentElement('afterend', btn);
-        else container.insertBefore(btn, container.firstChild);
+        container.appendChild(btn);
     }
 }
 
@@ -249,20 +366,10 @@ async function deleteProduct(id) {
 }
 
 function renderDashboardStats() {
-    const container = document.querySelector('main.container') || document.body;
-    // Crear contenedor de stats si no existe
-    if (!document.getElementById('kpi-dashboard')) {
-        const dashboard = document.createElement('div');
-        dashboard.id = 'kpi-dashboard';
-        dashboard.style.cssText = "display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;";
-        
-        // Insertar después del título o al principio
-        const title = container.querySelector('h1');
-        if (title) title.insertAdjacentElement('afterend', dashboard);
-        else container.insertBefore(dashboard, container.firstChild);
-    }
-
     const dashboard = document.getElementById('kpi-dashboard');
+    if (!dashboard) return;
+
+    dashboard.style.cssText = "display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;";
     
     // Cálculos
     const totalIncome = allOrders.reduce((sum, o) => sum + (o.status !== 'Cancelado' ? o.total : 0), 0);
@@ -287,8 +394,9 @@ function renderDashboardStats() {
 }
 
 async function renderOrders(filterText = '') {
-    const container = document.getElementById('orders-list');
-    if(!filterText) container.innerHTML = '<p>Cargando pedidos...</p>';
+    const listContainer = document.getElementById('orders-list');
+    const searchContainer = document.getElementById('order-search-container');
+    if(!filterText && listContainer) listContainer.innerHTML = '<p>Cargando pedidos...</p>';
 
     try {
         // Si ya tenemos pedidos cargados y solo estamos filtrando, no hacemos fetch de nuevo
@@ -309,14 +417,11 @@ async function renderOrders(filterText = '') {
         });
 
         // Inyectar buscador si no existe
-        if (!document.getElementById('order-search')) {
-            const searchContainer = document.createElement('div');
-            searchContainer.style.marginBottom = '1rem';
+        if (searchContainer && !searchContainer.querySelector('#order-search')) {
             searchContainer.innerHTML = `
                 <input type="text" id="order-search" placeholder="🔍 Buscar pedido por ID, Nombre o Email..." 
                 style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
             `;
-            container.parentNode.insertBefore(searchContainer, container);
             
             // Evento de búsqueda
             document.getElementById('order-search').addEventListener('input', (e) => {
@@ -324,13 +429,13 @@ async function renderOrders(filterText = '') {
             });
         }
 
-        if (filteredOrders.length === 0) {
-            container.innerHTML = '<p style="color: #666;">No hay pedidos registrados aún.</p>';
+        if (filteredOrders.length === 0 && listContainer) {
+            listContainer.innerHTML = '<p style="color: #666; text-align: center; padding: 2rem;">No se encontraron pedidos.</p>';
             return;
         }
 
         // La API ya los devuelve ordenados (más recientes primero)
-        container.innerHTML = filteredOrders.map(order => `
+        if (listContainer) listContainer.innerHTML = filteredOrders.map(order => `
             <div class="order-card">
                 <div class="order-header">
                     <span>📅 ${order.date}</span>
@@ -365,7 +470,7 @@ async function renderOrders(filterText = '') {
         `).join('');
     } catch (error) {
         console.error('Error al cargar pedidos:', error);
-        container.innerHTML = `<p style="color: #ef4444;">${error.message}</p>`;
+        if (listContainer) listContainer.innerHTML = `<p style="color: #ef4444;">${error.message}</p>`;
     }
 }
 
@@ -440,23 +545,15 @@ function exportOrdersToCSV() {
 
 // --- FUNCIÓN DE ALERTA DE STOCK ---
 function checkStockAlerts() {
-    const outOfStock = products.filter(p => p.stock !== null && p.stock !== undefined && p.stock !== "" && parseInt(p.stock) <= 0);
-    const alertBox = document.getElementById('stock-alert');
+    const outOfStock = products.filter(p => p.stock !== null && p.stock !== undefined && p.stock !== "" && parseInt(p.stock) <= 0);    
+    const alertContainer = document.getElementById('stock-alert-container');
+    if (!alertContainer) return;
     
     if (outOfStock.length > 0) {
         const msg = `<strong>⚠️ Alerta de Stock:</strong> Hay ${outOfStock.length} producto(s) agotado(s) que no se muestran en la tienda.`;
-        if (!alertBox) {
-            const div = document.createElement('div');
-            div.id = 'stock-alert';
-            div.style.cssText = "background: #fee2e2; color: #991b1b; padding: 1rem; margin-bottom: 1rem; border-radius: 8px; border: 1px solid #fca5a5; display: flex; align-items: center; gap: 10px;";
-            div.innerHTML = msg;
-            const container = document.querySelector('main.container') || document.body;
-            container.insertBefore(div, container.firstChild);
-        } else {
-            alertBox.innerHTML = msg;
-        }
-    } else if (alertBox) {
-        alertBox.remove();
+        alertContainer.innerHTML = `<div id="stock-alert" style="background: #fffbe6; color: #92400e; padding: 1rem; margin-bottom: 1.5rem; border-radius: 8px; border: 1px solid #fde68a; display: flex; align-items: center; gap: 10px;">${msg}</div>`;
+    } else {
+        alertContainer.innerHTML = '';
     }
 }
 
@@ -505,8 +602,8 @@ function openProductModal(id = null) {
         if(document.getElementById('edit-is-promo')) document.getElementById('edit-is-promo').checked = false;
     }
     
-    renderImageManager('edit'); // Renderizar en el modal de edición
-
+    // Renderizar gestores de imagen separados
+    renderSeparatedImageUIs();
     updateVideoUI(); // Actualizar UI del video
 
     editModal.classList.add('active');
@@ -600,22 +697,11 @@ async function saveProductModal(e) {
 
 function renderSalesChart() {
     const orders = allOrders;
-    if (orders.length === 0) return;
-
-    // Crear contenedor del gráfico si no existe para evitar errores
-    if (!document.getElementById('sales-chart-container')) {
-        const container = document.querySelector('main.container') || document.body;
-        const chartDiv = document.createElement('div');
-        chartDiv.id = 'sales-chart-container';
-        chartDiv.style.cssText = "background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-top: 2rem;";
-        chartDiv.innerHTML = '<canvas id="salesChart"></canvas>';
-        
-        // Insertar después del dashboard de KPIs
-        const kpi = document.getElementById('kpi-dashboard');
-        if (kpi) kpi.parentNode.insertBefore(chartDiv, kpi.nextSibling);
-        else container.appendChild(chartDiv);
+    const chartContainer = document.getElementById('sales-chart-container');
+    if (orders.length === 0 || !chartContainer) {
+        if(chartContainer) chartContainer.innerHTML = '<p style="text-align:center; color:#666;">No hay datos de ventas para mostrar el gráfico.</p>';
+        return;
     }
-
     const salesByDate = orders.reduce((acc, order) => {
         // Normalizamos la fecha para agrupar correctamente
         const date = new Date(order.date).toLocaleDateString('es-ES');
@@ -645,50 +731,127 @@ function renderSalesChart() {
     });
 }
 
-// --- GESTOR DE IMÁGENES (Lógica Nueva) ---
+// --- GESTOR DE IMÁGENES (Lógica Nueva con separación) ---
 
-function renderImageManager(context) {
-    const container = document.getElementById(`img-preview-${context}`);
+function renderSeparatedImageUIs() {
+    const container = document.querySelector('#edit-modal .image-manager');
     if (!container) return;
-    
-    container.innerHTML = tempImages.map((img, index) => `
+
+    container.innerHTML = `
+        <div class="main-image-manager">
+            <h4>Foto del Producto (Principal)</h4>
+            <div class="img-input-group">
+                <input type="text" id="main-img-url-edit" placeholder="Añadir URL de imagen">
+                <button type="button" class="btn" style="padding: 8px 12px; font-size: 0.8rem;" onclick="setMainImageFromUrl()">Añadir</button>
+            </div>
+            <div class="img-input-group" style="margin-top: 10px;">
+                <label for="main-img-file-edit" class="custom-file-upload">Subir desde archivo</label>
+                <input type="file" id="main-img-file-edit" onchange="setMainImageFromFile(this)">
+            </div>
+            <div id="main-img-preview-container" class="img-preview-list" style="margin-top: 10px; justify-content: flex-start;"></div>
+        </div>
+        <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e5e7eb;">
+        <div class="gallery-image-manager">
+            <h4>Fotos para la Galería (Adicionales)</h4>
+            <div class="img-input-group">
+                <input type="text" id="gallery-img-url-edit" placeholder="Añadir URL de imagen">
+                <button type="button" class="btn" style="padding: 8px 12px; font-size: 0.8rem;" onclick="addGalleryImageFromUrl()">Añadir</button>
+            </div>
+            <div class="img-input-group" style="margin-top: 10px;">
+                <label for="gallery-img-file-edit" class="custom-file-upload">Subir desde archivo (múltiples)</label>
+                <input type="file" id="gallery-img-file-edit" onchange="addGalleryImageFromFile(this)" multiple>
+            </div>
+            <div id="gallery-img-preview-list" class="img-preview-list" style="margin-top: 10px;"></div>
+        </div>
+    `;
+
+    renderMainImagePreview();
+    renderGalleryImagePreview();
+}
+
+function renderMainImagePreview() {
+    const container = document.getElementById('main-img-preview-container');
+    if (!container) return;
+    const mainImage = tempImages[0];
+    if (mainImage) {
+        container.innerHTML = `
+            <div class="img-preview-item">
+                <img src="${mainImage}">
+                <button type="button" class="img-remove-btn" onclick="removeMainImage()">&times;</button>
+            </div>
+        `;
+    } else {
+        container.innerHTML = '<p style="font-size: 0.8rem; color: #888;">No hay imagen principal.</p>';
+    }
+}
+
+function renderGalleryImagePreview() {
+    const container = document.getElementById('gallery-img-preview-list');
+    if (!container) return;
+    const galleryImages = tempImages.slice(1);
+    container.innerHTML = galleryImages.map((img, index) => `
         <div class="img-preview-item">
             <img src="${img}">
-            <button type="button" class="img-remove-btn" onclick="removeImage(${index}, '${context}')">&times;</button>
+            <button type="button" class="img-remove-btn" onclick="removeGalleryImage(${index})">&times;</button>
         </div>
     `).join('');
 }
 
-window.addImageFromUrl = function(context) {
-    const input = document.getElementById(`img-url-${context}`);
-    if (input.value) {
+window.setMainImageFromUrl = function() {
+    const input = document.getElementById('main-img-url-edit');
+    if (input && input.value) {
+        tempImages.length > 0 ? tempImages[0] = input.value : tempImages.unshift(input.value);
+        input.value = '';
+        renderMainImagePreview();
+    }
+}
+
+window.setMainImageFromFile = function(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            tempImages.length > 0 ? tempImages[0] = e.target.result : tempImages.unshift(e.target.result);
+            renderMainImagePreview();
+        };
+        reader.readAsDataURL(input.files[0]);
+        input.value = '';
+    }
+}
+
+window.addGalleryImageFromUrl = function() {
+    const input = document.getElementById('gallery-img-url-edit');
+    if (input && input.value) {
         tempImages.push(input.value);
         input.value = '';
-        renderImageManager(context);
+        renderGalleryImagePreview();
     }
-};
+}
 
-window.addImageFromFile = function(context) {
-    const input = document.getElementById(`img-file-${context}`);
+window.addGalleryImageFromFile = function(input) {
     if (input.files && input.files.length > 0) {
-        // Itera sobre todos los archivos seleccionados
         Array.from(input.files).forEach(file => {
             const reader = new FileReader();
             reader.onload = function(e) {
                 tempImages.push(e.target.result);
-                // Re-renderiza la vista previa a medida que cada imagen se carga
-                renderImageManager(context);
+                renderGalleryImagePreview();
             };
             reader.readAsDataURL(file);
         });
-        input.value = ''; // Resetea el input para poder seleccionar los mismos archivos de nuevo
+        input.value = '';
     }
-};
+}
 
-window.removeImage = function(index, context) {
-    tempImages.splice(index, 1);
-    renderImageManager(context);
-};
+window.removeMainImage = function() {
+    tempImages.shift();
+    renderMainImagePreview();
+    renderGalleryImagePreview();
+}
+
+window.removeGalleryImage = function(galleryIndex) {
+    // El índice de la galería es relativo a las imágenes después de la principal
+    tempImages.splice(galleryIndex + 1, 1);
+    renderGalleryImagePreview();
+}
 
 // --- FUNCIONES AUXILIARES VIDEO ---
 function updateVideoUI() {
