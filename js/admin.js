@@ -771,6 +771,14 @@ async function saveProductModal(e) {
     let url = '/api/products';
     let method = 'POST';
 
+    let descriptionContent = quillEdit ? quillEdit.root.innerHTML : '';
+
+    // SANITIZACIÓN CRÍTICA: Eliminar imágenes en base64 pegadas en el editor de texto.
+    const base64ImageRegex = /<img src="data:image\/[^;]+;base64[^"]*">/g;
+    if (descriptionContent.match(base64ImageRegex)) {
+        descriptionContent = descriptionContent.replace(base64ImageRegex, '');
+    }
+
     if (idInput) {
         // --- ACTUALIZAR EXISTENTE ---
         url = `/api/products/${idInput}`;
@@ -781,7 +789,7 @@ async function saveProductModal(e) {
             price: parseFloat(document.getElementById('edit-price').value),
             discount: parseFloat(document.getElementById('edit-discount').value) || 0,
             stock: (document.getElementById('edit-stock').value === "" || document.getElementById('edit-stock').value === undefined) ? null : parseInt(document.getElementById('edit-stock').value),
-            description: quillEdit ? quillEdit.root.innerHTML : '',
+            description: descriptionContent,
             images: [...tempImages],
             image: tempImages.length > 0 ? tempImages[0] : '',
             video: tempVideo
@@ -794,7 +802,7 @@ async function saveProductModal(e) {
             price: parseFloat(document.getElementById('edit-price').value),
             discount: parseFloat(document.getElementById('edit-discount').value) || 0,
             stock: (document.getElementById('edit-stock').value === "" || document.getElementById('edit-stock').value === undefined) ? null : parseInt(document.getElementById('edit-stock').value),
-            description: quillEdit ? quillEdit.root.innerHTML : '',
+            description: descriptionContent,
             images: [...tempImages],
             image: tempImages.length > 0 ? tempImages[0] : '',
             video: tempVideo
@@ -804,9 +812,9 @@ async function saveProductModal(e) {
     const payloadString = JSON.stringify(productPayload);
     const payloadSizeMB = new Blob([payloadString]).size / 1024 / 1024;
 
-    // Vercel's limit is 4.5MB. We'll use a safe threshold of 3MB.
-    if (payloadSizeMB > 3.0) {
-        alert(`Error: El tamaño total de los datos del producto (${payloadSizeMB.toFixed(2)} MB) supera el límite de 3.0 MB. Esto suele ocurrir por tener demasiadas imágenes. Por favor, reduzca la cantidad de imágenes e intente de nuevo.`);
+    // Vercel's limit is 4.5MB. Usamos un umbral de seguridad muy estricto de 2.5MB.
+    if (payloadSizeMB > 2.5) {
+        alert(`Error: El tamaño total de los datos del producto (${payloadSizeMB.toFixed(2)} MB) supera el límite de seguridad de 2.5 MB. Esto suele ocurrir por tener demasiadas imágenes o por pegar imágenes grandes en la descripción. Por favor, reduzca la cantidad de imágenes e intente de nuevo.`);
         // No cerramos el modal para que el usuario pueda corregir.
         return; // Detener el envío
     }
