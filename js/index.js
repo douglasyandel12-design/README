@@ -1,7 +1,6 @@
 // Variable global para productos
 let products = [];
 let globalSettings = {}; // Para guardar config de promociones
-let pastPromoPurchases = 0; // Variable para contar compras pasadas del producto en promo
 
 const grid = document.getElementById('product-grid');
 const cartCountEl = document.getElementById('cart-count');
@@ -483,66 +482,12 @@ async function checkUserSession() {
             handleGuestData();
         }
 
-        // Calcular compras pasadas para aplicar descuento acumulativo
-        await fetchPastOrders();
-        
         // Recalcular precios del carrito (por si entró un socio o cambiaron reglas)
         recalculateCartPrices();
 
     } catch (error) {
         console.error('Error al verificar sesión:', error);
         userMenu.innerHTML = `<a href="login.html" style="text-decoration: none; color: var(--primary); font-weight: 600; font-size: 0.9rem; border: 1px solid #000; padding: 5px 10px; border-radius: 4px;">Iniciar Sesión</a>`;
-    }
-}
-
-// Función para buscar en el historial cuántas veces se ha comprado el producto en promo
-async function fetchPastOrders() {
-    if (!globalSettings.promo_product_id) return;
-    pastPromoPurchases = 0; // Reiniciar contador
-
-    try {
-        const res = await fetch('/api/orders');
-        if (!res.ok) return;
-        const allOrders = await res.json();
-        
-        let relevantOrders = [];
-        
-        if (window.currentUser) {
-            // Si es usuario registrado, filtramos por su email
-            relevantOrders = allOrders.filter(o => o.customer && o.customer.email === window.currentUser.email);
-        } else {
-            // Si es invitado...
-            // 1. Intentamos usar el email guardado en localStorage (Más efectivo)
-            const guestEmail = localStorage.getItem('lvs_guest_email');
-            
-            if (guestEmail) {
-                relevantOrders = allOrders.filter(o => o.customer && o.customer.email === guestEmail);
-            } else {
-                // 2. Si no hay email, usamos los IDs de pedidos locales (Fallback)
-                const guestIds = JSON.parse(localStorage.getItem('lvs_guest_orders')) || [];
-                if (guestIds.length > 0) {
-                    relevantOrders = allOrders.filter(o => guestIds.includes(o.id));
-                }
-            }
-        }
-
-        // Contar cuántas veces aparece el producto en promoción en esos pedidos
-        relevantOrders.forEach(order => {
-            if (order.items) {
-                order.items.forEach(item => {
-                    // Usamos == para comparar ID (puede ser string o number)
-                    if (item.id == globalSettings.promo_product_id) {
-                        pastPromoPurchases += (item.quantity || 0);
-                    }
-                });
-            }
-        });
-        
-        // Actualizar la cuadrícula de productos para reflejar el nuevo precio base si aplica
-        renderProducts();
-        
-    } catch (e) {
-        console.error("Error calculando compras pasadas:", e);
     }
 }
 
@@ -611,9 +556,6 @@ function renderProducts() {
         : `<span>${product.name}</span>`;
 
     // --- LÓGICA DE PRECIOS (Solo visualización estándar) ---
-    const isPromoProduct = product.id == globalSettings.promo_product_id;
-    
-    // Mostramos el precio de lista (o con descuento fijo si tiene), sin calcular progresivos ni socio aquí
     let displayPrice = product.price;
     let originalPriceHtml = '';
     let promoMsg = '';
@@ -623,28 +565,27 @@ function renderProducts() {
         originalPriceHtml = `<span class="original-price" style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">$${product.price.toFixed(2)}</span>`;
     }
     
-    // Aplicar descuento de socio (3%) para visualización si está activo
+    // Si la promoción progresiva está activa, lo indicamos en la tarjeta.
+    // El precio real se calcula al añadir al carrito.
+    if (globalSettings.promo_progressive_active === true) {
+        promoMsg = `<small style="color: #d97706; display:block; font-size:0.7rem; margin-top:2px;">¡Promo por cantidad activa!</small>`;
+    }
+    
+    // Aplicar descuento de socio (5%) para visualización si está activo
     if (isPromoActive) {
         displayPrice = displayPrice * 0.97;
         if (!originalPriceHtml && displayPrice < product.price) {
             originalPriceHtml = `<span class="original-price" style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">$${product.price.toFixed(2)}</span>`;
         }
-        promoMsg = `<small style="color:green; display:block; font-size:0.7rem; margin-top:2px;">+ 3% Descuento Socio</small>`;
+        promoMsg += `<small style="color:green; display:block; font-size:0.7rem; margin-top:2px;">+ 5% Descuento Socio</small>`;
     }
     
     const priceHtml = `<div class="price-container">${originalPriceHtml}<span class="product-price">$${displayPrice.toFixed(2)}</span>${promoMsg}</div>`;
 
-    // Añadir insignia si es el producto con promoción progresiva
-    const promoBadge = isPromoProduct
-        ? `<div class="promo-badge" style="position: absolute; top: 10px; right: 10px; background: #000; color: white; padding: 4px 10px; font-size: 0.7rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">Destacado</div>`
-        : '';
-
     const card = document.createElement('div');
     card.className = 'product-card';
-    card.style.position = 'relative'; // Necesario para la insignia
     card.style.animation = `fadeInUp 0.5s ease forwards ${index * 0.05}s`; // Animación mejorada
     card.innerHTML = `
-        ${promoBadge}
         <div class="product-image" onclick="viewProductDetails(${product.id})" style="cursor:pointer;">${imgContent}</div>
         <div class="product-info">
             <h3 class="product-title">${product.name}</h3>
@@ -662,28 +603,31 @@ function renderProducts() {
 // Función auxiliar para calcular precio (incluye la nueva lógica progresiva)
 function calculateItemPrice(product, quantity) {
     let priceAfterPrimaryDiscount;
+    const isProgressivePromoActive = globalSettings.promo_progressive_active === true;
 
     // 1. Lógica de descuento primario (Progresivo o Fijo)
-    if (globalSettings.promo_product_id && product.id == globalSettings.promo_product_id) {
-        // Lógica especial para el producto en promoción
+    if (isProgressivePromoActive) {
+        // Lógica de descuento progresivo para CUALQUIER producto
         const basePrice = product.price;
-        
-        // Nueva lógica: El precio de TODAS las unidades se basa en el nivel alcanzado por la cantidad TOTAL
-        const totalQuantity = pastPromoPurchases + quantity;
         let discount = 0;
-        if (totalQuantity >= 2) {
-            discount = Math.min(totalQuantity, 5);
+        // El descuento se basa en la cantidad de este item en el carrito.
+        if (quantity >= 2) {
+            // Ejemplo: 2 items = $2 off, 3 = $3 off, hasta un máximo de $5.
+            discount = Math.min(quantity, 5); 
         }
         priceAfterPrimaryDiscount = Math.max(0, basePrice - discount);
+    } else if (product.discount && product.discount > 0) {
+        // Lógica de descuento por porcentaje si no hay promo progresiva
+        priceAfterPrimaryDiscount = product.price * (1 - product.discount / 100);
     } else {
-        // Lógica normal (Descuento fijo)
-        priceAfterPrimaryDiscount = product.discount ? product.price * (1 - product.discount / 100) : product.price;
+        // Sin descuento
+        priceAfterPrimaryDiscount = product.price;
     }
 
-    // 2. Aplicar descuento de socio (3%) SOBRE el precio ya rebajado, si aplica.
+    // 2. Aplicar descuento de socio (5%) SOBRE el precio ya rebajado, si aplica.
     const isMemberPromoActive = globalSettings.promo_login_5 === true && window.currentUser;
     if (isMemberPromoActive) {
-        return priceAfterPrimaryDiscount * 0.97;
+        return priceAfterPrimaryDiscount * 0.95;
     }
 
     return priceAfterPrimaryDiscount;
@@ -773,9 +717,9 @@ function updateCartUI() {
                             : `$${item.price.toFixed(2)}`
                         }
                     </span>
-                    ${ (globalSettings.promo_product_id && item.id == globalSettings.promo_product_id && item.price < item.originalPrice) 
+                    ${ (globalSettings.promo_progressive_active === true && item.price < item.originalPrice)
                         ? `<small style="color: #d97706; font-weight: 600; display: block; margin-top: 2px;">🔥 ¡Descuento progresivo aplicado!</small>` 
-                        : '' 
+                        : ''
                     }
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
@@ -795,16 +739,14 @@ function removeFromCart(index) {
     if (item.quantity > 1) {
         item.quantity -= 1;
 
-        // Si es el producto en promoción, hay que recalcular su precio
-        if (globalSettings.promo_product_id && item.id == globalSettings.promo_product_id) {
-            // Buscamos el producto original para obtener el precio base
-            const product = products.find(p => p.id == item.id) || { id: item.id, price: item.originalPrice };
-            if (product.price !== undefined) {
+        // Si la promo progresiva está activa, siempre hay que recalcular el precio.
+        if (globalSettings.promo_progressive_active === true) {
+            const product = products.find(p => p.id == item.id) || { id: item.id, price: item.originalPrice, discount: 0 };
+            if (product) {
                 item.price = calculateItemPrice(product, item.quantity);
             }
         }
-        // Para productos normales, el precio unitario no cambia, así que no hacemos nada más.
-
+        
     } else {
         cart.splice(index, 1);
     }

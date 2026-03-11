@@ -1,7 +1,6 @@
 // Variable global
 let products = [];
 let allOrders = []; // Variable para guardar los pedidos cargados
-let globalPromoProductId = ''; // Variable para saber cuál es el producto en promo
 let quillEdit; // Editor para editar
 let tempImages = []; // Array temporal para gestionar imágenes antes de guardar
 let tempVideo = ''; // Variable temporal para el video
@@ -121,6 +120,72 @@ adminStyle.innerHTML = `
     .admin-tab-pane { display: none; }
     .admin-tab-pane.active { display: block; animation: fadeIn 0.5s; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* --- Estilos Tabla de Productos --- */
+    .table-container { overflow-x: auto; }
+    .product-table { width: 100%; border-collapse: collapse; min-width: 600px; }
+    .product-table th, .product-table td {
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+        vertical-align: middle;
+    }
+    .product-table th {
+        background-color: #f9fafb;
+        font-weight: 600;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #6b7280;
+    }
+    .preview-img {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+        border-radius: 6px;
+        background: #f3f4f6;
+        color: #9ca3af;
+    }
+    .product-table .btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+        width: auto;
+    }
+    .product-table .btn-danger {
+        background-color: #ef4444;
+        color: white;
+        border: none;
+    }
+
+    /* --- Responsive para Tabla de Productos --- */
+    @media screen and (max-width: 768px) {
+        .product-table thead {
+            display: none; /* Ocultar encabezados en móvil */
+        }
+        .product-table, .product-table tbody, .product-table tr, .product-table td {
+            display: block;
+            width: 100%;
+        }
+        .product-table tr {
+            margin-bottom: 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .product-table td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #f3f4f6;
+            text-align: right; /* Alinear contenido a la derecha */
+        }
+        .product-table td:last-child { border-bottom: none; background-color: #f9fafb; }
+        .product-table td::before { content: attr(data-label); font-weight: 600; text-align: left; margin-right: 1rem; color: #374151; }
+        .product-table td:first-child { background-color: #f9fafb; justify-content: center; padding: 1rem; }
+        .product-table td:first-child::before { display: none; }
+    }
 
     .status-btn-group { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 5px; }
     .status-btn {
@@ -301,16 +366,10 @@ async function renderSettingsPanel() {
         try {
             const res = await fetch('/api/settings');
             settings = await res.json();
-            globalPromoProductId = settings.promo_product_id || '';
         } catch(e) { console.error(e); }
 
         const isLoginPromoActive = settings.promo_login_5 === true;
         const isProgressivePromoActive = settings.promo_progressive_active === true;
-
-        // Options for the product selector
-        const productOptions = products.map(p => 
-            `<option value="${p.id}" ${p.id == globalPromoProductId ? 'selected' : ''}>${p.name}</option>`
-        ).join('');
 
         panel.innerHTML = `
             <h3>⚙️ Configuración Global de Promociones</h3>
@@ -328,15 +387,7 @@ async function renderSettingsPanel() {
                     <input type="checkbox" id="progressive-promo-toggle" ${isProgressivePromoActive ? 'checked' : ''} style="width: 20px; height: 20px;">
                     <span>🌟 Activar promoción "Más compras, más barato"</span>
                 </label>
-                <p style="font-size: 0.9rem; color: #666; margin: 0.5rem 0 1rem 30px;">Si activas esto, el producto seleccionado bajará de precio según la cantidad comprada (2 items = $2 menos, etc.).</p>
-                
-                <div id="progressive-promo-product-selector" style="margin-left: 30px; ${isProgressivePromoActive ? '' : 'display: none;'}">
-                    <label for="promo-product-select" style="font-weight: normal;">Selecciona el producto destacado:</label>
-                    <select id="promo-product-select" style="width: 100%; max-width: 400px; margin-top: 5px;">
-                        <option value="">-- Ninguno --</option>
-                        ${productOptions}
-                    </select>
-                </div>
+                <p style="font-size: 0.9rem; color: #666; margin: 0.5rem 0 0 30px;">Si activas esto, <strong>cualquier producto</strong> bajará de precio según la cantidad que se añada al carrito (ej: 2 items = $2 menos, 3 items = $3 menos, etc.).</p>
             </div>
         `;
 
@@ -351,39 +402,21 @@ async function renderSettingsPanel() {
         });
 
         const progressiveToggle = document.getElementById('progressive-promo-toggle');
-        const progressiveSelectorContainer = document.getElementById('progressive-promo-product-selector');
-        const progressiveSelector = document.getElementById('promo-product-select');
 
         progressiveToggle.addEventListener('change', async (e) => {
             const isActive = e.target.checked;
-            progressiveSelectorContainer.style.display = isActive ? 'block' : 'none';
             await fetch('/api/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ key: 'promo_progressive_active', value: isActive })
             });
-            // If disabling, also clear the selected product
-            if (!isActive) {
-                progressiveSelector.value = '';
-                await fetch('/api/settings', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ key: 'promo_product_id', value: '' })
-                });
-                globalPromoProductId = '';
-            }
-            showAdminToast('Promoción progresiva actualizada.');
-        });
-
-        progressiveSelector.addEventListener('change', async (e) => {
-            const productId = e.target.value;
-            globalPromoProductId = productId;
+            // También limpiamos la configuración antigua del producto individual para mantener la base de datos limpia.
             await fetch('/api/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ key: 'promo_product_id', value: productId })
+                body: JSON.stringify({ key: 'promo_product_id', value: '' })
             });
-            showAdminToast('Producto destacado actualizado.');
+            showAdminToast('Promoción progresiva actualizada.');
         });
     }
 }
@@ -416,18 +449,20 @@ function renderTable() {
 
         const row = `
             <tr>
-                <td>${imgDisplay}</td>
-                <td>
+                <td data-label="Imagen">${imgDisplay}</td>
+                <td data-label="Nombre">
                     <strong style="font-size: 1rem;">${p.name}</strong>
                 </td>
-                <td>
+                <td data-label="Precio">
                     $${p.price.toFixed(2)}
                     ${p.discount > 0 ? `<br><small style="color:#ef4444; font-weight:bold;">-${p.discount}% OFF</small>` : ''}
                 </td>
-                <td>${(p.stock !== undefined && p.stock !== null && p.stock !== "") ? p.stock : '∞'}</td>
-                <td>
-                    <button class="btn" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem; margin-right: 0.5rem; background-color: #2563eb;" onclick="openProductModal('${p.id}')">Editar</button>
-                    <button class="btn btn-danger" onclick="deleteProduct('${p.id}')">Borrar</button>
+                <td data-label="Stock">${(p.stock !== undefined && p.stock !== null && p.stock !== "") ? p.stock : '∞'}</td>
+                <td data-label="Acciones">
+                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap: wrap;">
+                        <button class="btn" style="background-color: #2563eb;" onclick="openProductModal('${p.id}')">Editar</button>
+                        <button class="btn btn-danger" onclick="deleteProduct('${p.id}')">Borrar</button>
+                    </div>
                 </td>
             </tr>
         `;
