@@ -1,17 +1,19 @@
-const cart = JSON.parse(localStorage.getItem('lvs_cart')) || [];
+// Global variables
+let cart = JSON.parse(localStorage.getItem('lvs_cart')) || [];
 const itemsList = document.getElementById('items-list');
 const totalEl = document.getElementById('order-total');
+let products = [];
+let globalSettings = {};
+window.currentUser = null;
 
-// Función para auto-rellenar datos del usuario desde el backend
-async function prefillUserData() {
-    // --- INYECCIÓN DE ESTILOS DE CONFIANZA (B&W) ---
+function injectStyles() {
     const style = document.createElement('style');
     style.innerHTML = `
         :root { --primary: #000; --bg: #fff; --text: #111; --border: #e5e5e5; }
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: var(--text); background: #f9f9f9; }
         .container { background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); max-width: 800px; margin: 2rem auto; }
         h2 { text-align: center; font-weight: 300; letter-spacing: 1px; margin-bottom: 2rem; }
-        input, select { border: 1px solid var(--border); padding: 12px; border-radius: 4px; width: 100%; box-sizing: border-box; transition: border 0.3s; }
+        input, select, textarea { border: 1px solid var(--border); padding: 12px; border-radius: 4px; width: 100%; box-sizing: border-box; transition: border 0.3s; }
         input:focus, select:focus { border-color: #000; outline: none; }
         label { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; display: block; color: #333; }
         .btn { background: #000; color: #fff; padding: 15px; border-radius: 4px; width: 100%; font-size: 1rem; font-weight: bold; letter-spacing: 0.5px; border: none; cursor: pointer; transition: background 0.3s; }
@@ -33,44 +35,119 @@ async function prefillUserData() {
         // Mensaje de confianza debajo del input
         paymentSelect.insertAdjacentHTML('afterend', '<small style="color: #166534; display: block; margin-top: 5px;">✅ Método seguro: No pagas nada hasta tener el producto en tus manos.</small>');
     }
+}
 
+// Función para auto-rellenar datos del usuario desde el backend
+function prefillUserData() {
     try {
-        const response = await fetch('/api/auth/status');
-        const data = await response.json();
-        if (data.user) {
-            document.getElementById('client-name').value = data.user.name;
-            document.getElementById('client-email').value = data.user.email;
+        if (window.currentUser) {
+            document.getElementById('client-name').value = window.currentUser.name;
+            document.getElementById('client-email').value = window.currentUser.email;
 
             // Cargar info de envío guardada desde configuración
-            const savedInfo = JSON.parse(localStorage.getItem(`shippingInfo-${data.user.email}`));
+            const savedInfo = JSON.parse(localStorage.getItem(`shippingInfo-${window.currentUser.email}`));
             if (savedInfo) {
                 document.getElementById('client-phone').value = savedInfo.phone || '';
                 document.getElementById('client-address').value = savedInfo.address || '';
             }
         }
     } catch (error) {
-        console.error('No se pudo obtener la sesión del usuario.', error);
+        console.error('No se pudo rellenar los datos del usuario.', error);
     }
 }
 
-if (cart.length === 0) {
-    itemsList.innerHTML = "<p>No hay productos seleccionados.</p>";
-} else {
-    // Adaptar items antiguos si no tienen quantity
-    cart.forEach(item => { if(!item.quantity) item.quantity = 1; });
+function calculateItemPrice(product, quantity) {
+    let priceAfterPrimaryDiscount;
+    const isProgressivePromoActive = globalSettings.promo_progressive_active === true;
 
-    itemsList.innerHTML = cart.map(item => `
-        <div class="item-row">
-            <span>${item.quantity}x ${item.name}</span>
-            <span>$${(item.price * item.quantity).toFixed(2)}</span>
-        </div>`).join('');
-    
+    // 1. Lógica de descuento primario (Progresivo o Fijo)
+    if (isProgressivePromoActive) {
+        const basePrice = product.price;
+        let discount = 0;
+        if (quantity >= 2) {
+            discount = Math.min(quantity, 5); 
+        }
+        priceAfterPrimaryDiscount = Math.max(0, basePrice - discount);
+    } else if (product.discount && product.discount > 0) {
+        priceAfterPrimaryDiscount = product.price * (1 - product.discount / 100);
+    } else {
+        priceAfterPrimaryDiscount = product.price;
+    }
+
+    // 2. Aplicar descuento de socio (5%) SOBRE el precio ya rebajado, si aplica.
+    const isMemberPromoActive = globalSettings.promo_login_5 === true && window.currentUser;
+    if (isMemberPromoActive) {
+        return priceAfterPrimaryDiscount * 0.95;
+    }
+
+    return priceAfterPrimaryDiscount;
+}
+
+function renderOrderSummary() {
+    cart = cart.filter(item => item != null).map(item => item.quantity ? item : { ...item, quantity: 1 });
+
+    if (cart.length === 0) {
+        document.querySelector('.order-summary').innerHTML = '<h3>Resumen del Pedido</h3><p>Tu carrito está vacío. <a href="index.html">Vuelve a la tienda</a> para añadir productos.</p>';
+        document.querySelector('form').style.display = 'none';
+        return;
+    }
+
+    itemsList.innerHTML = cart.map((item, index) => {
+        const product = products.find(p => p.id == item.id);
+        const imageUrl = (product && product.images && product.images.length > 0) ? product.images[0] : (product ? product.image : '');
+
+        return `
+            <div class="item-row">
+                <img src="${imageUrl || 'img/placeholder.png'}" class="item-image" alt="${item.name}">
+                <div class="item-info">
+                    <span class="item-name">${item.name}</span>
+                    <span class="item-price">$${(item.price * item.quantity).toFixed(2)}</span>
+                </div>
+                <div class="item-actions">
+                    <button type="button" class="qty-btn" onclick="updateOrderItemQuantity(${index}, -1)">-</button>
+                    <span class="item-quantity">${item.quantity}</span>
+                    <button type="button" class="qty-btn" onclick="updateOrderItemQuantity(${index}, 1)">+</button>
+                    <button type="button" class="remove-btn" onclick="removeOrderItem(${index})">&times;</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     totalEl.textContent = '$' + total.toFixed(2);
 }
 
-// Llamar a las funciones al cargar la página
-prefillUserData();
+window.updateOrderItemQuantity = function(index, change) {
+    const item = cart[index];
+    if (!item) return;
+
+    const newQuantity = item.quantity + change;
+
+    if (newQuantity <= 0) {
+        removeOrderItem(index);
+        return;
+    }
+
+    item.quantity = newQuantity;
+    
+    const product = products.find(p => p.id == item.id);
+    if (product) {
+        item.price = calculateItemPrice(product, item.quantity);
+    }
+
+    saveCart();
+    renderOrderSummary();
+}
+
+window.removeOrderItem = function(index) {
+    cart.splice(index, 1);
+    saveCart();
+    renderOrderSummary();
+}
+
+function saveCart() {
+    localStorage.setItem('lvs_cart', JSON.stringify(cart));
+}
 
 async function submitOrder(e) {
     e.preventDefault();
@@ -163,3 +240,33 @@ async function verifySession() {
         return false;
     }
 }
+
+// Función de inicio principal
+async function initPedido() {
+    injectStyles();
+    forcePaymentMethod();
+
+    try {
+        itemsList.innerHTML = '<p>Cargando productos...</p>';
+        const [productsRes, settingsRes, sessionRes] = await Promise.all([
+            fetch('/api/products'),
+            fetch('/api/settings'),
+            fetch('/api/auth/status')
+        ]);
+
+        products = productsRes.ok ? await productsRes.json() : [];
+        globalSettings = settingsRes.ok ? await settingsRes.json() : {};
+        const sessionData = sessionRes.ok ? await sessionRes.json() : { user: null };
+        window.currentUser = sessionData.user;
+
+        renderOrderSummary();
+        prefillUserData();
+
+    } catch (error) {
+        console.error('Error al inicializar la página de pedido:', error);
+        itemsList.innerHTML = '<p style="color:red;">Error al cargar los datos. Por favor, recarga la página.</p>';
+    }
+}
+
+// Llamar a la función de inicio
+initPedido();
