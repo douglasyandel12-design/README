@@ -766,8 +766,14 @@ async function saveProductModal(e) {
         });
 
         if (!res.ok) {
-            const errorData = await res.json();
-            throw new Error(errorData.message || `El servidor respondió con un error ${res.status}`);
+            let errorMessage = `El servidor respondió con un error ${res.status}`;
+            try {
+                const errorData = await res.json();
+                errorMessage = errorData.message || errorMessage;
+            } catch (jsonError) {
+                // La respuesta no es JSON, no hacemos nada y nos quedamos con el mensaje de error original.
+            }
+            throw new Error(errorMessage);
         }
 
         const savedProduct = await res.json();

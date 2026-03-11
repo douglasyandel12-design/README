@@ -146,14 +146,47 @@ router.get('/products', async (req, res) => {
   }
 });
 
+// CREATE a new product
 router.post('/products', async (req, res) => {
   try {
     await connectToDatabase();
-    await Product.deleteMany({});
-    if (req.body.length > 0) await Product.insertMany(req.body);
-    res.status(200).json({ message: 'Lista actualizada' });
+    const newProduct = new Product(req.body);
+    await newProduct.save();
+    res.status(201).json(newProduct);
   } catch (error) {
-    res.status(500).json({ error: 'Error al guardar' });
+    res.status(500).json({ message: 'Error al crear el producto', error });
+  }
+});
+
+// UPDATE a product by ID
+router.put('/products/:id', async (req, res) => {
+  try {
+    await connectToDatabase();
+    const updatedProduct = await Product.findOneAndUpdate(
+      { id: req.params.id },
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!updatedProduct) {
+      return res.status(404).json({ message: 'Producto no encontrado' });
+    }
+    res.json(updatedProduct);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al actualizar el producto', error });
+  }
+});
+
+// DELETE a product by ID
+router.delete('/products/:id', async (req, res) => {
+  try {
+    await connectToDatabase();
+    const deletedProduct = await Product.findOneAndDelete({ id: req.params.id });
+    if (!deletedProduct) {
+      return res.status(404).json({ message: 'Producto no encontrado' });
+    }
+    res.json({ message: 'Producto eliminado' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al eliminar el producto', error });
   }
 });
 
