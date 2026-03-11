@@ -24,14 +24,16 @@ function injectStyles() {
     `;
     document.head.appendChild(style);
 
-    // --- FORZAR MÉTODO DE PAGO ---
+}
+
+function forcePaymentMethod() {
     const paymentSelect = document.getElementById('client-payment');
     if (paymentSelect) {
         paymentSelect.innerHTML = '<option value="Pagar al recibir">💵 Pagar al recibir (Efectivo/Transferencia)</option>';
         // Bloqueamos visualmente pero permitimos el envío
         paymentSelect.style.backgroundColor = "#f9fafb";
         paymentSelect.style.cursor = "not-allowed";
-        
+
         // Mensaje de confianza debajo del input
         paymentSelect.insertAdjacentHTML('afterend', '<small style="color: #166534; display: block; margin-top: 5px;">✅ Método seguro: No pagas nada hasta tener el producto en tus manos.</small>');
     }
