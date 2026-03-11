@@ -895,8 +895,12 @@ async function saveProductModal(e) {
 
     // Vercel's limit is 4.5MB. Usamos un umbral de seguridad muy estricto de 2.5MB.
     if (payloadSizeMB > 2.5) {
-        alert(`Error: El tamaño total de los datos del producto (${payloadSizeMB.toFixed(2)} MB) supera el límite de seguridad de 2.5 MB. Esto suele ocurrir por tener demasiadas imágenes o por pegar imágenes grandes en la descripción. Por favor, reduzca la cantidad de imágenes e intente de nuevo.`);
-        // No cerramos el modal para que el usuario pueda corregir.
+        Swal.fire({
+            icon: 'error',
+            title: 'Contenido Demasiado Grande',
+            text: `El tamaño total de los datos del producto (${payloadSizeMB.toFixed(2)} MB) supera el límite de 2.5 MB. Esto suele ocurrir por tener demasiadas imágenes. Por favor, reduce la cantidad o el peso de las imágenes e intenta de nuevo.`,
+            confirmButtonColor: '#000'
+        });
         return; // Detener el envío
     }
 
@@ -933,7 +937,12 @@ async function saveProductModal(e) {
 
     } catch (error) {
         console.error('Error al guardar el producto:', error);
-        alert('No se pudo guardar el producto: ' + error.message);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error al Guardar',
+            text: 'No se pudo guardar el producto: ' + error.message,
+            confirmButtonColor: '#000'
+        });
     }
 }
 
