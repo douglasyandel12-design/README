@@ -804,9 +804,9 @@ async function saveProductModal(e) {
     const payloadString = JSON.stringify(productPayload);
     const payloadSizeMB = new Blob([payloadString]).size / 1024 / 1024;
 
-    // Vercel's limit is 4.5MB. We'll use a safe threshold of 4MB.
-    if (payloadSizeMB > 4.0) {
-        alert(`Error: El tamaño total de los datos del producto (${payloadSizeMB.toFixed(2)} MB) supera el límite de 4.0 MB. Esto suele ocurrir por tener demasiadas imágenes. Por favor, reduzca la cantidad de imágenes e intente de nuevo.`);
+    // Vercel's limit is 4.5MB. We'll use a safe threshold of 3MB.
+    if (payloadSizeMB > 3.0) {
+        alert(`Error: El tamaño total de los datos del producto (${payloadSizeMB.toFixed(2)} MB) supera el límite de 3.0 MB. Esto suele ocurrir por tener demasiadas imágenes. Por favor, reduzca la cantidad de imágenes e intente de nuevo.`);
         // No cerramos el modal para que el usuario pueda corregir.
         return; // Detener el envío
     }
@@ -851,8 +851,8 @@ async function saveProductModal(e) {
 // --- FUNCIÓN PARA COMPRIMIR IMÁGENES ---
 function compressImage(file, options = {}) {
     return new Promise((resolve, reject) => {
-        // Establecemos un umbral seguro (ej. 2.5MB) por debajo del límite de Vercel (4.5MB)
-        const { initialQuality = 0.85, maxWidth = 1280, maxHeight = 1280, targetSizeMB = 0.2 } = options;
+        // Establecemos un umbral más estricto para evitar superar el límite de Vercel
+        const { initialQuality = 0.85, maxWidth = 1280, maxHeight = 1280, targetSizeMB = 0.1 } = options;
         const targetSizeBytes = targetSizeMB * 1024 * 1024;
 
         const reader = new FileReader();
@@ -886,7 +886,7 @@ function compressImage(file, options = {}) {
                 let dataUrl = canvas.toDataURL('image/jpeg', quality);
  
                 // Bucle para reducir la calidad si la imagen supera el umbral
-                while (dataUrl.length > targetSizeBytes && quality > 0.15) {
+                while (dataUrl.length > targetSizeBytes && quality > 0.1) {
                     quality -= 0.1; // Reducir la calidad
                     dataUrl = canvas.toDataURL('image/jpeg', quality);
                 }
@@ -1006,6 +1006,10 @@ function renderGalleryImagePreview() {
 window.setMainImageFromUrl = function() {
     const input = document.getElementById('main-img-url-edit');
     if (input && input.value) {
+        if (tempImages.length >= 5) {
+            alert('Máximo 5 imágenes permitidas por producto.');
+            return;
+        }
         tempImages.length > 0 ? tempImages[0] = input.value : tempImages.unshift(input.value);
         input.value = '';
         renderMainImagePreview();
@@ -1014,6 +1018,11 @@ window.setMainImageFromUrl = function() {
 
 window.setMainImageFromFile = async function(input) {
     if (input.files && input.files[0]) {
+        if (tempImages.length >= 5) {
+            alert('Máximo 5 imágenes permitidas por producto.');
+            input.value = '';
+            return;
+        }
         const file = input.files[0];
         try {
             const compressedImage = await compressImage(file);
@@ -1031,6 +1040,10 @@ window.setMainImageFromFile = async function(input) {
 window.addGalleryImageFromUrl = function() {
     const input = document.getElementById('gallery-img-url-edit');
     if (input && input.value) {
+        if (tempImages.length >= 5) {
+            alert('Máximo 5 imágenes permitidas por producto.');
+            return;
+        }
         tempImages.push(input.value);
         input.value = '';
         renderGalleryImagePreview();
@@ -1039,7 +1052,13 @@ window.addGalleryImageFromUrl = function() {
 
 window.addGalleryImageFromFile = function(input) {
     if (input.files && input.files.length > 0) {
-        Array.from(input.files).forEach(async file => {
+        const filesToAdd = Array.from(input.files).slice(0, 5 - tempImages.length);
+        if (filesToAdd.length === 0) {
+            alert('Máximo 5 imágenes permitidas por producto.');
+            input.value = '';
+            return;
+        }
+        filesToAdd.forEach(async file => {
             try {
                 const compressedImage = await compressImage(file);
                 tempImages.push(compressedImage);
