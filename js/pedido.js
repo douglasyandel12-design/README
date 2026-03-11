@@ -21,6 +21,17 @@ function injectStyles() {
         .item-row { display: flex; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid #f0f0f0; }
         #order-total { font-size: 1.5rem; font-weight: 700; }
         .trust-badge { text-align: center; margin-top: 1rem; font-size: 0.8rem; color: #666; display: flex; align-items: center; justify-content: center; gap: 5px; }
+
+        /* Nuevos estilos para carrito interactivo */
+        .item-row { align-items: center; gap: 1rem; }
+        .item-image { width: 65px; height: 65px; object-fit: cover; border-radius: 8px; border: 1px solid #eee; }
+        .item-info { flex-grow: 1; }
+        .item-name { display: block; font-weight: 600; margin-bottom: 4px; }
+        .item-price { font-size: 0.9rem; color: #555; }
+        .item-actions { display: flex; align-items: center; gap: 0.75rem; }
+        .qty-btn { background: #f3f4f6; border: 1px solid #e5e7eb; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; line-height: 1; display: flex; align-items: center; justify-content: center; }
+        .remove-btn { background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; line-height: 1; }
+        .item-quantity { font-weight: bold; min-width: 20px; text-align: center; }
     `;
     document.head.appendChild(style);
 
