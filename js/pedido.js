@@ -206,11 +206,11 @@ function renderOrderSummary() {
         
         if (product) {
             // 1. Intentar sacar del array de imágenes (nuevo sistema)
-            if (Array.isArray(product.images) && product.images.length > 0) {
+            if (Array.isArray(product.images) && product.images.length > 0 && product.images[0]) {
                 imageUrl = product.images[0];
             } 
             // 2. Intentar sacar string de imagen (sistema antiguo)
-            else if (product.image && typeof product.image === 'string') {
+            else if (product.image && typeof product.image === 'string' && product.image.trim() !== '') {
                 imageUrl = product.image;
             }
         }
@@ -324,12 +324,13 @@ async function submitOrder(e) {
             // Usar la misma lógica prioritaria para guardar la imagen correcta en el pedido
             let imageToSave = '';
             if (product) {
-                if (Array.isArray(product.images) && product.images.length > 0) imageToSave = product.images[0];
-                else if (product.image && typeof product.image === 'string') imageToSave = product.image;
+                if (Array.isArray(product.images) && product.images.length > 0 && product.images[0]) imageToSave = product.images[0];
+                else if (product.image && typeof product.image === 'string' && product.image.trim() !== '') imageToSave = product.image;
             }
-            if (!imageToSave) imageToSave = item.image || ''; // Respaldo del carrito
+            // Si no se encontró en el producto actualizado, usar la del carrito
+            if (!imageToSave && item.image) imageToSave = item.image;
 
-            return { id: item.id, name: item.name, quantity: item.quantity, image: imageToSave };
+            return { id: item.id, name: item.name, quantity: item.quantity, image: imageToSave || '' };
         })
     };
 
