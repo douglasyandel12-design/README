@@ -53,6 +53,7 @@ function injectStyles() {
             margin: 0 auto; 
             padding: 2rem 1.5rem;
             display: flex;
+            flex-direction: column; /* Mobile First: Apilado verticalmente */
             gap: 1.5rem;
             /* Mobile layout: stacked */
         }

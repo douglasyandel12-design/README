@@ -6,6 +6,36 @@
     <title>LVS² Shop | Carrito</title>
     <link rel="stylesheet" href="css/carrito.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+    <style>
+        /* Fix Responsive para Tabla de Carrito */
+        @media (max-width: 768px) {
+            /* Forzar tabla a comportarse como bloques */
+            table, thead, tbody, th, td, tr { display: block; }
+            thead tr { position: absolute; top: -9999px; left: -9999px; }
+            tr { margin-bottom: 1rem; border: 1px solid #eee; border-radius: 8px; padding: 1rem; background: #fff; }
+            td { 
+                border: none; position: relative; padding-left: 0; padding-top: 0.5rem; padding-bottom: 0.5rem; 
+                display: flex; justify-content: space-between; align-items: center;
+            }
+            /* Añadir etiquetas visuales */
+            td:nth-of-type(1) { font-weight: bold; justify-content: flex-start; gap: 1rem; } /* Producto */
+            td:nth-of-type(2):before { content: "Precio:"; font-weight: 600; color: #666; }
+            td:nth-of-type(3):before { content: "Cantidad:"; font-weight: 600; color: #666; }
+            td:nth-of-type(4):before { content: "Total:"; font-weight: 600; color: #666; }
+            td:nth-of-type(5) { justify-content: flex-end; } /* Acciones */
+            
+            .cart-img-preview { width: 60px; height: 60px; }
+            
+            /* Ajustar resumen */
+            .summary {
+                position: static;
+                width: 100%;
+                margin-top: 2rem;
+                box-shadow: none;
+                border: 1px solid #eee;
+            }
+        }
+    </style>
 </head>
 <body>
     <header>

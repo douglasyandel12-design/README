@@ -53,3 +53,13 @@ nav { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-b
 .status-Entregado { background: #dcfce7; color: #16a34a; }
 
 .order-items li { margin-bottom: 0.25rem; }
+
+/* Responsive */
+@media (max-width: 600px) {
+    .profile-card {
+        flex-direction: column;
+        text-align: center;
+        padding: 1.5rem;
+    }
+    .profile-pic { margin-bottom: 1rem; width: 100px; height: 100px; }
+}
