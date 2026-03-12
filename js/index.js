@@ -195,7 +195,7 @@ function init() {
         .pm-description { color: #555; line-height: 1.6; margin-bottom: 2rem; font-size: 0.95rem; }
         .pm-description ul { padding-left: 20px; margin-bottom: 1rem; }
 
-        .pm-actions { margin-top: auto; display: flex; gap: 10px; align-items: center; }
+        .pm-actions { margin-bottom: 1.5rem; display: flex; gap: 10px; align-items: center; }
         .qty-selector { display: flex; border: 1px solid #ddd; border-radius: 4px; }
         .qty-btn { background: none; border: none; padding: 10px 15px; cursor: pointer; font-size: 1.2rem; }
         .qty-input { width: 40px; text-align: center; border: none; font-weight: bold; font-size: 1rem; -moz-appearance: textfield; }
@@ -353,7 +353,6 @@ function createProductModal() {
             <div class="pm-details">
                 <h2 class="pm-title" id="pm-title"></h2>
                 <div class="pm-price" id="pm-price"></div>
-                <div class="pm-description" id="pm-desc"></div>
                 
                 <div class="pm-actions">
                     <div class="qty-selector">
@@ -363,6 +362,8 @@ function createProductModal() {
                     </div>
                     <button class="btn" id="pm-add-btn" style="flex:1; padding: 15px;">Añadir al Carrito</button>
                 </div>
+
+                <div class="pm-description" id="pm-desc"></div>
             </div>
         </div>
     `;
