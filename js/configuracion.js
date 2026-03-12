@@ -1,6 +1,15 @@
 let currentUser = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Inyectar estilos profesionales
+    injectSettingsStyles();
+
+    // Buscar contenedor principal. Si no existe uno específico, usar main o body
+    const container = document.querySelector('main') || document.body;
+    
+    // Renderizar estructura base (Loading)
+    container.innerHTML = `<div style="text-align:center; padding: 4rem;"><p>Cargando configuración...</p></div>`;
+
     try {
         const response = await fetch('/api/auth/status');
         const data = await response.json();
@@ -10,24 +19,214 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
         currentUser = data.user;
+        
+        // Renderizar Interfaz Completa
+        renderSettingsUI(container);
         loadShippingInfo();
+
     } catch (error) {
         console.error('Error al cargar la sesión:', error);
-        alert('No se pudo cargar tu información. Por favor, inicia sesión de nuevo.');
+        Swal.fire('Error', 'No se pudo cargar tu información. Por favor, inicia sesión de nuevo.', 'error');
         window.location.href = 'login.html';
     }
 });
+
+function injectSettingsStyles() {
+    const style = document.createElement('style');
+    style.innerHTML = `
+        .settings-layout { display: flex; gap: 2rem; max-width: 1000px; margin: 2rem auto; padding: 0 1rem; align-items: flex-start; }
+        .settings-sidebar { flex: 0 0 250px; background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .settings-menu-btn { 
+            width: 100%; text-align: left; padding: 1rem 1.5rem; border: none; background: none; 
+            cursor: pointer; font-size: 0.95rem; font-weight: 500; color: #4b5563; 
+            border-bottom: 1px solid #f3f4f6; transition: all 0.2s;
+        }
+        .settings-menu-btn:hover { background-color: #f9fafb; color: #000; }
+        .settings-menu-btn.active { background-color: #f3f4f6; color: #000; font-weight: 600; border-left: 4px solid #000; }
+        
+        .settings-content { flex: 1; background: white; border-radius: 12px; border: 1px solid #e5e7eb; padding: 2rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .settings-section { display: none; animation: fadeIn 0.3s ease; }
+        .settings-section.active { display: block; }
+        
+        .settings-header { margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid #e5e7eb; }
+        .settings-header h2 { margin: 0; font-size: 1.5rem; font-weight: 700; color: #111; }
+        .settings-header p { margin: 0.5rem 0 0 0; color: #6b7280; font-size: 0.9rem; }
+
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #374151; font-size: 0.9rem; }
+        .form-group input { width: 100%; padding: 0.75rem 1rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.95rem; transition: border-color 0.2s; }
+        .form-group input:focus { border-color: #000; outline: none; ring: 1px solid #000; }
+        .form-group input[readonly] { background-color: #f3f4f6; color: #6b7280; cursor: not-allowed; }
+        
+        .btn-save { background: #000; color: white; padding: 0.75rem 1.5rem; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        .btn-save:hover { opacity: 0.9; }
+
+        @media (max-width: 768px) {
+            .settings-layout { flex-direction: column; }
+            .settings-sidebar { width: 100%; display: flex; overflow-x: auto; }
+            .settings-menu-btn { border-bottom: none; border-right: 1px solid #f3f4f6; white-space: nowrap; }
+            .settings-menu-btn.active { border-left: none; border-bottom: 4px solid #000; }
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    `;
+    document.head.appendChild(style);
+}
+
+function renderSettingsUI(container) {
+    container.innerHTML = `
+        <div class="settings-layout">
+            <div class="settings-sidebar">
+                <button class="settings-menu-btn active" onclick="switchSettingsTab('profile')">👤 Mi Perfil</button>
+                <button class="settings-menu-btn" onclick="switchSettingsTab('security')">🔒 Seguridad</button>
+                <button class="settings-menu-btn" onclick="switchSettingsTab('shipping')">🚚 Datos de Envío</button>
+            </div>
+            
+            <div class="settings-content">
+                <!-- SECCIÓN PERFIL -->
+                <div id="tab-profile" class="settings-section active">
+                    <div class="settings-header">
+                        <h2>Información Personal</h2>
+                        <p>Actualiza tu información básica de identificación.</p>
+                    </div>
+                    <form onsubmit="handleUpdateProfile(event)">
+                        <div class="form-group">
+                            <label>Nombre Completo</label>
+                            <input type="text" id="profile-name" value="${currentUser.name || ''}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Correo Electrónico</label>
+                            <input type="email" value="${currentUser.email || ''}" readonly title="El correo no se puede cambiar">
+                            <small style="color: #6b7280; display: block; margin-top: 5px;">Para cambiar tu correo, contacta con soporte.</small>
+                        </div>
+                        <button type="submit" class="btn-save">Guardar Cambios</button>
+                    </form>
+                </div>
+
+                <!-- SECCIÓN SEGURIDAD -->
+                <div id="tab-security" class="settings-section">
+                    <div class="settings-header">
+                        <h2>Contraseña y Seguridad</h2>
+                        <p>Gestiona tu clave de acceso para mantener tu cuenta segura.</p>
+                    </div>
+                    <form onsubmit="handleChangePassword(event)">
+                        <div class="form-group">
+                            <label>Contraseña Actual</label>
+                            <input type="password" id="current-pass" placeholder="••••••••" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Nueva Contraseña</label>
+                            <input type="password" id="new-pass" placeholder="Mínimo 6 caracteres" required minlength="6">
+                        </div>
+                        <div class="form-group">
+                            <label>Confirmar Nueva Contraseña</label>
+                            <input type="password" id="confirm-pass" placeholder="Repite la nueva contraseña" required>
+                        </div>
+                        <button type="submit" class="btn-save">Actualizar Contraseña</button>
+                    </form>
+                </div>
+
+                <!-- SECCIÓN ENVÍO -->
+                <div id="tab-shipping" class="settings-section">
+                    <div class="settings-header">
+                        <h2>Datos de Envío Predeterminados</h2>
+                        <p>Estos datos se rellenarán automáticamente al realizar una compra.</p>
+                    </div>
+                    <form onsubmit="saveShippingInfo(event)">
+                        <div class="form-group">
+                            <label>Teléfono de Contacto</label>
+                            <input type="tel" id="shipping-phone" placeholder="Ej: 0991234567">
+                        </div>
+                        <div class="form-group">
+                            <label>Dirección Principal (Calle y Número)</label>
+                            <input type="text" id="shipping-address" placeholder="Ej: Av. Principal 123">
+                        </div>
+                        <div style="background-color: #f0fdf4; color: #166534; padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem; font-size: 0.9rem;">
+                            💡 <strong>Nota:</strong> Estos datos se guardan solo en este dispositivo para agilizar tus compras.
+                        </div>
+                        <button type="submit" class="btn-save">Guardar Preferencias</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+window.switchSettingsTab = function(tabName) {
+    // Botones
+    document.querySelectorAll('.settings-menu-btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+
+    // Secciones
+    document.querySelectorAll('.settings-section').forEach(sec => sec.classList.remove('active'));
+    document.getElementById(`tab-${tabName}`).classList.add('active');
+}
+
+async function handleUpdateProfile(e) {
+    e.preventDefault();
+    const name = document.getElementById('profile-name').value;
+    
+    try {
+        const res = await fetch('/api/auth/profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+            Swal.fire('¡Actualizado!', 'Tu perfil ha sido actualizado.', 'success');
+            // Actualizar nombre en el header si existe
+            const headerName = document.querySelector('.user-info p');
+            if(headerName) headerName.textContent = name;
+        } else {
+            Swal.fire('Error', data.message, 'error');
+        }
+    } catch (error) {
+        Swal.fire('Error', 'No se pudo conectar con el servidor.', 'error');
+    }
+}
+
+async function handleChangePassword(e) {
+    e.preventDefault();
+    const currentPass = document.getElementById('current-pass').value;
+    const newPass = document.getElementById('new-pass').value;
+    const confirmPass = document.getElementById('confirm-pass').value;
+
+    if (newPass !== confirmPass) {
+        return Swal.fire('Error', 'Las contraseñas nuevas no coinciden.', 'warning');
+    }
+
+    try {
+        const res = await fetch('/api/auth/change-password', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            Swal.fire('¡Éxito!', 'Tu contraseña ha sido cambiada.', 'success');
+            e.target.reset(); // Limpiar formulario
+        } else {
+            Swal.fire('Error', data.message, 'error');
+        }
+    } catch (error) {
+        Swal.fire('Error', 'No se pudo conectar con el servidor.', 'error');
+    }
+}
 
 function loadShippingInfo() {
     if (!currentUser) return;
     const savedInfo = JSON.parse(localStorage.getItem(`shippingInfo-${currentUser.email}`));
     if (savedInfo) {
-        document.getElementById('shipping-phone').value = savedInfo.phone || '';
-        document.getElementById('shipping-address').value = savedInfo.address || '';
+        const phoneEl = document.getElementById('shipping-phone');
+        const addrEl = document.getElementById('shipping-address');
+        if(phoneEl) phoneEl.value = savedInfo.phone || '';
+        if(addrEl) addrEl.value = savedInfo.address || '';
     }
 }
 
-function saveShippingInfo(e) {
+window.saveShippingInfo = function(e) {
     e.preventDefault();
     if (!currentUser) return;
 
@@ -37,5 +236,5 @@ function saveShippingInfo(e) {
     };
 
     localStorage.setItem(`shippingInfo-${currentUser.email}`, JSON.stringify(shippingInfo));
-    alert('¡Configuración de envío guardada!');
+    Swal.fire('Guardado', 'Tus datos de envío predeterminados se han guardado localmente.', 'success');
 }

@@ -385,6 +385,68 @@ router.post('/auth/verify', async (req, res) => {
     }
 });
 
+// RUTA: Actualizar Perfil (Nombre)
+router.put('/auth/profile', isAuthenticated, async (req, res) => {
+  try {
+    await connectToDatabase();
+    const { name } = req.body;
+    
+    if (!name) return res.status(400).json({ message: 'El nombre es obligatorio.' });
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'Usuario no encontrado.' });
+
+    user.name = name;
+    // Podrías actualizar el email aquí también, pero requeriría re-verificación por seguridad.
+    
+    await user.save();
+    
+    // Actualizar sesión local
+    req.user.name = user.name;
+    
+    res.json({ message: 'Perfil actualizado correctamente.', user: { id: user._id, name: user.name, email: user.email, picture: user.picture } });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error al actualizar perfil.' });
+  }
+});
+
+// RUTA: Cambiar Contraseña
+router.put('/auth/change-password', isAuthenticated, async (req, res) => {
+  try {
+    await connectToDatabase();
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Todos los campos son obligatorios.' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 6 caracteres.' });
+    }
+
+    const user = await User.findById(req.user.id);
+
+    // Verificar contraseña actual
+    const hashVerify = crypto.pbkdf2Sync(currentPassword, user.salt, 1000, 64, 'sha512').toString('hex');
+    if (hashVerify !== user.hash) {
+      return res.status(400).json({ message: 'La contraseña actual es incorrecta.' });
+    }
+
+    // Encriptar nueva contraseña
+    user.salt = crypto.randomBytes(16).toString('hex');
+    user.hash = crypto.pbkdf2Sync(newPassword, user.salt, 1000, 64, 'sha512').toString('hex');
+    
+    await user.save();
+    res.json({ message: 'Contraseña actualizada con éxito.' });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error al cambiar la contraseña.' });
+  }
+});
+
 router.get('/products', async (req, res) => {
   try {
     await connectToDatabase();
