@@ -2,127 +2,170 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- ESTILOS PARA LA NUEVA BARRA DE PROGRESO DE PEDIDOS ---
     const style = document.createElement('style');
     style.innerHTML = `
-        .order-tracker {
-            display: flex;
-            list-style-type: none;
-            padding: 0;
-            margin: 1.5rem 0 0.5rem 0;
-            justify-content: space-between;
-            font-size: 0.8rem;
-        }
-        .order-tracker li {
-            flex: 1;
-            text-align: center;
-            position: relative;
-            color: #9ca3af; /* gray-400 */
-            font-weight: 500;
-            transition: color 0.3s ease;
-        }
-        .order-tracker li::before { /* La línea de conexión */
-            content: '';
-            position: absolute;
-            top: 12px; /* Alineado al centro del círculo */
-            left: -50%;
-            width: 100%;
-            height: 3px;
-            background-color: #e5e7eb; /* gray-200 */
-            z-index: 0;
-            transition: background-color 0.3s ease;
-        }
-        .order-tracker li:first-child::before {
-            content: none;
-        }
-        .order-tracker li span {
-            display: block;
-            margin-top: 0.75rem;
-        }
-        .order-tracker li.active, .order-tracker li.completed {
-            color: #111827; /* gray-900 */
-        }
-        .order-tracker li::after { /* El círculo */
-            content: '';
-            position: relative;
-            z-index: 1;
-            display: block;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background-color: #e5e7eb; /* gray-200 */
-            margin: 0 auto;
-            transition: background-color 0.3s ease, border-color 0.3s ease;
-            border: 3px solid #e5e7eb;
-            box-sizing: border-box;
-        }
-        .order-tracker li.completed::after {
-            content: '✓';
-            background-color: #10b981; /* emerald-500 */
-            border-color: #10b981;
-            color: white;
-            font-weight: bold;
-            line-height: 19px; /* Alinea el checkmark */
-        }
-        .order-tracker li.active::after {
-            background-color: white;
-            border-color: #3b82f6; /* blue-500 */
-        }
-        .order-tracker li.completed::before {
-            background-color: #10b981; /* emerald-500 */
-        }
-
-        /* MEJORA: Nuevos estilos para el historial de pedidos */
+        /* --- LAYOUT GENERAL --- */
         #order-history {
             display: flex;
             flex-direction: column;
-            gap: 1.5rem;
+            gap: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
         }
+
+        /* --- TARJETA DE PEDIDO --- */
         .order-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            border: 1px solid #e5e7eb;
-            transition: box-shadow 0.2s ease-in-out;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            border: 1px solid #f3f4f6;
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
         .order-card:hover {
-            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
         }
-        .order-header {
-            display: flex; justify-content: space-between; align-items: flex-start;
-            flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;
-            padding-bottom: 1rem; border-bottom: 1px solid #f3f4f6;
-        }
-        .order-id-label { font-size: 0.75rem; color: #6b7280; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
-        .order-id { font-size: 1.1rem; color: #1f2937; font-weight: 600; }
-        .order-date { font-size: 0.9rem; color: #4b5563; font-weight: 500; align-self: center; }
-        .order-body { margin-top: 1.5rem; }
-        .order-item-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.75rem; }
-        .order-item { display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; }
-        .item-name { color: #374151; }
-        .item-price { font-weight: 500; color: #1f2937; }
-        .order-total {
-            border-top: 1px dashed #d1d5db; margin-top: 1.5rem; padding-top: 1.5rem;
-            display: flex; justify-content: space-between; align-items: center;
-            font-size: 1.1rem; font-weight: 600; color: #111827;
-        }
-        .order-total strong { font-size: 1.5rem; font-weight: 700; }
 
-        /* MEJORA: Estilos para el estado vacío */
+        /* --- CABECERA DE LA TARJETA --- */
+        .order-header {
+            background: #f9fafb;
+            padding: 1.25rem 2rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .order-info-group { display: flex; flex-direction: column; gap: 4px; }
+        .order-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; font-weight: 700; }
+        .order-value { font-weight: 700; color: #111827; font-size: 1rem; font-family: monospace; }
+        .order-date-val { font-weight: 500; color: #374151; font-size: 0.95rem; }
+
+        /* --- TRACKER (BARRA DE PROGRESO) --- */
+        .tracker-container { padding: 2.5rem 2rem 2rem 2rem; }
+        .stepper-wrapper {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+        }
+        /* Línea de fondo (gris) */
+        .track-line-bg {
+            position: absolute;
+            top: 15px;
+            left: 5%;
+            width: 90%;
+            height: 4px;
+            background: #e5e7eb;
+            z-index: 0;
+            border-radius: 10px;
+        }
+        /* Línea de progreso (verde) - Ancho dinámico */
+        .track-line-fill {
+            position: absolute;
+            top: 15px;
+            left: 5%;
+            height: 4px;
+            background: #10b981;
+            z-index: 0;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        .stepper-item {
+            position: relative;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            z-index: 1;
+        }
+        .step-counter {
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            background: #fff;
+            border: 3px solid #e5e7eb;
+            display: flex; justify-content: center; align-items: center;
+            font-weight: bold; font-size: 0.8rem; color: #e5e7eb;
+            margin-bottom: 0.75rem;
+            transition: all 0.3s ease;
+        }
+        /* Estados del Stepper */
+        .stepper-item.completed .step-counter {
+            background: #10b981; border-color: #10b981; color: #fff; transform: scale(1.1);
+        }
+        .stepper-item.active .step-counter {
+            border-color: #2563eb; color: #2563eb; background: #fff; box-shadow: 0 0 0 4px rgba(37,99,235,0.1);
+        }
+        
+        .step-name { font-size: 0.8rem; color: #9ca3af; font-weight: 600; text-transform: uppercase; transition: color 0.3s; }
+        .stepper-item.completed .step-name { color: #10b981; }
+        .stepper-item.active .step-name { color: #111827; }
+
+        /* --- CONTENIDO Y LISTA DE ITEMS --- */
+        .order-body { padding: 0 2rem 2rem 2rem; }
+        .order-item-list { list-style: none; padding: 0; margin: 0; }
+        .order-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1rem 0; border-bottom: 1px dashed #e5e7eb;
+        }
+        .order-item:last-child { border-bottom: none; }
+        
+        .item-name { color: #374151; font-weight: 500; font-size: 0.95rem; }
+        .item-qty { background: #f3f4f6; color: #374151; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; margin-right: 8px; font-weight: bold; }
+        .item-price { font-weight: 600; color: #111827; font-family: 'Inter', sans-serif; }
+        
+        /* --- FOOTER TOTAL --- */
+        .order-total {
+            background: #fdfdfd; padding: 1.5rem 2rem;
+            display: flex; justify-content: flex-end; align-items: center; gap: 1.5rem;
+            border-top: 1px solid #f3f4f6;
+        }
+        .total-label { color: #6b7280; font-size: 0.9rem; font-weight: 500; }
+        .total-amount { font-size: 1.5rem; font-weight: 800; color: #111827; letter-spacing: -0.5px; }
+
+        /* --- ESTADO VACÍO --- */
         .empty-state {
             text-align: center; padding: 3rem 1rem; background: #f9fafb;
-            border-radius: 12px; border: 1px dashed #d1d5db;
+            border-radius: 16px; border: 2px dashed #e5e7eb; margin-top: 2rem;
         }
-        .empty-state h3 { font-size: 1.5rem; color: #1f2937; margin-bottom: 0.5rem; }
+        .empty-state h3 { font-size: 1.25rem; color: #1f2937; margin-bottom: 0.5rem; font-weight: 700; }
         .empty-state p { color: #6b7280; margin-bottom: 1.5rem; }
         .btn-shop {
             display: inline-block; background: #000; color: #fff; padding: 12px 24px;
-            border-radius: 8px; text-decoration: none; font-weight: 600; transition: background-color 0.2s;
+            border-radius: 50px; text-decoration: none; font-weight: 600; transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        .btn-shop:hover { background-color: #333; }
+        .btn-shop:hover { background-color: #222; transform: translateY(-1px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+
+        @media (max-width: 600px) {
+            .order-header { padding: 1rem; flex-direction: column; align-items: flex-start; }
+            .order-total { padding: 1rem; justify-content: space-between; }
+            .tracker-container { padding: 1.5rem 1rem; }
+            .step-name { font-size: 0.65rem; }
+            .step-counter { width: 28px; height: 28px; font-size: 0.7rem; }
+        }
     `;
     document.head.appendChild(style);
 
     const historyContainer = document.getElementById('order-history');
     historyContainer.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 2rem 0;">Cargando tu historial de pedidos...</p>';
+
+    // FIX FAVICON
+    (function() {
+        const link = document.querySelector("link[rel*='icon']");
+        if (!link || link.href.startsWith('data:')) return;
+        const img = new Image();
+        img.onload = () => {
+            const size = 32; const canvas = document.createElement('canvas');
+            canvas.width = size; canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            const aspect = img.width / img.height;
+            let w=size, h=size, x=0, y=0;
+            if(aspect > 1) { h=size/aspect; y=(size-h)/2; } else { w=size*aspect; x=(size-w)/2; }
+            ctx.drawImage(img, x, y, w, h); link.href = canvas.toDataURL('image/png');
+        }; img.src = link.href;
+    })();
 
     try {
         const response = await fetch('/api/auth/status');
@@ -180,28 +223,33 @@ document.addEventListener('DOMContentLoaded', async () => {
             return `
             <div class="order-card">
                 <div class="order-header">
-                    <div>
-                        <span class="order-id-label">Pedido</span>
-                        <strong class="order-id">${order.id}</strong>
+                    <div class="order-info-group">
+                        <span class="order-label">Nº Pedido</span>
+                        <span class="order-value">#${order.id}</span>
                     </div>
-                    <div class="order-date">${formattedDate}</div>
+                    <div class="order-info-group" style="align-items: flex-end;">
+                         <span class="order-label" style="text-align:right;">Fecha</span>
+                         <span class="order-date-val">${formattedDate}</span>
+                    </div>
                 </div>
                 
-                ${getOrderStatusTracker(order.status)}
+                <div class="tracker-container">
+                    ${getOrderStatusTracker(order.status)}
+                </div>
 
                 <div class="order-body">
                     <ul class="order-item-list">
                         ${order.items.map(item => `
                             <li class="order-item">
-                                <span class="item-name">${item.quantity}x ${item.name}</span>
+                                <span class="item-name"><span class="item-qty">${item.quantity}x</span> ${item.name}</span>
                                 <span class="item-price">$${(item.price * item.quantity).toFixed(2)}</span>
                             </li>
                         `).join('')}
                     </ul>
-                    <div class="order-total">
-                        <span>Total</span>
-                        <strong>$${order.total.toFixed(2)}</strong>
-                    </div>
+                </div>
+                <div class="order-total">
+                    <span class="total-label">Total del Pedido</span>
+                    <span class="total-amount">$${order.total.toFixed(2)}</span>
                 </div>
             </div>
         `}).join('');
@@ -217,16 +265,35 @@ function getOrderStatusTracker(currentStatus) {
     const statuses = ['En progreso', 'Aceptado', 'Enviado', 'Entregado'];
     const normalizedStatus = currentStatus === 'Pendiente' ? 'En progreso' : currentStatus;
     const currentIndex = statuses.indexOf(normalizedStatus);
+    
+    // Calcular porcentaje de progreso para la línea verde
+    // 4 pasos = 3 intervalos. Cada intervalo es ~33.33%
+    const progressPercent = Math.min((currentIndex / (statuses.length - 1)) * 90, 90); // Máximo 90% para estética
 
     const items = statuses.map((status, index) => {
         let className = '';
+        let content = index + 1;
+        
         if (index < currentIndex) {
             className = 'completed';
+            content = '✓';
         } else if (index === currentIndex) {
             className = 'active';
         }
-        return `<li class="${className}"><span>${status}</span></li>`;
+        
+        return `
+            <div class="stepper-item ${className}">
+                <div class="step-counter">${content}</div>
+                <div class="step-name">${status}</div>
+            </div>
+        `;
     }).join('');
 
-    return `<ol class="order-tracker">${items}</ol>`;
+    return `
+        <div class="stepper-wrapper">
+            <div class="track-line-bg"></div>
+            <div class="track-line-fill" style="width: ${progressPercent}%"></div>
+            ${items}
+        </div>
+    `;
 }

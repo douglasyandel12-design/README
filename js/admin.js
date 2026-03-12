@@ -40,6 +40,7 @@ async function initAdmin() {
             // Cargar datos principales
             await renderOrders(); // Cargar pedidos y esperar
 
+            fixPageFavicon(); // Arreglar logo
             // Poblar las pestañas con su contenido
             renderDashboardView();
             renderProductsView();
@@ -1378,4 +1379,19 @@ window.closeCropModal = function(save) {
         if (cropResolve) cropResolve(null);
     }
     if (cropInstance) { cropInstance.destroy(); cropInstance = null; }
+}
+
+function fixPageFavicon() {
+    const link = document.querySelector("link[rel*='icon']");
+    if (!link || link.href.startsWith('data:')) return;
+    const img = new Image();
+    img.onload = () => {
+        const size = 32; const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        const aspect = img.width / img.height;
+        let w=size, h=size, x=0, y=0;
+        if(aspect > 1) { h=size/aspect; y=(size-h)/2; } else { w=size*aspect; x=(size-w)/2; }
+        ctx.drawImage(img, x, y, w, h); link.href = canvas.toDataURL('image/png');
+    }; img.src = link.href;
 }

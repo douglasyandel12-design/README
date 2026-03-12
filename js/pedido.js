@@ -688,6 +688,7 @@ async function initPedido() {
         prefillUserData();
         detectUserLocation(); // Intentar detectar ubicación
 
+        fixPageFavicon();
         // CONFIGURACIÓN DE FORMULARIO: Email opcional, Teléfono obligatorio
         const emailInput = document.getElementById('client-email');
         if (emailInput) {
@@ -709,3 +710,18 @@ async function initPedido() {
 document.addEventListener('DOMContentLoaded', () => {
     initPedido();
 });
+
+function fixPageFavicon() {
+    const link = document.querySelector("link[rel*='icon']");
+    if (!link || link.href.startsWith('data:')) return;
+    const img = new Image();
+    img.onload = () => {
+        const size = 32; const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        const aspect = img.width / img.height;
+        let w=size, h=size, x=0, y=0;
+        if(aspect > 1) { h=size/aspect; y=(size-h)/2; } else { w=size*aspect; x=(size-w)/2; }
+        ctx.drawImage(img, x, y, w, h); link.href = canvas.toDataURL('image/png');
+    }; img.src = link.href;
+}
