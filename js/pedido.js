@@ -254,6 +254,31 @@ function injectStyles() {
         .image-modal-close:hover { color: #bbb; }
         @keyframes zoomIn { from {transform:scale(0.9); opacity:0} to {transform:scale(1); opacity:1} }
         @keyframes fadeIn { from {opacity:0} to {opacity:1} }
+
+        /* --- SWEETALERT2 OVERRIDES (Pedido) --- */
+        div:where(.swal2-container) div:where(.swal2-popup) {
+            border-radius: 16px !important;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1) !important;
+            border: 1px solid #f0f0f0;
+        }
+        div:where(.swal2-confirm) {
+            background-color: #000 !important;
+            border-radius: 8px !important;
+            box-shadow: none !important; 
+        }
+        div:where(.swal2-cancel) {
+            background-color: #fff !important;
+            color: #555 !important;
+            border: 1px solid #ddd !important;
+        }
+        div:where(.swal2-icon.swal2-success) {
+            border-color: #10b981 !important;
+            color: #10b981 !important;
+        }
+        div:where(.swal2-icon.swal2-error) {
+            border-color: #ef4444 !important;
+            color: #ef4444 !important;
+        }
     `;
     document.head.appendChild(style);
 
@@ -517,7 +542,7 @@ async function submitOrder(e) {
 
     // Validación simple de que se llenaron los campos de dirección
     if (!customer.name || !customer.email || !customer.phone || !document.getElementById('client-street').value) {
-        Swal.fire('Campos Incompletos', 'Por favor, rellena todos los datos de envío para continuar.', 'error');
+        Swal.fire({ title: 'Faltan datos', text: 'Por favor, rellena toda la información de envío para que podamos entregar tu pedido.', icon: 'warning', confirmButtonText: 'Entendido' });
         return;
     }
 
@@ -529,6 +554,11 @@ async function submitOrder(e) {
             return { id: item.id, name: item.name, quantity: item.quantity };
         })
     };
+
+    if(cart.length === 0) {
+        Swal.fire('Carrito Vacío', 'Agrega productos antes de confirmar.', 'warning');
+        return;
+    }
 
     // Desactivar botón para prevenir clics múltiples
     const submitButton = e.target.querySelector('button[type="submit"]');
@@ -553,7 +583,16 @@ async function submitOrder(e) {
         // El bloque de actualización de stock del cliente se elimina por completo.
 
         const serverOrder = result.order;
-        await Swal.fire('¡Pedido Confirmado!', `Tu número de pedido es: ${serverOrder.id}`, 'success');
+        
+        await Swal.fire({
+            title: '¡Pedido Recibido!',
+            text: `Hemos registrado tu orden #${serverOrder.id} exitosamente.`,
+            icon: 'success',
+            confirmButtonText: 'Ver Rastreo',
+            backdrop: `rgba(0,0,0,0.6) backdrop-filter: blur(5px)`,
+            allowOutsideClick: false,
+            allowEscapeKey: false
+        });
         
         localStorage.removeItem('lvs_cart'); // Limpiar carrito
 
@@ -576,7 +615,7 @@ async function submitOrder(e) {
 
     } catch (error) {
         console.error('Error al enviar el pedido:', error);
-        Swal.fire('Error', `Hubo un problema: ${error.message}`, 'error');
+        Swal.fire({ title: 'No se pudo completar', text: error.message, icon: 'error', confirmButtonText: 'Intentar de nuevo' });
     } finally {
         // Siempre reactivar el botón, haya éxito (antes de redirección) o error
         submitButton.disabled = false;

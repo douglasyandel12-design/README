@@ -4,6 +4,33 @@ const summary = document.getElementById('cart-summary');
 const totalEl = document.getElementById('total-amount');
 let globalSettings = {};
 
+// Inyectar estilos de alerta si no existen (para página dedicada de carrito)
+if (!document.getElementById('swal-custom-style')) {
+    const style = document.createElement('style');
+    style.id = 'swal-custom-style';
+    style.innerHTML = `
+        div:where(.swal2-container) div:where(.swal2-popup) {
+            border-radius: 16px !important;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.15) !important;
+            border: 1px solid rgba(0,0,0,0.05);
+            font-family: 'Inter', system-ui, sans-serif !important;
+        }
+        div:where(.swal2-confirm) {
+            background-color: #000 !important;
+            color: #fff !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+        }
+        div:where(.swal2-cancel) {
+            background-color: #fff !important;
+            color: #555 !important;
+            border: 1px solid #e5e5e5 !important;
+            border-radius: 8px !important;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
 // Cargar configuración para saber cuál es el producto en promo
 async function loadSettings() {
     try {

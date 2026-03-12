@@ -53,6 +53,32 @@ function init() {
         .product-card:hover .product-overlay { opacity: 1; }
         .overlay-text { font-weight: 600; padding: 8px 16px; border: 2px solid white; border-radius: 4px; }
         
+        /* --- SWEETALERT2 PERSONALIZADO (Estilo Premium LVS²) --- */
+        div:where(.swal2-container) div:where(.swal2-popup) {
+            border-radius: 16px !important;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.15) !important;
+            padding: 2rem !important;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        div:where(.swal2-title) { font-size: 1.5rem !important; color: #111 !important; font-weight: 700 !important; }
+        div:where(.swal2-html-container) { color: #555 !important; font-size: 1rem !important; }
+        div:where(.swal2-icon) { border-color: #111 !important; color: #111 !important; }
+        div:where(.swal2-confirm) {
+            background-color: #000 !important;
+            color: #fff !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+            padding: 12px 24px !important;
+        }
+        div:where(.swal2-cancel) {
+            background-color: #fff !important;
+            color: #555 !important;
+            border: 1px solid #e5e5e5 !important;
+            border-radius: 8px !important;
+            padding: 12px 24px !important;
+        }
+        div:where(.swal2-footer) { border-top: 1px solid #eee !important; }
+
         /* --- Hero / Portada Estilo Fondo --- */
         .hero { 
             background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('img/Portada.jpg');
@@ -891,12 +917,15 @@ function clearCart() {
     Swal.fire({
         title: '¿Vaciar carrito?',
         text: "¿Estás seguro de que quieres eliminar todos los productos?",
-        icon: 'warning',
+        icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#000',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Sí, vaciar',
-        cancelButtonText: 'Cancelar'
+        cancelButtonColor: '#fff',
+        confirmButtonText: 'Sí, vaciar todo',
+        cancelButtonText: 'Cancelar',
+        focusCancel: true,
+        reverseButtons: true, // Invierte orden para UX moderna (Cancelar izq, Confirmar der)
+        backdrop: `rgba(0,0,0,0.4) backdrop-filter: blur(4px)`
     }).then((result) => {
         if (result.isConfirmed) {
             cart = [];
@@ -918,7 +947,10 @@ function showToast(message) {
 
     const toast = document.createElement('div');
     toast.className = 'toast';
-    toast.innerHTML = `✅ ${message}`;
+    // Diseño Toast tipo "Píldora Flotante"
+    toast.style.cssText = "display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); color: white; padding: 12px 20px; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); font-weight: 500; font-size: 0.95rem; min-width: 250px; justify-content: center;";
+    
+    toast.innerHTML = `<span style="font-size: 1.2rem;">✨</span> ${message}`;
     document.body.appendChild(toast);
 
     // Pequeño delay para permitir que el DOM se actualice antes de la animación

@@ -308,6 +308,18 @@ adminStyle.innerHTML = `
     .admin-toast.show { transform: translateY(0); opacity: 1; }
     .admin-toast .toast-icon { font-size: 1.2rem; animation: popIn 0.5s cubic-bezier(0.215, 0.610, 0.355, 1) 0.2s forwards; transform: scale(0); }
     @keyframes popIn { 0% { transform: scale(0); } 80% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+    /* --- SWEETALERT2 ADMIN THEME --- */
+    div:where(.swal2-container) div:where(.swal2-popup) {
+        border-radius: 12px !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    }
+    div:where(.swal2-confirm) {
+        background-color: #111827 !important; /* gray-900 */
+    }
+    div:where(.swal2-cancel) {
+        color: #374151 !important;
+    }
 `;
 document.head.appendChild(adminStyle);
 
@@ -495,17 +507,30 @@ function renderTable() {
 }
 
 async function deleteProduct(id) {
-    if(confirm('¿Estás seguro de eliminar este producto?')) {
-        try {
-            const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error('El servidor no pudo eliminar el producto.');
-            products = products.filter(p => p.id != id);
-            renderTable();
-            checkStockAlerts();
-        } catch (e) {
-            alert('Error al eliminar el producto: ' + e.message);
+    Swal.fire({
+        title: '¿Eliminar producto?',
+        text: "Esta acción no se puede deshacer.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#ef4444', // Rojo para peligro
+        cancelButtonColor: '#fff',
+        reverseButtons: true
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('El servidor no pudo eliminar el producto.');
+                products = products.filter(p => p.id != id);
+                renderTable();
+                checkStockAlerts();
+                showAdminToast('Producto eliminado correctamente.');
+            } catch (e) {
+                Swal.fire('Error', e.message, 'error');
+            }
         }
-    }
+    });
 }
 
 function renderDashboardStats() {
@@ -648,29 +673,16 @@ async function updateOrderStatus(button, id, newStatus) {
 }
 
 async function deleteOrder(id) {
-    if (typeof Swal === 'undefined') {
-        if(confirm('¿Estás seguro de eliminar este pedido? Esta acción no se puede deshacer.')) {
-            try {
-                await fetch(`/api/orders/${id}`, { method: 'DELETE' });
-                allOrders = allOrders.filter(o => o.id !== id);
-                renderOrders();
-                showAdminToast('Pedido eliminado.');
-            } catch (error) {
-                alert('Error al eliminar el pedido.');
-            }
-        }
-        return;
-    }
-
     Swal.fire({
         title: '¿Eliminar este pedido?',
         text: "Esta acción es permanente y no se puede deshacer.",
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#6b7280',
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#fff',
         confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
     }).then(async (result) => {
         if (result.isConfirmed) {
             try {
@@ -904,7 +916,8 @@ async function saveProductModal(e) {
             icon: 'error',
             title: 'Contenido Demasiado Grande',
             text: `El tamaño total de los datos del producto (${payloadSizeMB.toFixed(2)} MB) supera el límite de 2.5 MB. Esto suele ocurrir por tener demasiadas imágenes. Por favor, reduce la cantidad o el peso de las imágenes e intenta de nuevo.`,
-            confirmButtonColor: '#000'
+            confirmButtonColor: '#000',
+            confirmButtonText: 'Entendido'
         });
         return; // Detener el envío
     }
@@ -946,7 +959,8 @@ async function saveProductModal(e) {
             icon: 'error',
             title: 'Error al Guardar',
             text: 'No se pudo guardar el producto: ' + error.message,
-            confirmButtonColor: '#000'
+            confirmButtonColor: '#000',
+            confirmButtonText: 'Cerrar'
         });
     }
 }
@@ -1115,7 +1129,7 @@ window.setMainImageFromUrl = function() {
     const input = document.getElementById('main-img-url-edit');
     if (input && input.value) {
         if (tempImages.length >= 5) {
-            alert('Máximo 5 imágenes permitidas por producto.');
+            Swal.fire('Límite alcanzado', 'Máximo 5 imágenes permitidas por producto.', 'info');
             return;
         }
         tempImages.length > 0 ? tempImages[0] = input.value : tempImages.unshift(input.value);
@@ -1127,7 +1141,7 @@ window.setMainImageFromUrl = function() {
 window.setMainImageFromFile = async function(input) {
     if (input.files && input.files[0]) {
         if (tempImages.length >= 5) {
-            alert('Máximo 5 imágenes permitidas por producto.');
+            Swal.fire('Límite alcanzado', 'Máximo 5 imágenes permitidas por producto.', 'info');
             input.value = '';
             return;
         }
@@ -1142,7 +1156,8 @@ window.setMainImageFromFile = async function(input) {
                 icon: 'warning',
                 title: 'Imagen muy pesada',
                 text: error.message,
-                confirmButtonColor: '#000'
+                confirmButtonColor: '#000',
+                confirmButtonText: 'Ok'
             });
         } finally {
             input.value = '';
@@ -1154,7 +1169,7 @@ window.addGalleryImageFromUrl = function() {
     const input = document.getElementById('gallery-img-url-edit');
     if (input && input.value) {
         if (tempImages.length >= 5) {
-            alert('Máximo 5 imágenes permitidas por producto.');
+            Swal.fire('Límite alcanzado', 'Máximo 5 imágenes permitidas por producto.', 'info');
             return;
         }
         tempImages.push(input.value);
@@ -1167,7 +1182,7 @@ window.addGalleryImageFromFile = function(input) {
     if (input.files && input.files.length > 0) {
         const filesToAdd = Array.from(input.files).slice(0, 5 - tempImages.length);
         if (filesToAdd.length === 0) {
-            alert('Máximo 5 imágenes permitidas por producto.');
+            Swal.fire('Límite alcanzado', 'Máximo 5 imágenes permitidas por producto.', 'info');
             input.value = '';
             return;
         }
@@ -1182,7 +1197,8 @@ window.addGalleryImageFromFile = function(input) {
                     icon: 'warning',
                     title: 'Problema con una imagen',
                     text: error.message,
-                    confirmButtonColor: '#000'
+                    confirmButtonColor: '#000',
+                    confirmButtonText: 'Ok'
                 });
             }
         });
@@ -1222,7 +1238,7 @@ function updateVideoUI() {
 
 window.handleVideoUpload = function(input) {
     // Deshabilitamos la subida de videos locales para evitar superar el límite de Vercel.
-    alert('La subida de videos locales ha sido deshabilitada para evitar errores de tamaño. Por favor, suba su video a un servicio como YouTube o Vimeo y pegue el enlace en el campo de URL.');
+    Swal.fire('Opción no disponible', 'Por favor, suba su video a un servicio como YouTube o Vimeo y pegue el enlace. Los videos locales pesan demasiado.', 'info');
     if (input) {
         input.value = ''; // Limpiar el input para que el usuario pueda volver a intentarlo si quiere
     }
