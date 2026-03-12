@@ -246,13 +246,21 @@ router.post('/orders', async (req, res) => {
 
         const productIds = items.map(item => item.id);
         const productsInDB = await Product.find({ 'id': { $in: productIds } }).session(session);
+        
+        // Obtener configuración de promociones para calcular el precio exacto
+        const settingsDB = await Setting.find({}).session(session);
+        const settings = {};
+        settingsDB.forEach(s => settings[s.key] = s.value);
+        
+        const isProgressivePromoActive = settings.promo_progressive_active === true;
+        const isMemberPromoActive = settings.promo_login_5 === true && req.user; // req.user existe si hay sesión válida
 
         let serverTotal = 0;
         const stockUpdates = [];
 
         for (const item of items) {
             // Asegurar comparación robusta de ID (String vs Number)
-            const product = productsInDB.find(p => p.id == item.id);
+            const product = productsInDB.find(p => String(p.id) === String(item.id));
             if (!product) {
                 throw new Error(`El producto "${item.name}" ya no está disponible.`);
             }
@@ -263,8 +271,20 @@ router.post('/orders', async (req, res) => {
             }
 
             // 3. Calcular el total de forma segura en el servidor
-            // NOTA: Esta es una simplificación. La lógica de precios complejos (promociones, etc.) debe vivir aquí.
-            const price = product.discount ? product.price * (1 - product.discount / 100) : product.price;
+            let price = product.price;
+
+            // Lógica de Descuento Primario (Progresivo o Porcentaje)
+            if (isProgressivePromoActive) {
+                let discount = 0;
+                if (item.quantity >= 2) discount = Math.min(item.quantity, 5);
+                price = Math.max(0, price - discount);
+            } else if (product.discount && product.discount > 0) {
+                price = price * (1 - product.discount / 100);
+            }
+
+            // Lógica de Descuento Socio
+            if (isMemberPromoActive) price = price * 0.95;
+
             serverTotal += price * item.quantity;
 
             // 4. Preparar la actualización de stock

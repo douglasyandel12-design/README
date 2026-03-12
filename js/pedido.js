@@ -77,18 +77,6 @@ function injectStyles() {
         /* Estilos de Lista de Productos (Checkout Style) */
         .item-row { display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
         #order-total { font-size: 1.5rem; font-weight: 700; }
-        
-        /* Contenedor de imagen con badge de cantidad */
-        .item-image-container { position: relative; width: 64px; height: 64px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; background: #fff; flex-shrink: 0; margin-right: 15px; }
-        .item-image { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; padding: 2px; box-sizing: border-box; }
-        .qty-badge {
-            position: absolute; top: -10px; right: -10px;
-            background: #717171; color: #fff;
-            width: 20px; height: 20px; border-radius: 50%;
-            font-size: 0.75rem; font-weight: 600;
-            display: flex; align-items: center; justify-content: center;
-            z-index: 10;
-        }
 
         .item-details { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
         .item-name { display: block; font-weight: 600; font-size: 0.9rem; color: var(--text); margin-bottom: 2px; }
@@ -198,41 +186,13 @@ function renderOrderSummary() {
     if (!itemsList) return;
 
     itemsList.innerHTML = cart.map((item, index) => {
-        // Buscar producto actualizado (Fresca de la BD) - Comparación segura de Strings
-        const product = products.find(p => String(p.id) === String(item.id));
-        
-        // Lógica de imagen idéntica al Admin: Priorizar BD > Array > String Legacy > Carrito > Placeholder
-        let imageUrl = '';
-        
-        if (product) {
-            // 1. Intentar sacar del array de imágenes (nuevo sistema)
-            if (Array.isArray(product.images) && product.images.length > 0 && product.images[0]) {
-                imageUrl = product.images[0];
-            } 
-            // 2. Intentar sacar string de imagen (sistema antiguo)
-            else if (product.image && typeof product.image === 'string' && product.image.trim() !== '') {
-                imageUrl = product.image;
-            }
-        }
-
-        // 3. Si no hay imagen en BD (o producto no existe), usar la del carrito local
-        if (!imageUrl && item.image) {
-            imageUrl = item.image;
-        }
-
-        // 4. Fallback final
-        if (!imageUrl) imageUrl = 'img/placeholder.png';
-
         const subtotalItem = item.price * item.quantity;
 
         return `
             <div class="item-row">
-                <div class="item-image-container">
-                    <img src="${imageUrl}" class="item-image" alt="${item.name}" onerror="this.onerror=null;this.src='img/placeholder.png';">
-                    <span class="qty-badge">${item.quantity}</span>
-                </div>
                 <div class="item-details">
                     <span class="item-name">${item.name}</span>
+                    <span class="item-meta">Cant: ${item.quantity}</span>
                     <div class="mini-actions">
                         <button type="button" class="mini-btn" onclick="updateOrderItemQuantity(${index}, -1)">Disminuir</button>
                         <button type="button" class="mini-btn" onclick="updateOrderItemQuantity(${index}, 1)">Aumentar</button>
@@ -274,7 +234,7 @@ window.updateOrderItemQuantity = function(index, change) {
 
     item.quantity = newQuantity;
     
-    const product = products.find(p => p.id == item.id);
+    const product = products.find(p => String(p.id) === String(item.id));
     if (product) {
         item.price = calculateItemPrice(product, item.quantity);
     }
@@ -319,18 +279,7 @@ async function submitOrder(e) {
         customer,
         // Enviamos solo los datos necesarios para que el backend verifique y procese.
         items: cart.map(item => {
-            const product = products.find(p => String(p.id) === String(item.id));
-            
-            // Usar la misma lógica prioritaria para guardar la imagen correcta en el pedido
-            let imageToSave = '';
-            if (product) {
-                if (Array.isArray(product.images) && product.images.length > 0 && product.images[0]) imageToSave = product.images[0];
-                else if (product.image && typeof product.image === 'string' && product.image.trim() !== '') imageToSave = product.image;
-            }
-            // Si no se encontró en el producto actualizado, usar la del carrito
-            if (!imageToSave && item.image) imageToSave = item.image;
-
-            return { id: item.id, name: item.name, quantity: item.quantity, image: imageToSave || '' };
+            return { id: item.id, name: item.name, quantity: item.quantity };
         })
     };
 
@@ -388,6 +337,25 @@ async function submitOrder(e) {
     }
 }
 
+// Nueva función para asegurar que los precios estén actualizados con las reglas vigentes al cargar
+function recalculateCart() {
+    let updated = false;
+    cart.forEach(item => {
+        const product = products.find(p => String(p.id) === String(item.id));
+        if (product) {
+            const newPrice = calculateItemPrice(product, item.quantity);
+            if (Math.abs(item.price - newPrice) > 0.001) {
+                item.price = newPrice;
+                updated = true;
+            }
+        }
+    });
+    if (updated) {
+        saveCart();
+        renderOrderSummary(); // Refrescar visualmente
+    }
+}
+
 // Función de inicio principal
 async function initPedido() {
     // Asegurar referencia al elemento
@@ -409,6 +377,7 @@ async function initPedido() {
         const sessionData = sessionRes.ok ? await sessionRes.json() : { user: null };
         window.currentUser = sessionData.user;
 
+        recalculateCart(); // Recalcular precios con la info fresca (settings y usuario)
         renderOrderSummary();
         prefillUserData();
 
