@@ -412,6 +412,28 @@ router.put('/auth/profile', isAuthenticated, async (req, res) => {
   }
 });
 
+// RUTA: Actualizar Foto de Perfil
+router.put('/auth/profile-picture', isAuthenticated, async (req, res) => {
+  try {
+    await connectToDatabase();
+    const { picture } = req.body;
+
+    if (!picture) return res.status(400).json({ message: 'La imagen es obligatoria.' });
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: 'Usuario no encontrado.' });
+
+    user.picture = picture;
+    await user.save();
+    req.user.picture = user.picture; // Actualizar sesión en memoria
+    
+    res.json({ message: 'Foto de perfil actualizada.', picture: user.picture });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error al actualizar la foto.' });
+  }
+});
+
 // RUTA: Cambiar Contraseña
 router.put('/auth/change-password', isAuthenticated, async (req, res) => {
   try {

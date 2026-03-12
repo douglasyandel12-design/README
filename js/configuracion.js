@@ -61,6 +61,11 @@ function injectSettingsStyles() {
         .btn-save { background: #000; color: white; padding: 0.75rem 1.5rem; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
         .btn-save:hover { opacity: 0.9; }
 
+        .avatar-section { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid #f3f4f6; }
+        .avatar-preview { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #e5e7eb; }
+        .avatar-btn { color: #2563eb; font-weight: 500; font-size: 0.9rem; cursor: pointer; background: none; border: none; padding: 0; }
+        .avatar-btn:hover { text-decoration: underline; }
+
         @media (max-width: 768px) {
             .settings-layout { flex-direction: column; }
             .settings-sidebar { width: 100%; display: flex; overflow-x: auto; }
@@ -88,6 +93,16 @@ function renderSettingsUI(container) {
                         <h2>Información Personal</h2>
                         <p>Actualiza tu información básica de identificación.</p>
                     </div>
+
+                    <div class="avatar-section">
+                        <img src="${currentUser.picture || 'https://ui-avatars.com/api/?name=' + currentUser.name}" id="avatar-img" class="avatar-preview">
+                        <div>
+                            <label for="avatar-input" class="avatar-btn">Cambiar foto de perfil</label>
+                            <input type="file" id="avatar-input" accept="image/*" style="display: none;" onchange="handleAvatarUpload(this)">
+                            <p style="margin: 5px 0 0 0; font-size: 0.8rem; color: #6b7280;">Recomendado: Cuadrada, máx 2MB.</p>
+                        </div>
+                    </div>
+
                     <form onsubmit="handleUpdateProfile(event)">
                         <div class="form-group">
                             <label>Nombre Completo</label>
@@ -237,4 +252,76 @@ window.saveShippingInfo = function(e) {
 
     localStorage.setItem(`shippingInfo-${currentUser.email}`, JSON.stringify(shippingInfo));
     Swal.fire('Guardado', 'Tus datos de envío predeterminados se han guardado localmente.', 'success');
+}
+
+window.handleAvatarUpload = async function(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    try {
+        // Mostrar cargando
+        const preview = document.getElementById('avatar-img');
+        const originalSrc = preview.src;
+        preview.style.opacity = '0.5';
+
+        // Comprimir imagen (Reutilizamos lógica simplificada de admin)
+        const compressedBase64 = await compressImage(file);
+
+        // Enviar al servidor
+        const res = await fetch('/api/auth/profile-picture', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ picture: compressedBase64 })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            preview.src = data.picture;
+            // Actualizar también el icono del header si es visible
+            const headerIcon = document.querySelector('.profile-icon img');
+            if (headerIcon) headerIcon.src = data.picture;
+            Swal.fire('¡Foto actualizada!', 'Tu foto de perfil se ha guardado correctamente.', 'success');
+        } else {
+            throw new Error('Error al subir la imagen');
+        }
+    } catch (error) {
+        console.error(error);
+        Swal.fire('Error', 'No se pudo actualizar la foto. Intenta con una imagen más pequeña.', 'error');
+    } finally {
+        document.getElementById('avatar-img').style.opacity = '1';
+        input.value = ''; // Limpiar input
+    }
+}
+
+function compressImage(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Redimensionar a máximo 300x300 para perfil (ahorra mucho espacio)
+                const MAX_SIZE = 300;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+                } else {
+                    if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Comprimir a JPEG calidad 0.8
+                resolve(canvas.toDataURL('image/jpeg', 0.8));
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
 }
