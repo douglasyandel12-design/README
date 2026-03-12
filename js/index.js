@@ -127,7 +127,7 @@ function init() {
         .cart-content {
             width: 100%;
             max-width: 500px; /* Modal más ancho */
-            margin: 0 auto;
+            margin: 0 0 0 auto; /* Empujar a la derecha */
         }
 
         /* --- ESTILOS DEL MODAL DE PRODUCTO (TIPO SHOPIFY) --- */
@@ -888,11 +888,23 @@ function removeFromCart(index) {
 }
 
 function clearCart() {
-    if (confirm('¿Estás seguro de que quieres vaciar todo el carrito?')) {
-        cart = [];
-        saveCart();
-        updateCartUI();
-    }
+    Swal.fire({
+        title: '¿Vaciar carrito?',
+        text: "¿Estás seguro de que quieres eliminar todos los productos?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#000',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Sí, vaciar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            cart = [];
+            saveCart();
+            updateCartUI();
+            Swal.fire('¡Listo!', 'El carrito ha sido vaciado.', 'success');
+        }
+    });
 }
 
 function toggleCart() {
