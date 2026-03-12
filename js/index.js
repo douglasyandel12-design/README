@@ -195,7 +195,7 @@ function init() {
         .pm-title { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; line-height: 1.1; }
         .pm-price { font-size: 1.5rem; font-weight: 500; margin-bottom: 1.5rem; color: #333; }
         .pm-description { color: #555; line-height: 1.6; margin-bottom: 2rem; font-size: 0.95rem; }
-        .pm-details { padding: 3rem 2rem; overflow-y: auto; display: flex; flex-direction: column; max-height: 100%; scrollbar-width: thin; }
+        .pm-details { padding: 3rem 2rem; overflow-y: auto; height: 100%; display: block; scrollbar-width: thin; }
         .pm-details::-webkit-scrollbar { width: 6px; }
         .pm-details::-webkit-scrollbar-thumb { background-color: #ccc; border-radius: 3px; }
         .pm-description ul { padding-left: 20px; margin-bottom: 1rem; }
@@ -206,9 +206,9 @@ function init() {
         .qty-input { width: 40px; text-align: center; border: none; font-weight: bold; font-size: 1rem; -moz-appearance: textfield; }
         
         @media (max-width: 768px) {
-            .product-modal-content { grid-template-columns: 1fr; max-height: 95vh; overflow-y: auto; }
+            .product-modal-content { grid-template-columns: 1fr; max-height: 95vh; overflow-y: auto; display: block; }
             .pm-image-container { padding: 1rem; height: 300px; }
-            .pm-details { padding: 1.5rem; }
+            .pm-details { padding: 1.5rem; height: auto; overflow: visible; }
         }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
