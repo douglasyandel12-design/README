@@ -9,23 +9,50 @@ if (!document.getElementById('swal-custom-style')) {
     const style = document.createElement('style');
     style.id = 'swal-custom-style';
     style.innerHTML = `
+        div:where(.swal2-container) {
+            z-index: 9999 !important;
+        }
         div:where(.swal2-container) div:where(.swal2-popup) {
-            border-radius: 16px !important;
-            box-shadow: 0 15px 50px rgba(0,0,0,0.15) !important;
-            border: 1px solid rgba(0,0,0,0.05);
-            font-family: 'Inter', system-ui, sans-serif !important;
+            border-radius: 12px !important;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+            padding: 2rem !important;
+            background: #ffffff !important;
+            color: #1f2937 !important;
+            border: 1px solid #e5e7eb !important;
+            font-family: system-ui, -apple-system, sans-serif !important;
+        }
+        div:where(.swal2-title) {
+            font-size: 1.5rem !important;
+            font-weight: 700 !important;
+            color: #111827 !important;
+        }
+        div:where(.swal2-html-container) {
+            font-size: 1rem !important;
+            color: #4b5563 !important;
         }
         div:where(.swal2-confirm) {
-            background-color: #000 !important;
-            color: #fff !important;
-            border-radius: 8px !important;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+            background-color: #000000 !important;
+            color: #ffffff !important;
+            border-radius: 6px !important;
+            padding: 0.75rem 1.5rem !important;
+            font-weight: 600 !important;
+            border: 1px solid transparent !important;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
         }
         div:where(.swal2-cancel) {
-            background-color: #fff !important;
-            color: #555 !important;
-            border: 1px solid #e5e5e5 !important;
-            border-radius: 8px !important;
+            background-color: #ffffff !important;
+            color: #374151 !important;
+            border: 1px solid #d1d5db !important;
+            border-radius: 6px !important;
+            padding: 0.75rem 1.5rem !important;
+            font-weight: 600 !important;
+        }
+        div:where(.swal2-cancel):hover {
+            background-color: #f9fafb !important;
+            border-color: #9ca3af !important;
+        }
+        div:where(.swal2-icon) {
+            border-color: #e5e7eb !important;
         }
     `;
     document.head.appendChild(style);
@@ -106,9 +133,22 @@ function removeItem(index) {
 }
 
 function clearCart() {
-    cart = [];
-    localStorage.setItem('lvs_cart', JSON.stringify(cart));
-    renderCart();
+    Swal.fire({
+        title: '¿Vaciar carrito?',
+        text: "Se eliminarán todos los productos seleccionados.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, vaciar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            cart = [];
+            localStorage.setItem('lvs_cart', JSON.stringify(cart));
+            renderCart();
+            Swal.fire({ title: '¡Listo!', text: 'Tu carrito ha sido vaciado.', icon: 'success', confirmButtonText: 'Ok' });
+        }
+    });
 }
 
 renderCart();
