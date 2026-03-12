@@ -192,16 +192,16 @@ function init() {
         .pm-media-toggle button { background: #eee; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer; font-weight: 500; }
         .pm-media-toggle button.active { background: #000; color: #fff; }
         .pm-video-container { width: 100%; aspect-ratio: 16/9; background: #000; }
-        .pm-title { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; line-height: 1.1; flex-shrink: 0; }
-        .pm-price { font-size: 1.5rem; font-weight: 500; margin-bottom: 1.5rem; color: #333; flex-shrink: 0; }
-        /* Descripción con scroll independiente */
-        .pm-description { color: #555; line-height: 1.6; margin-bottom: 2rem; font-size: 0.95rem; overflow-y: auto; flex-grow: 1; scrollbar-width: thin; padding-right: 5px; }
-        .pm-description::-webkit-scrollbar { width: 6px; }
-        .pm-description::-webkit-scrollbar-thumb { background-color: #ccc; border-radius: 3px; }
-        .pm-details { padding: 3rem 2rem; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+        .pm-title { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; line-height: 1.1; }
+        .pm-price { font-size: 1.5rem; font-weight: 500; margin-bottom: 1.5rem; color: #333; }
+        .pm-description { color: #555; line-height: 1.6; margin-bottom: 2rem; font-size: 0.95rem; }
+        /* Scroll en todo el panel derecho */
+        .pm-details { padding: 3rem 2rem; height: 100%; overflow-y: auto; display: block; scrollbar-width: thin; }
+        .pm-details::-webkit-scrollbar { width: 6px; }
+        .pm-details::-webkit-scrollbar-thumb { background-color: #ccc; border-radius: 3px; }
         .pm-description ul { padding-left: 20px; margin-bottom: 1rem; }
 
-        .pm-actions { margin-bottom: 1.5rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; flex-shrink: 0; }
+        .pm-actions { margin-bottom: 1.5rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
         .qty-selector { display: flex; border: 1px solid #ddd; border-radius: 4px; }
         .qty-btn { background: none; border: none; padding: 10px 15px; cursor: pointer; font-size: 1.2rem; }
         .qty-input { width: 40px; text-align: center; border: none; font-weight: bold; font-size: 1rem; -moz-appearance: textfield; }
