@@ -170,7 +170,7 @@ function init() {
         }
         .product-modal-overlay.active { display: flex; animation: fadeIn 0.3s; }
         .product-modal-content {
-            background: #fff; width: 100%; max-width: 900px; max-height: 90vh;
+            background: #fff; width: 95%; max-width: 1200px; max-height: 90vh;
             display: flex;
             align-items: flex-start; /* Clave para que funcione sticky */
             border-radius: 8px; 
@@ -199,7 +199,7 @@ function init() {
         .pm-video-container { width: 100%; aspect-ratio: 16/9; background: #000; }
         .pm-title { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; line-height: 1.1; }
         .pm-price { font-size: 1.5rem; font-weight: 500; margin-bottom: 1.5rem; color: #333; }
-        .pm-description { color: #555; line-height: 1.6; margin-bottom: 2rem; font-size: 0.95rem; }
+        .pm-description { color: #555; line-height: 1.8; margin-bottom: 2rem; font-size: 1rem; }
         .pm-description ul { padding-left: 20px; margin-bottom: 1rem; }
 
         .pm-actions { margin-bottom: 1.5rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
