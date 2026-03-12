@@ -1,6 +1,6 @@
 // Global variables
 let cart = JSON.parse(localStorage.getItem('lvs_cart')) || [];
-const itemsList = document.getElementById('items-list');
+let itemsList = document.getElementById('items-list');
 const totalEl = document.getElementById('order-total');
 let products = [];
 let globalSettings = {};
@@ -105,13 +105,18 @@ function renderOrderSummary() {
         return;
     }
 
+    // Asegurar que el elemento existe
+    if (!itemsList) itemsList = document.getElementById('items-list');
+    if (!itemsList) return;
+
     itemsList.innerHTML = cart.map((item, index) => {
-        const product = products.find(p => p.id == item.id);
-        const imageUrl = item.image || ((product && product.images && product.images.length > 0) ? product.images[0] : (product ? product.image : ''));
+        const product = products.find(p => p.id == item.id) || {};
+        const productImg = (product.images && product.images.length > 0) ? product.images[0] : product.image;
+        const imageUrl = item.image || productImg || 'img/placeholder.png';
 
         return `
             <div class="item-row">
-                <img src="${imageUrl || 'img/placeholder.png'}" class="item-image" alt="${item.name}">
+                <img src="${imageUrl}" class="item-image" alt="${item.name}" onerror="this.src='img/placeholder.png'">
                 <div class="item-info">
                     <span class="item-name">${item.name}</span>
                     <span class="item-price">$${(item.price * item.quantity).toFixed(2)}</span>
@@ -262,6 +267,9 @@ async function verifySession() {
 
 // Función de inicio principal
 async function initPedido() {
+    // Asegurar referencia al elemento
+    itemsList = document.getElementById('items-list');
+    
     injectStyles();
     forcePaymentMethod();
 
@@ -288,4 +296,6 @@ async function initPedido() {
 }
 
 // Llamar a la función de inicio
-initPedido();
+document.addEventListener('DOMContentLoaded', () => {
+    initPedido();
+});
