@@ -69,6 +69,7 @@ function injectStyles() {
         /* Layout Desktop Responsive */
         @media (min-width: 900px) {
             .container {
+                display: grid;
                 grid-template-columns: 1.5fr 1fr;
                 grid-template-areas: 
                     "header header"
@@ -82,6 +83,7 @@ function injectStyles() {
                 grid-area: summary; 
                 position: sticky;
                 top: 2rem;
+                align-self: start;
             }
         }
 
@@ -519,6 +521,14 @@ function saveCart() {
 
 async function submitOrder(e) {
     e.preventDefault();
+    
+    // Fallback de seguridad si SweetAlert no cargó correctamente (evita que el form parezca muerto)
+    if (typeof Swal === 'undefined') {
+        if (!confirm('¿Estás seguro de confirmar el pedido?')) return;
+        // Mock mínimo para que el resto del código funcione
+        window.Swal = { fire: (opts) => alert(opts.text || opts.title) };
+    }
+
     if(cart.length === 0) {
         Swal.fire('Carrito Vacío', 'No puedes realizar un pedido sin productos.', 'warning');
         return;
@@ -563,8 +573,10 @@ async function submitOrder(e) {
 
     // Desactivar botón para prevenir clics múltiples
     const submitButton = e.target.querySelector('button[type="submit"]');
-    submitButton.disabled = true;
-    submitButton.textContent = 'Procesando...';
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Procesando...';
+    }
 
     try { // 3. Enviar el pedido al backend para un procesamiento seguro
         const response = await fetch('/api/orders', {
@@ -619,8 +631,10 @@ async function submitOrder(e) {
         Swal.fire({ title: 'No se pudo completar', text: error.message, icon: 'error', confirmButtonText: 'Intentar de nuevo' });
     } finally {
         // Siempre reactivar el botón, haya éxito (antes de redirección) o error
-        submitButton.disabled = false;
-        submitButton.textContent = 'Confirmar Pedido';
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Confirmar Pedido';
+        }
     }
 }
 
