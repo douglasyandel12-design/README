@@ -262,11 +262,89 @@ function prefillUserData() {
             const savedInfo = JSON.parse(localStorage.getItem(`shippingInfo-${window.currentUser.email}`));
             if (savedInfo) {
                 document.getElementById('client-phone').value = savedInfo.phone || '';
-                document.getElementById('client-address').value = savedInfo.address || '';
+                // Si existía una dirección guardada antigua, la ponemos en la calle para no perderla
+                if(document.getElementById('client-street')) document.getElementById('client-street').value = savedInfo.address || '';
             }
         }
     } catch (error) {
         console.error('No se pudo rellenar los datos del usuario.', error);
+    }
+}
+
+// Función mejorada: Carga países, configura eventos y detecta ubicación
+async function detectUserLocation() {
+    const countrySelect = document.getElementById('client-country');
+    const stateSelect = document.getElementById('client-state');
+    const cityField = document.getElementById('client-city');
+
+    if (!countrySelect || !stateSelect) return;
+
+    // 1. Cargar lista de países disponibles (API CountriesNow)
+    try {
+        const res = await fetch('https://countriesnow.space/api/v0.1/countries/iso');
+        const data = await res.json();
+        if (!data.error) {
+            countrySelect.innerHTML = '<option value="">Selecciona tu país</option>' + 
+                data.data.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+        }
+    } catch (e) {
+        countrySelect.innerHTML = '<option value="">Error cargando países</option>';
+    }
+
+    // 2. Configurar el evento de cambio manual
+    countrySelect.onchange = async (e) => {
+        await loadStatesForCountry(e.target.value);
+    };
+
+    // 3. Detectar ubicación automática por IP
+    try {
+        const response = await fetch('https://ipapi.co/json/');
+        if (response.ok) {
+            const geoData = await response.json();
+            
+            // Buscar el país detectado en el selector
+            // A veces el nombre de IPAPI difiere ligeramente, buscamos coincidencia
+            const options = Array.from(countrySelect.options);
+            const match = options.find(opt => opt.value.toLowerCase() === geoData.country_name.toLowerCase());
+
+            if (match) {
+                countrySelect.value = match.value;
+                cityField.value = geoData.city;
+                // Cargar estados para el país detectado y seleccionar la región
+                await loadStatesForCountry(match.value, geoData.region);
+            }
+        }
+    } catch (error) {
+        console.warn('No se pudo detectar la ubicación automáticamente.');
+    }
+}
+
+// Helper para cargar estados dinámicamente
+async function loadStatesForCountry(countryName, preSelectedRegion = null) {
+    const stateSelect = document.getElementById('client-state');
+    if (!stateSelect) return;
+    
+    stateSelect.innerHTML = '<option>Cargando...</option>';
+    
+    try {
+        const statesRes = await fetch('https://countriesnow.space/api/v0.1/countries/states', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ country: countryName })
+        });
+        const statesData = await statesRes.json();
+        
+        if (!statesData.error && statesData.data.states.length > 0) {
+            stateSelect.innerHTML = statesData.data.states.map(s => 
+                `<option value="${s.name}" ${preSelectedRegion && s.name === preSelectedRegion ? 'selected' : ''}>${s.name}</option>`
+            ).join('');
+        } else {
+            stateSelect.innerHTML = preSelectedRegion 
+                ? `<option value="${preSelectedRegion}">${preSelectedRegion}</option>` 
+                : '<option value="">Sin estados disponibles</option>';
+        }
+    } catch (err) {
+        stateSelect.innerHTML = '<option value="">Selecciona un país primero</option>';
     }
 }
 
@@ -399,16 +477,25 @@ async function submitOrder(e) {
         return;
     }
 
+    // Combinar la dirección estructurada en una sola cadena para el backend
+    const fullAddress = [
+        document.getElementById('client-street').value,
+        document.getElementById('client-city').value,
+        document.getElementById('client-state').value,
+        document.getElementById('client-country').value
+    ].filter(Boolean).join(', ');
+
     // 1. Validar campos y recolectar datos del cliente
     const customer = {
         name: document.getElementById('client-name').value,
         email: document.getElementById('client-email').value,
         phone: document.getElementById('client-phone').value,
-        address: document.getElementById('client-address').value,
+        address: fullAddress, // Enviamos la dirección completa concatenada
         payment: 'Pagar al recibir'
     };
 
-    if (!customer.name || !customer.email || !customer.phone || !customer.address) {
+    // Validación simple de que se llenaron los campos de dirección
+    if (!customer.name || !customer.email || !customer.phone || !document.getElementById('client-street').value) {
         Swal.fire('Campos Incompletos', 'Por favor, rellena todos los datos de envío para continuar.', 'error');
         return;
     }
@@ -539,6 +626,7 @@ async function initPedido() {
         recalculateCart(); // Recalcular precios con la info fresca (settings y usuario)
         renderOrderSummary();
         prefillUserData();
+        detectUserLocation(); // Intentar detectar ubicación
 
     } catch (error) {
         console.error('Error al inicializar la página de pedido:', error);

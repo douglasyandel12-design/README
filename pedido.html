@@ -43,9 +43,23 @@
                 <label>Número de Teléfono</label>
                 <input type="tel" id="client-phone" required placeholder="Ej: 55 1234 5678">
             </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label>País</label>
+                    <select id="client-country" required><option value="">Cargando países...</option></select>
+                </div>
+                <div class="form-group">
+                    <label>Estado / Provincia</label>
+                    <select id="client-state" required><option value="">Detectando...</option></select>
+                </div>
+            </div>
             <div class="form-group">
-                <label>Dirección de Envío</label>
-                <textarea id="client-address" required rows="3" placeholder="Calle, Número, Colonia, Ciudad..."></textarea>
+                <label>Ciudad</label>
+                <input type="text" id="client-city" required placeholder="Tu ciudad">
+            </div>
+            <div class="form-group">
+                <label>Calle y Número (Dirección)</label>
+                <input type="text" id="client-street" required placeholder="Calle, Número, Colonia...">
             </div>
             <div class="form-group">
                 <label>Método de Pago</label>
