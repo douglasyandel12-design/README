@@ -199,7 +199,13 @@ function init() {
         .pm-video-container { width: 100%; aspect-ratio: 16/9; background: #000; }
         .pm-title { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; line-height: 1.1; }
         .pm-price { font-size: 1.5rem; font-weight: 500; margin-bottom: 1.5rem; color: #333; }
-        .pm-description { color: #555; line-height: 1.8; margin-bottom: 2rem; font-size: 1rem; }
+        .pm-description { 
+            color: #374151; /* Texto más oscuro para mejor lectura */
+            line-height: 1.8; /* Espacio generoso entre líneas para emojis */
+            margin-bottom: 2rem; 
+            font-size: 1.05rem; /* Letra ligeramente más grande */
+            overflow-wrap: break-word; /* Evita que textos largos rompan el diseño */
+        }
         .pm-description ul { padding-left: 20px; margin-bottom: 1rem; }
 
         .pm-actions { margin-bottom: 1.5rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
