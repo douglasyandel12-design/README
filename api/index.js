@@ -22,7 +22,7 @@ const connectToDatabase = async () => {
 
   try {
     await mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000
+      serverSelectionTimeoutMS: 10000 // Aumentamos timeout para evitar falsos positivos en Vercel
     });
     isConnected = true;
     console.log('=> MongoDB conectado');
@@ -387,5 +387,10 @@ router.delete('/orders/:id', isAuthenticated, isAdmin, async (req, res) => {
   }
 });
 
+// --- CONFIGURACIÓN DE RUTAS CRÍTICA PARA VERCEL ---
+// Esto permite que la API funcione tanto si Vercel envía la ruta completa (/api/products)
+// como si envía la ruta relativa (/products). Evita errores 404 en producción.
 app.use('/api', router);
+app.use('/', router); // Fallback de seguridad
+
 module.exports = app;

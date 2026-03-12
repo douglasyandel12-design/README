@@ -171,9 +171,18 @@ async function loadAndRender() {
         ]);
 
         // 2. Procesar las respuestas
-        globalSettings = settingsResponse.ok ? await settingsResponse.json() : {};
-        products = productsResponse.ok ? await productsResponse.json() : [];
-        const sessionData = sessionResponse.ok ? await sessionResponse.json() : { user: null };
+        // Usamos try-catch individuales para evitar que un fallo en settings rompa los productos
+        try {
+            globalSettings = settingsResponse.ok ? await settingsResponse.json() : {};
+        } catch(e) { console.warn('Error cargando configuración:', e); }
+
+        try {
+            products = productsResponse.ok ? await productsResponse.json() : [];
+        } catch(e) { console.error('Error crítico cargando productos:', e); products = []; }
+
+        let sessionData = { user: null };
+        try { sessionData = sessionResponse.ok ? await sessionResponse.json() : { user: null }; } catch(e) {}
+        
         window.currentUser = sessionData.user;
 
         // 3. Renderizar la UI una vez que todos los datos están listos
@@ -187,7 +196,7 @@ async function loadAndRender() {
 
     } catch (error) {
         console.error('Error en la carga inicial:', error);
-        grid.innerHTML = '<p style="text-align:center; width:100%; color:#ef4444;">Error al cargar el catálogo. Por favor, intente de nuevo más tarde.</p>';
+        grid.innerHTML = '<div style="text-align:center; width:100%; padding: 2rem;"><p style="color:#ef4444; font-weight:bold;">⚠️ Error de conexión con el servidor.</p><p style="color:#666; font-size:0.9rem;">Si eres el administrador, verifica las Variables de Entorno en Vercel (MONGODB_URI).</p></div>';
     }
 }
 
@@ -713,11 +722,11 @@ function updateCartUI() {
     }, 200);
 
     // Actualizar Modal
+    let htmlContent = '';
     if (cart.length === 0) {
-        modalItems.innerHTML = '<p>Tu carrito está vacío.</p>';
-        modalTotal.textContent = '$0.00';
+        htmlContent = '<p style="padding: 1rem 0; color: #666;">Tu carrito está vacío.</p>';
     } else {
-        modalItems.innerHTML = cart.map((item, index) => `
+        htmlContent = cart.map((item, index) => `
             <div class="cart-item">
                 <div class="cart-item-details">
                     <span style="font-weight:600;">${item.name}</span>
@@ -739,15 +748,22 @@ function updateCartUI() {
                     <button onclick="removeFromCart(${index})" style="color: #ef4444; border: none; background: none; cursor: pointer; font-size: 1.2rem; padding: 0; line-height: 1;">&times;</button>
                 </div>
             </div>
-        `).join('') + `
-            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
-                <button onclick="window.location.href='pedido.html'" class="btn" style="width: 100%; padding: 15px; font-size: 1rem;">Ir a Pagar</button>
-            </div>
-        `;
-        
-        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        modalTotal.textContent = '$' + total.toFixed(2);
+        `).join('');
     }
+
+    // Botón de pago (Siempre visible, pero Deshabilitado si está vacío)
+    const isDisabled = cart.length === 0;
+    htmlContent += `
+        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
+            <button onclick="window.location.href='pedido.html'" class="btn" 
+            style="width: 100%; padding: 15px; font-size: 1rem; ${isDisabled ? 'opacity: 0.5; cursor: not-allowed; background-color: #999; border-color: #999;' : ''}" 
+            ${isDisabled ? 'disabled' : ''}>Ir a Pagar</button>
+        </div>
+    `;
+
+    modalItems.innerHTML = htmlContent;
+    const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    modalTotal.textContent = '$' + total.toFixed(2);
 }
 
 function removeFromCart(index) {
