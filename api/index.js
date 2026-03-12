@@ -5,6 +5,7 @@ const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const mongoose = require('mongoose');
 const crypto = require('crypto'); // Para encriptar contraseñas
+const nodemailer = require('nodemailer'); // Para enviar correos
 
 const app = express();
 
@@ -71,7 +72,9 @@ const UserSchema = new mongoose.Schema({
   hash: String, // Contraseña encriptada
   salt: String, // Llave de encriptación única por usuario
   isAdmin: { type: Boolean, default: false },
-  picture: String
+  picture: String,
+  isVerified: { type: Boolean, default: false },
+  verificationCode: String
 }, { timestamps: true });
 const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
@@ -116,6 +119,39 @@ passport.use(new GoogleStrategy({
   }
 ));
 
+// --- CONFIGURACIÓN DE CORREO (NODEMAILER) ---
+// Usaremos variables de entorno para seguridad.
+// Si usas Gmail, necesitas generar una "Contraseña de Aplicación" en tu cuenta de Google.
+const transporter = nodemailer.createTransport({
+  service: 'gmail', // Puedes cambiar esto por tu proveedor SMTP si prefieres
+  auth: {
+    user: process.env.EMAIL_USER, // Tu correo (ej: ventas@lvs-shop.com)
+    pass: process.env.EMAIL_PASS  // Tu contraseña de aplicación
+  }
+});
+
+const sendVerificationEmail = async (email, code, name) => {
+  const mailOptions = {
+    from: '"LVS Shop Oficial" <' + process.env.EMAIL_USER + '>',
+    to: email,
+    subject: '🔐 Código de Verificación - LVS Shop',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #000; text-align: center;">Bienvenido a LVS Shop</h2>
+        <p>Hola <strong>${name}</strong>,</p>
+        <p>Gracias por registrarte. Para activar tu cuenta y asegurar que este correo es tuyo, por favor ingresa el siguiente código:</p>
+        <div style="background-color: #f4f4f4; padding: 15px; text-align: center; font-size: 24px; letter-spacing: 5px; font-weight: bold; border-radius: 5px; margin: 20px 0;">
+          ${code}
+        </div>
+        <p style="color: #666; font-size: 12px; text-align: center;">Si no solicitaste este código, ignora este mensaje.</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="text-align: center; color: #999; font-size: 11px;">&copy; ${new Date().getFullYear()} LVS Shop Oficial. Todos los derechos reservados.</p>
+      </div>
+    `
+  };
+  await transporter.sendMail(mailOptions);
+};
+
 const router = express.Router();
 
 // Aumentamos el límite del body-parser. Vercel tiene un límite estricto de ~4.5MB.
@@ -159,6 +195,11 @@ router.post('/auth/login', async (req, res) => {
     const dbUser = await User.findOne({ email });
     
     if (dbUser) {
+      // VERIFICACIÓN: Si el usuario existe pero no está verificado, impedir login
+      if (dbUser.isVerified === false) {
+         return res.status(401).json({ error: 'Cuenta no verificada. Revisa tu correo o regístrate de nuevo para obtener un código nuevo.' });
+      }
+
       // Verificar contraseña encriptada
       const hashVerify = crypto.pbkdf2Sync(password, dbUser.salt, 1000, 64, 'sha512').toString('hex');
       if (hashVerify === dbUser.hash) {
@@ -238,8 +279,110 @@ router.get('/auth/logout', (req, res) => {
   req.logout(() => res.redirect('/'));
 });
 
-router.post('/auth/register', (req, res) => {
-  res.status(201).json({ message: 'Usuario registrado con éxito (Simulado).' });
+router.post('/auth/register', async (req, res) => {
+  try {
+    await connectToDatabase();
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Por favor complete todos los campos.' });
+    }
+
+    // 1. Verificar si el usuario ya existe
+    const existingUser = await User.findOne({ email });
+    
+    // Si existe y YA está verificado, error.
+    if (existingUser && existingUser.isVerified !== false) {
+      return res.status(400).json({ message: 'Este correo electrónico ya está registrado.' });
+    }
+
+    // Generar código de 6 dígitos
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // 2. Encriptar la contraseña (Igual que como lo hacemos con el admin)
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+
+    if (existingUser && existingUser.isVerified === false) {
+        // Si existe pero NO está verificado, actualizamos sus datos y reenviamos código
+        existingUser.name = name;
+        existingUser.hash = hash;
+        existingUser.salt = salt;
+        existingUser.verificationCode = verificationCode;
+        await existingUser.save();
+    } else {
+        // 3. Crear el usuario nuevo (NO verificado)
+        const newUser = new User({
+          email,
+          name,
+          hash,
+          salt,
+          isAdmin: false,
+          isVerified: false, // Importante: Falso al inicio
+          verificationCode: verificationCode,
+          picture: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`
+        });
+        await newUser.save();
+    }
+
+    // 4. Enviar correo (Intentar enviar, si falla avisar pero no romper todo el flujo si es posible)
+    try {
+        if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+            await sendVerificationEmail(email, verificationCode, name);
+            res.status(200).json({ 
+                message: 'Código enviado', 
+                requiresVerification: true, 
+                email: email 
+            });
+        } else {
+            console.warn('EMAIL_USER o EMAIL_PASS no configurados. Código:', verificationCode);
+            // Para desarrollo local sin email configurado, devolvemos el código en consola del server
+            res.status(200).json({ 
+                message: 'Sistema de correo no configurado (Check Server Logs)', 
+                requiresVerification: true, 
+                email: email,
+                devCode: verificationCode // SOLO PARA DEBUG, QUITAR EN PRODUCCIÓN
+            });
+        }
+    } catch (emailError) {
+        console.error('Error enviando correo:', emailError);
+        res.status(500).json({ message: 'Error al enviar el correo de verificación.' });
+    }
+
+  } catch (error) {
+    console.error('Error registrando usuario:', error);
+    res.status(500).json({ message: 'Error interno al crear la cuenta.' });
+  }
+});
+
+// RUTA NUEVA: Verificar Código
+router.post('/auth/verify', async (req, res) => {
+    try {
+        await connectToDatabase();
+        const { email, code } = req.body;
+
+        const user = await User.findOne({ email });
+        
+        if (!user) return res.status(400).json({ message: 'Usuario no encontrado.' });
+        if (user.isVerified) return res.status(200).json({ message: 'Usuario ya verificado anteriormente.' });
+
+        if (user.verificationCode === code) {
+            user.isVerified = true;
+            user.verificationCode = null; // Limpiar código
+            await user.save();
+
+            // Iniciar sesión automáticamente
+            const userPayload = { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin, picture: user.picture };
+            req.login(userPayload, (err) => {
+                if (err) return res.status(500).json({ message: 'Verificado, pero error al iniciar sesión.' });
+                return res.json({ message: '¡Cuenta verificada con éxito!', user: userPayload });
+            });
+        } else {
+            res.status(400).json({ message: 'Código incorrecto.' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Error en verificación.' });
+    }
 });
 
 router.get('/products', async (req, res) => {

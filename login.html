@@ -55,6 +55,22 @@
                 <span style="font-weight: bold;">G</span> Continuar con Google
             </a>
         </div>
+
+        <!-- Nuevo formulario de Verificación (Oculto por defecto) -->
+        <div id="verify-form" class="hidden">
+            <h3 style="text-align: center; margin-bottom: 1rem;">Verificar Correo</h3>
+            <p style="text-align: center; font-size: 0.9rem; color: #666; margin-bottom: 1.5rem;">
+                Hemos enviado un código de 6 dígitos a <strong id="verify-email-display"></strong>.
+            </p>
+            <form onsubmit="handleVerification(event)">
+                <div class="form-group">
+                    <label>Código de Verificación</label>
+                    <input type="text" id="verify-code" placeholder="Ej: 123456" style="text-align: center; letter-spacing: 5px; font-size: 1.2rem;" required maxlength="6">
+                </div>
+                <button type="submit" class="btn">Verificar y Entrar</button>
+                <button type="button" class="btn btn-outline" style="margin-top: 10px; background: transparent; color: #555; border: 1px solid #ddd;" onclick="location.reload()">Cancelar</button>
+            </form>
+        </div>
     </div>
 
     <script src="js/login.js"></script>

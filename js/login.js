@@ -2,9 +2,12 @@ function switchTab(tab) {
     const loginForm = document.getElementById('login-form');
     const regForm = document.getElementById('register-form');
     const tabs = document.querySelectorAll('.tab');
+    const verifyForm = document.getElementById('verify-form');
     
     loginForm.classList.toggle('hidden', tab !== 'login');
     regForm.classList.toggle('hidden', tab !== 'register');
+    if(verifyForm) verifyForm.classList.add('hidden'); // Ocultar verificación si se cambia de tab
+
     tabs[0].classList.toggle('active', tab === 'login');
     tabs[1].classList.toggle('active', tab === 'register');
 }
@@ -24,6 +27,8 @@ async function handleLogin(e) {
         if (res.ok) {
             window.location.href = 'index.html'; // Vamos al inicio para ver el menú de Admin
         } else {
+            const data = await res.json();
+            if (data.error) document.getElementById('login-error').innerText = data.error;
             document.getElementById('login-error').style.display = 'block';
         }
     } catch (error) {
@@ -55,8 +60,25 @@ async function handleRegister(e) {
             throw new Error(data.message || 'Error al registrar la cuenta.');
         }
 
-        alert('¡Cuenta creada con éxito! Ahora puedes iniciar sesión.');
-        switchTab('login'); // Cambiar a la pestaña de login
+        // SI EL SERVIDOR PIDE VERIFICACIÓN
+        if (data.requiresVerification) {
+            // Ocultar tabs y formulario de registro
+            document.querySelector('.tabs').style.display = 'none';
+            document.getElementById('register-form').classList.add('hidden');
+            
+            // Mostrar formulario de verificación
+            const verifyForm = document.getElementById('verify-form');
+            verifyForm.classList.remove('hidden');
+            
+            // Poner email en el texto
+            document.getElementById('verify-email-display').textContent = data.email;
+            
+            // Guardar email temporalmente para el envío del código
+            window.tempRegisterEmail = data.email;
+        } else {
+            alert('¡Cuenta creada con éxito! Ahora puedes iniciar sesión.');
+            switchTab('login');
+        }
 
     } catch (error) {
         console.error('Error en el registro:', error);
@@ -64,5 +86,29 @@ async function handleRegister(e) {
     } finally {
         registerButton.disabled = false;
         registerButton.textContent = 'Crear Cuenta';
+    }
+}
+
+async function handleVerification(e) {
+    e.preventDefault();
+    const code = document.getElementById('verify-code').value;
+    const email = window.tempRegisterEmail;
+
+    try {
+        const res = await fetch('/api/auth/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, code })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            alert('✅ ' + data.message);
+            window.location.href = 'index.html'; // Entrar directamente
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (error) {
+        alert('Error de conexión verificando el código.');
     }
 }
