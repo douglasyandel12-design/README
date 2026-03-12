@@ -177,7 +177,9 @@ function init() {
         }
         .pm-image-container { background: #f9f9f9; display: flex; align-items: center; justify-content: center; padding: 2rem; }
         .pm-image-container img { max-width: 100%; max-height: 500px; object-fit: contain; mix-blend-mode: multiply; }
-        .pm-details { padding: 3rem 2rem; overflow-y: auto; display: flex; flex-direction: column; }
+        .pm-details { padding: 3rem 2rem; overflow-y: auto; display: flex; flex-direction: column; max-height: 100%; scrollbar-width: thin; }
+        .pm-details::-webkit-scrollbar { width: 6px; }
+        .pm-details::-webkit-scrollbar-thumb { background-color: #ccc; border-radius: 3px; }
         
         /* Estilos de Galería en Modal */
         .pm-gallery-wrapper { width: 100%; display: flex; flex-direction: column; gap: 10px; }
