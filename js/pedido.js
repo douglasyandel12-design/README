@@ -84,8 +84,32 @@ function injectStyles() {
         .item-price { font-weight: 600; font-size: 0.95rem; color: var(--text); white-space: nowrap; }
         
         /* Estilo para la imagen del producto en el resumen */
-        .item-image-box { width: 64px; height: 64px; border-radius: 6px; overflow: hidden; border: 1px solid #e5e5e5; margin-right: 15px; flex-shrink: 0; background: #fff; display: flex; align-items: center; justify-content: center; }
+        .item-image-box { width: 64px; height: 64px; border-radius: 6px; overflow: hidden; border: 1px solid #e5e5e5; margin-right: 15px; flex-shrink: 0; background: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.2s; }
+        .item-image-box:hover { transform: scale(1.05); border-color: #999; }
         .item-image-box img { width: 100%; height: 100%; object-fit: contain; }
+
+        /* Modal de Imagen */
+        .image-modal-overlay {
+            display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%;
+            overflow: auto; background-color: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
+            justify-content: center; align-items: center; flex-direction: column; animation: fadeIn 0.3s;
+        }
+        .image-modal-content {
+            margin: auto; display: block; width: auto; max-width: 90%; max-height: 80vh;
+            object-fit: contain; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            animation: zoomIn 0.3s; background: #fff;
+        }
+        .image-modal-caption {
+            margin: 15px auto; display: block; width: 80%; max-width: 700px; text-align: center;
+            color: #fff; font-size: 1.1rem; font-weight: 500;
+        }
+        .image-modal-close {
+            position: absolute; top: 20px; right: 35px; color: #f1f1f1; font-size: 40px;
+            font-weight: bold; transition: 0.3s; cursor: pointer; z-index: 10001;
+        }
+        .image-modal-close:hover { color: #bbb; }
+        @keyframes zoomIn { from {transform:scale(0.9); opacity:0} to {transform:scale(1); opacity:1} }
+        @keyframes fadeIn { from {opacity:0} to {opacity:1} }
 
         /* Controles de Cantidad (+/-) */
         .qty-wrapper { display: flex; align-items: center; gap: 5px; margin-top: 6px; }
@@ -204,13 +228,14 @@ function renderOrderSummary() {
         // Si no se encuentra en BD (raro), usar la del carrito o un placeholder
         if (!imgUrl) imgUrl = item.image || 'https://placehold.co/64x64?text=Foto';
 
+        const safeName = item.name.replace(/'/g, "\\'"); // Escapar comillas para el onclick
         return `
             <div class="item-row">
-                <div class="item-image-box">
+                <div class="item-image-box" onclick="openImageModal('${imgUrl}', '${safeName}')" title="Ver imagen grande">
                     <img src="${imgUrl}" alt="${item.name}" onerror="this.style.display='none'">
                 </div>
                 <div class="item-details">
-                    <span class="item-name">${item.name}</span>
+                    <span class="item-name" style="cursor: pointer;" onclick="openImageModal('${imgUrl}', '${safeName}')" title="Ver detalles">${item.name}</span>
                     <div class="qty-wrapper">
                         <button type="button" class="qty-btn" onclick="updateOrderItemQuantity(${index}, -1)">−</button>
                         <span class="qty-val">${item.quantity}</span>
@@ -373,6 +398,26 @@ function recalculateCart() {
         saveCart();
         renderOrderSummary(); // Refrescar visualmente
     }
+}
+
+// Función para abrir el modal de imagen en grande
+window.openImageModal = function(src, alt) {
+    let modal = document.getElementById('image-viewer-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'image-viewer-modal';
+        modal.className = 'image-modal-overlay';
+        modal.innerHTML = `<span class="image-modal-close">&times;</span><img class="image-modal-content" id="img-modal-target"><div id="img-modal-caption" class="image-modal-caption"></div>`;
+        document.body.appendChild(modal);
+        // Eventos para cerrar
+        modal.querySelector('.image-modal-close').onclick = () => modal.style.display = "none";
+        modal.onclick = (e) => { if (e.target === modal) modal.style.display = "none"; };
+    }
+    const modalImg = document.getElementById('img-modal-target');
+    const captionText = document.getElementById('img-modal-caption');
+    modal.style.display = "flex";
+    modalImg.src = src;
+    captionText.textContent = alt;
 }
 
 // Función de inicio principal
