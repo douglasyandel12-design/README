@@ -27,6 +27,25 @@ function injectStyles() {
             margin: 0;
             line-height: 1.5;
         }
+        header {
+            background: var(--bg-card);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        header nav {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        header .logo {
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: var(--text-main);
+            text-decoration: none;
+        }
+        header .btn-outline { padding: 8px 16px; text-decoration: none; }
         
         /* Layout Principal */
         .container { 
@@ -56,7 +75,7 @@ function injectStyles() {
                 align-items: start;
                 gap: 2rem;
             }
-            h1 { grid-area: header; margin-bottom: 0.5rem; }
+            h1 { grid-area: header; }
             form { grid-area: form; }
             .order-summary { 
                 grid-area: summary; 
@@ -123,6 +142,8 @@ function injectStyles() {
         }
         .btn:hover { opacity: 0.9; transform: translateY(-1px); }
         .btn:disabled { opacity: 0.7; cursor: not-allowed; }
+        .btn-outline { background: transparent; color: var(--text-main); border: 1px solid var(--border-color); }
+        .btn-outline:hover { background: var(--bg-page); border-color: var(--text-muted); }
 
         /* Estilos del Resumen */
         .order-summary h3 {

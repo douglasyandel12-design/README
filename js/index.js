@@ -34,6 +34,25 @@ function init() {
         .product-card { border: 1px solid #f0f0f0; box-shadow: none; transition: transform 0.3s, box-shadow 0.3s; border-radius: 0; }
         .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
         
+        /* Overlay negro para productos */
+        .product-image { position: relative; overflow: hidden; }
+        .product-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .product-card:hover .product-overlay { opacity: 1; }
+        .overlay-text { font-weight: 600; padding: 8px 16px; border: 2px solid white; border-radius: 4px; }
+        
         /* --- Hero / Portada Estilo Fondo --- */
         .hero { 
             background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('img/Portada.jpg');
@@ -614,7 +633,12 @@ function renderProducts() {
     card.className = 'product-card';
     card.style.animation = `fadeInUp 0.5s ease forwards ${index * 0.05}s`; // Animación mejorada
     card.innerHTML = `
-        <div class="product-image" onclick="viewProductDetails(${product.id})" style="cursor:pointer;">${imgContent}</div>
+        <div class="product-image" onclick="viewProductDetails(${product.id})" style="cursor:pointer;">
+            ${imgContent}
+            <div class="product-overlay">
+                <span class="overlay-text">Ver Detalles</span>
+            </div>
+        </div>
         <div class="product-info">
             <h3 class="product-title">${product.name}</h3>
             ${priceHtml}

@@ -11,21 +11,13 @@
     <header>
         <nav>
             <a href="index.html" class="logo">LVS² Shop</a>
+            <a href="index.html" class="btn btn-outline">← Volver a la Tienda</a>
         </nav>
     </header>
 
     <main class="container">
         <h1>Finalizar Compra</h1>
         
-        <div class="order-summary">
-            <h3>Resumen del Pedido</h3>
-            <div id="items-list" style="margin: 1rem 0; border-bottom: 1px solid #eee; padding-bottom: 1rem;"></div>
-            <div class="total-row">
-                <span>Total a Pagar:</span>
-                <span id="order-total">$0.00</span>
-            </div>
-        </div>
-
         <form onsubmit="submitOrder(event)">
             <div class="form-group">
                 <label>Nombre Completo</label>
@@ -69,11 +61,17 @@
                     <option>Transferencia Bancaria</option>
                 </select>
             </div>
-            <div style="display: flex; gap: 1rem;">
-                <a href="index.html" class="btn" style="background-color: transparent; color: var(--text-dark); border: 1px solid #ccc; text-align: center; text-decoration: none; display: flex; align-items: center; justify-content: center;">Volver a la Tienda</a>
-                <button type="submit" class="btn">Confirmar Pedido</button>
-            </div>
+            <button type="submit" class="btn">Confirmar Pedido</button>
         </form>
+
+        <div class="order-summary">
+            <h3>Resumen del Pedido</h3>
+            <div id="items-list" style="margin: 1rem 0; border-bottom: 1px solid #eee; padding-bottom: 1rem;"></div>
+            <div class="total-row">
+                <span>Total a Pagar:</span>
+                <span id="order-total">$0.00</span>
+            </div>
+        </div>
     </main>
 
     <script src="js/pedido.js"></script>
