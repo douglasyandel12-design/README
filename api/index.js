@@ -114,6 +114,13 @@ const isAuthenticated = (req, res, next) => {
   res.status(401).json({ error: 'No autenticado. Por favor, inicie sesión.' });
 };
 
+const isAdmin = (req, res, next) => {
+  if (req.user && req.user.isAdmin) {
+    return next();
+  }
+  res.status(403).json({ error: 'Acceso denegado. Se requieren permisos de administrador.' });
+};
+
 // --- RUTAS ---
 // Ruta de prueba para verificar que la API está online
 router.get('/', (req, res) => res.send('API Online y funcionando 🚀'));
@@ -244,6 +251,7 @@ router.post('/orders', async (req, res) => {
         const stockUpdates = [];
 
         for (const item of items) {
+            // Asegurar comparación robusta de ID (String vs Number)
             const product = productsInDB.find(p => p.id == item.id);
             if (!product) {
                 throw new Error(`El producto "${item.name}" ya no está disponible.`);
@@ -298,13 +306,29 @@ router.post('/orders', async (req, res) => {
     }
 });
 
-router.get('/orders', async (req, res) => {
+// GET all orders - PROTEGIDO SOLO PARA ADMIN
+router.get('/orders', isAuthenticated, isAdmin, async (req, res) => {
   try {
     await connectToDatabase();
     const orders = await Order.find({}).sort({ createdAt: -1 });
     res.json(orders);
   } catch (error) {
     res.status(500).json({ error: 'Error al cargar pedidos.' });
+  }
+});
+
+// GET single order by ID (Para rastreo público)
+router.get('/orders/:id', async (req, res) => {
+  try {
+    await connectToDatabase();
+    // Buscamos por el ID de string personalizado (ej: ORD-123456)
+    const order = await Order.findOne({ id: req.params.id });
+    if (!order) {
+      return res.status(404).json({ error: 'Pedido no encontrado' });
+    }
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al buscar el pedido.' });
   }
 });
 

@@ -544,7 +544,12 @@ async function renderOrders(filterText = '') {
         // Si ya tenemos pedidos cargados y solo estamos filtrando, no hacemos fetch de nuevo
         if (allOrders.length === 0) {
             const response = await fetch('/api/orders');
-            if (!response.ok) throw new Error('No se pudieron cargar los pedidos del servidor.');
+            if (!response.ok) {
+                if (response.status === 403 || response.status === 401) {
+                    throw new Error('No tienes permisos de administrador.');
+                }
+                throw new Error('No se pudieron cargar los pedidos del servidor.');
+            }
             allOrders = await response.json();
         }
 

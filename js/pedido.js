@@ -24,7 +24,7 @@ function injectStyles() {
 
         /* Nuevos estilos para carrito interactivo */
         .item-row { align-items: center; gap: 1rem; }
-        .item-image { width: 65px; height: 65px; object-fit: cover; border-radius: 8px; border: 1px solid #eee; }
+        .item-image { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #eee; background: #fff; }
         .item-info { flex-grow: 1; }
         .item-name { display: block; font-weight: 600; margin-bottom: 4px; }
         .item-price { font-size: 0.9rem; color: #555; }
@@ -107,7 +107,7 @@ function renderOrderSummary() {
 
     itemsList.innerHTML = cart.map((item, index) => {
         const product = products.find(p => p.id == item.id);
-        const imageUrl = (product && product.images && product.images.length > 0) ? product.images[0] : (product ? product.image : '');
+        const imageUrl = item.image || ((product && product.images && product.images.length > 0) ? product.images[0] : (product ? product.image : ''));
 
         return `
             <div class="item-row">
@@ -187,7 +187,12 @@ async function submitOrder(e) {
     const orderPayload = {
         customer,
         // Enviamos solo los datos necesarios para que el backend verifique y procese.
-        items: cart.map(item => ({ id: item.id, name: item.name, quantity: item.quantity }))
+        items: cart.map(item => {
+            const product = products.find(p => p.id == item.id);
+            // Incluimos la imagen para que se guarde en el historial del pedido
+            const image = (product && product.images && product.images.length > 0) ? product.images[0] : (product ? product.image : '');
+            return { id: item.id, name: item.name, quantity: item.quantity, image: image };
+        })
     };
 
     // Desactivar botón para prevenir clics múltiples
@@ -237,7 +242,8 @@ async function submitOrder(e) {
     } catch (error) {
         console.error('Error al enviar el pedido:', error);
         Swal.fire('Error', `Hubo un problema: ${error.message}`, 'error');
-        // Reactivar el botón si hubo un error
+    } finally {
+        // Siempre reactivar el botón, haya éxito (antes de redirección) o error
         submitButton.disabled = false;
         submitButton.textContent = 'Confirmar Pedido';
     }

@@ -644,6 +644,9 @@ function addToCart(id, quantityToAdd = 1) {
     // Si no encuentra el producto, detenemos la función para no romper el carrito
     if (!product) return;
 
+    // Obtener imagen para guardarla en el carrito
+    const image = (product.images && product.images.length > 0) ? product.images[0] : (product.image || '');
+
     // Lógica de agrupación
     const existingItem = cart.find(item => item.id == id);
     const newQuantity = existingItem ? existingItem.quantity + quantityToAdd : quantityToAdd;
@@ -654,9 +657,10 @@ function addToCart(id, quantityToAdd = 1) {
     if (existingItem) {
         existingItem.quantity = newQuantity;
         existingItem.price = finalPrice; // Actualizar el precio unitario
+        existingItem.image = image; // Actualizar imagen
     } else {
         // Guardamos el precio original por si necesitamos recalcular y el producto ya no está en la lista `products`
-        cart.push({ id: product.id, name: product.name, price: finalPrice, quantity: quantityToAdd, originalPrice: product.price });
+        cart.push({ id: product.id, name: product.name, price: finalPrice, quantity: quantityToAdd, originalPrice: product.price, image: image });
     }
 
     saveCart();
@@ -674,14 +678,18 @@ function orderNow(id) {
     const existingItem = cart.find(item => item.id == id);
     const newQuantity = existingItem ? existingItem.quantity + 1 : 1;
 
+    // Obtener imagen
+    const image = (product.images && product.images.length > 0) ? product.images[0] : (product.image || '');
+
     // Calcular precio dinámicamente
     const finalPrice = calculateItemPrice(product, newQuantity);
 
     if (existingItem) {
         existingItem.quantity = newQuantity;
         existingItem.price = finalPrice;
+        existingItem.image = image;
     } else {
-        cart.push({ id: product.id, name: product.name, price: finalPrice, quantity: 1, originalPrice: product.price });
+        cart.push({ id: product.id, name: product.name, price: finalPrice, quantity: 1, originalPrice: product.price, image: image });
     }
 
     saveCart();

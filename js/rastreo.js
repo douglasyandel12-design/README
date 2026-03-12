@@ -149,28 +149,33 @@ document.addEventListener('DOMContentLoaded', async () => {
             container.insertBefore(warningMsg, h2Title);
         }
 
-        // 2. Obtener todos los pedidos de la base de datos
-        const ordersRes = await fetch('/api/orders');
-        if (!ordersRes.ok) throw new Error('Error al conectar con el servidor');
-        const allOrders = await ordersRes.json();
-
         let myOrders = [];
 
         if (currentUser) {
-            // Si es usuario registrado: Filtramos por su email
-            myOrders = allOrders.filter(o => o.customer && o.customer.email === currentUser.email);
+            // 2a. Si es usuario registrado: Usamos el endpoint seguro de "mis pedidos"
+            const ordersRes = await fetch('/api/my-orders');
+            if (ordersRes.ok) {
+                myOrders = await ordersRes.json();
+            }
         } else {
-            // Si es INVITADO: Filtramos por los IDs guardados en el dispositivo (localStorage)
+            // 2b. Si es INVITADO: Buscamos UNO por UNO los pedidos guardados localmente
+            // Esto es mucho más seguro que descargar toda la base de datos
             const localIds = JSON.parse(localStorage.getItem('lvs_guest_orders')) || [];
-            const guestEmail = localStorage.getItem('lvs_guest_email');
             
-            myOrders = allOrders.filter(o => {
-                // Coincidencia por ID guardado localmente
-                const matchesId = localIds.includes(o.id) || localIds.includes(String(o.id));
-                // Coincidencia por email (si el invitado guardó su correo)
-                const matchesEmail = guestEmail && o.customer && o.customer.email === guestEmail;
-                return matchesId || matchesEmail;
-            });
+            if (localIds.length > 0) {
+                // Hacemos fetch en paralelo para cada ID guardado
+                const fetchPromises = localIds.map(id => 
+                    fetch(`/api/orders/${id}`).then(res => res.ok ? res.json() : null)
+                );
+                
+                const results = await Promise.all(fetchPromises);
+                // Filtramos los nulos (pedidos no encontrados)
+                myOrders = results.filter(order => order !== null);
+            }
+
+            // Nota: La búsqueda por email para invitados se elimina por seguridad, 
+            // ya que requeriría un endpoint inseguro de búsqueda masiva. 
+            // Los invitados solo ven lo que guardaron en su localStorage.
         }
 
         allMyOrders = myOrders; // Guardar la lista completa
