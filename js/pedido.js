@@ -262,14 +262,14 @@ function injectStyles() {
             border: 1px solid #f0f0f0;
         }
         div:where(.swal2-confirm) {
-            background-color: #000 !important;
+            background-color: #2563eb !important;
             border-radius: 8px !important;
-            box-shadow: none !important; 
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important; 
         }
         div:where(.swal2-cancel) {
             background-color: #fff !important;
-            color: #555 !important;
-            border: 1px solid #000 !important;
+            color: #4b5563 !important;
+            border: 1px solid #d1d5db !important;
         }
         div:where(.swal2-icon.swal2-success) {
             border-color: #10b981 !important;

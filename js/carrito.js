@@ -31,25 +31,25 @@ if (!document.getElementById('swal-custom-style')) {
             color: #4b5563 !important;
         }
         div:where(.swal2-confirm) {
-            background-color: #000000 !important;
+            background-color: #2563eb !important;
             color: #ffffff !important;
             border-radius: 6px !important;
             padding: 0.75rem 1.5rem !important;
             font-weight: 600 !important;
             border: 1px solid transparent !important;
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2) !important;
         }
         div:where(.swal2-cancel) {
             background-color: #ffffff !important;
-            color: #555555 !important;
-            border: 1px solid #000000 !important;
+            color: #4b5563 !important;
+            border: 1px solid #d1d5db !important;
             border-radius: 6px !important;
             padding: 0.75rem 1.5rem !important;
             font-weight: 600 !important;
         }
         div:where(.swal2-cancel):hover {
             background-color: #f9fafb !important;
-            border-color: #000000 !important;
+            border-color: #9ca3af !important;
         }
         div:where(.swal2-icon) {
             border-color: #e5e7eb !important;
