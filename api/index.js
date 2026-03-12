@@ -4,6 +4,7 @@ const cookieSession = require('cookie-session');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const mongoose = require('mongoose');
+const crypto = require('crypto'); // Para encriptar contraseñas
 
 const app = express();
 
@@ -63,6 +64,16 @@ const OrderSchema = new mongoose.Schema({
   total: Number
 }, { timestamps: true });
 const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
+
+const UserSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true },
+  name: String,
+  hash: String, // Contraseña encriptada
+  salt: String, // Llave de encriptación única por usuario
+  isAdmin: { type: Boolean, default: false },
+  picture: String
+}, { timestamps: true });
+const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
 const SettingSchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true },
@@ -138,21 +149,86 @@ router.get('/auth/google/callback',
   (req, res) => res.redirect('/')
 );
 
-router.post('/auth/login', (req, res) => {
+router.post('/auth/login', async (req, res) => {
   const { email, password } = req.body;
   
-  // SEGURIDAD: Usar variables de entorno en lugar de texto plano
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
-  const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
+  try {
+    await connectToDatabase();
 
-  if (email === adminEmail && password === adminPass) {
-    const user = { id: 'admin', name: 'Administrador', email, isAdmin: true, picture: null };
-    req.login(user, (err) => {
-      if (err) return res.status(500).json({ message: 'Error de sesión' });
-      return res.json({ message: 'Bienvenido Admin', user });
-    });
-  } else {
+    // 1. Buscar en Base de Datos (Sistema Seguro)
+    const dbUser = await User.findOne({ email });
+    
+    if (dbUser) {
+      // Verificar contraseña encriptada
+      const hashVerify = crypto.pbkdf2Sync(password, dbUser.salt, 1000, 64, 'sha512').toString('hex');
+      if (hashVerify === dbUser.hash) {
+        const userPayload = { 
+          id: dbUser._id, 
+          name: dbUser.name, 
+          email: dbUser.email, 
+          isAdmin: dbUser.isAdmin, 
+          picture: dbUser.picture 
+        };
+        return req.login(userPayload, (err) => {
+          if (err) return res.status(500).json({ message: 'Error de sesión' });
+          return res.json({ message: 'Bienvenido ' + dbUser.name, user: userPayload });
+        });
+      }
+    }
+
+    // 2. Credenciales de Administrador (Fijas o por Variables de Entorno)
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPass = process.env.ADMIN_PASSWORD;
+
+    if (adminEmail && adminPass && email === adminEmail && password === adminPass) {
+      const user = { id: 'admin', name: 'Administrador Principal', email, isAdmin: true, picture: null };
+      return req.login(user, (err) => {
+        if (err) return res.status(500).json({ message: 'Error de sesión' });
+        return res.json({ message: 'Bienvenido Admin', user });
+      });
+    }
+
+    // Si falla todo
     res.status(401).json({ message: 'Credenciales incorrectas' });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error en el servidor' });
+  }
+});
+
+// RUTA PARA CREAR ADMINISTRADORES (Usar una vez y luego proteger)
+router.post('/auth/create-admin', async (req, res) => {
+  try {
+    await connectToDatabase();
+    const { email, password, name, secretKey } = req.body;
+
+    // Protección: Requiere una clave secreta para evitar que cualquiera cree admins
+    // Configura SETUP_SECRET en Vercel, o usa esta clave temporal por defecto
+    const setupSecret = process.env.SETUP_SECRET || 'clave-temporal-segura';
+    
+    if (secretKey !== setupSecret) {
+      return res.status(403).json({ error: 'Clave secreta incorrecta (secretKey).' });
+    }
+
+    // Encriptar contraseña
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+
+    const newUser = new User({
+      email,
+      name: name || 'Admin',
+      hash,
+      salt,
+      isAdmin: true,
+      picture: null
+    });
+
+    await newUser.save();
+    res.json({ message: 'Administrador creado con éxito en la base de datos.' });
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
