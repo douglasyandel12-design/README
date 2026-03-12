@@ -193,9 +193,12 @@ function init() {
         .pm-title { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; line-height: 1.1; }
         .pm-price { font-size: 1.5rem; font-weight: 500; margin-bottom: 1.5rem; color: #333; }
         .pm-description { color: #555; line-height: 1.6; margin-bottom: 2rem; font-size: 0.95rem; }
+        .pm-details { padding: 3rem 2rem; overflow-y: auto; display: flex; flex-direction: column; max-height: 100%; scrollbar-width: thin; }
+        .pm-details::-webkit-scrollbar { width: 6px; }
+        .pm-details::-webkit-scrollbar-thumb { background-color: #ccc; border-radius: 3px; }
         .pm-description ul { padding-left: 20px; margin-bottom: 1rem; }
 
-        .pm-actions { margin-bottom: 1.5rem; display: flex; gap: 10px; align-items: center; }
+        .pm-actions { margin-bottom: 1.5rem; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
         .qty-selector { display: flex; border: 1px solid #ddd; border-radius: 4px; }
         .qty-btn { background: none; border: none; padding: 10px 15px; cursor: pointer; font-size: 1.2rem; }
         .qty-input { width: 40px; text-align: center; border: none; font-weight: bold; font-size: 1rem; -moz-appearance: textfield; }
@@ -361,6 +364,7 @@ function createProductModal() {
                         <button class="qty-btn" onclick="updateModalQty(1)">+</button>
                     </div>
                     <button class="btn" id="pm-add-btn" style="flex:1; padding: 15px;">Añadir al Carrito</button>
+                    <button class="btn" id="pm-buy-now-btn" style="flex:1; padding: 15px; background: #fff; color: #000; border: 1px solid #000;">Pagar Ahora</button>
                 </div>
 
                 <div class="pm-description" id="pm-desc"></div>
@@ -444,6 +448,29 @@ window.viewProductDetails = function(id) {
     document.getElementById('pm-add-btn').onclick = () => {
         const qty = parseInt(document.getElementById('pm-qty').value);
         addToCart(id, qty);
+        closeProductModal();
+    };
+
+    // Configurar botón Pagar Ahora (Nuevo)
+    document.getElementById('pm-buy-now-btn').onclick = () => {
+        const qty = parseInt(document.getElementById('pm-qty').value);
+        const product = products.find(p => p.id == id);
+        
+        if (product) {
+            const existingItem = cart.find(item => item.id == id);
+            const image = (product.images && product.images.length > 0) ? product.images[0] : (product.image || '');
+            const finalPrice = calculateItemPrice(product, existingItem ? existingItem.quantity + qty : qty);
+            
+            if (existingItem) {
+                existingItem.quantity += qty;
+                existingItem.price = finalPrice;
+                existingItem.image = image;
+            } else {
+                cart.push({ id: product.id, name: product.name, price: finalPrice, quantity: qty, originalPrice: product.price, image: image });
+            }
+            saveCart();
+            window.location.href = 'pedido.html';
+        }
         closeProductModal();
     };
 
