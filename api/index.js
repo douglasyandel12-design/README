@@ -166,7 +166,7 @@ router.get('/products', async (req, res) => {
 });
 
 // CREATE a new product
-router.post('/products', async (req, res) => {
+router.post('/products', isAuthenticated, isAdmin, async (req, res) => {
   try {
     await connectToDatabase();
     const newProduct = new Product(req.body);
@@ -178,7 +178,7 @@ router.post('/products', async (req, res) => {
 });
 
 // UPDATE a product by ID
-router.put('/products/:id', async (req, res) => {
+router.put('/products/:id', isAuthenticated, isAdmin, async (req, res) => {
   try {
     await connectToDatabase();
     const updatedProduct = await Product.findOneAndUpdate(
@@ -196,7 +196,7 @@ router.put('/products/:id', async (req, res) => {
 });
 
 // DELETE a product by ID
-router.delete('/products/:id', async (req, res) => {
+router.delete('/products/:id', isAuthenticated, isAdmin, async (req, res) => {
   try {
     await connectToDatabase();
     const deletedProduct = await Product.findOneAndDelete({ id: req.params.id });
@@ -221,7 +221,7 @@ router.get('/settings', async (req, res) => {
   }
 });
 
-router.post('/settings', async (req, res) => {
+router.post('/settings', isAuthenticated, isAdmin, async (req, res) => {
   try {
     await connectToDatabase();
     const { key, value } = req.body;
@@ -345,7 +345,7 @@ router.get('/my-orders', isAuthenticated, async (req, res) => {
 });
 
 // Actualizar estado del pedido
-router.patch('/orders/:id', async (req, res) => {
+router.patch('/orders/:id', isAuthenticated, isAdmin, async (req, res) => {
   try {
     await connectToDatabase();
     const { status } = req.body;
@@ -357,7 +357,7 @@ router.patch('/orders/:id', async (req, res) => {
 });
 
 // Eliminar pedido
-router.delete('/orders/:id', async (req, res) => {
+router.delete('/orders/:id', isAuthenticated, isAdmin, async (req, res) => {
   try {
     await connectToDatabase();
     await Order.findOneAndDelete({ id: req.params.id });

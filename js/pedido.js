@@ -9,29 +9,117 @@ window.currentUser = null;
 function injectStyles() {
     const style = document.createElement('style');
     style.innerHTML = `
-        :root { --primary: #000; --bg: #fff; --text: #111; --border: #e5e5e5; }
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: var(--text); background: #f9f9f9; }
-        .container { background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); max-width: 800px; margin: 2rem auto; }
-        h2 { text-align: center; font-weight: 300; letter-spacing: 1px; margin-bottom: 2rem; }
-        input, select, textarea { border: 1px solid var(--border); padding: 12px; border-radius: 4px; width: 100%; box-sizing: border-box; transition: border 0.3s; }
-        input:focus, select:focus { border-color: #000; outline: none; }
-        label { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; display: block; color: #333; }
-        .btn { background: #000; color: #fff; padding: 15px; border-radius: 4px; width: 100%; font-size: 1rem; font-weight: bold; letter-spacing: 0.5px; border: none; cursor: pointer; transition: background 0.3s; }
-        .btn:hover { background: #333; }
-        .item-row { display: flex; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid #f0f0f0; }
-        #order-total { font-size: 1.5rem; font-weight: 700; }
-        .trust-badge { text-align: center; margin-top: 1rem; font-size: 0.8rem; color: #666; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        :root { 
+            --primary: #000; 
+            --bg-page: #fff; 
+            --bg-summary: #fafafa;
+            --text: #333; 
+            --text-light: #717171;
+            --border: #d9d9d9; 
+            --focus-ring: #000;
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"; 
+            color: var(--text); 
+            background: var(--bg-page); 
+            margin: 0;
+        }
+        .container { 
+            background: #fff; 
+            padding: 2rem; 
+            max-width: 900px; 
+            margin: 0 auto; 
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+        
+        /* Títulos y Encabezados */
+        h2 { text-align: left; font-weight: 400; font-size: 1.7rem; margin-bottom: 1.5rem; letter-spacing: -0.5px; }
+        h3 { font-size: 1.1rem; font-weight: 500; color: var(--text); margin-bottom: 1rem; }
 
-        /* Nuevos estilos para carrito interactivo */
-        .item-row { align-items: center; gap: 1rem; }
-        .item-image { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #eee; background: #fff; }
-        .item-info { flex-grow: 1; }
-        .item-name { display: block; font-weight: 600; margin-bottom: 4px; }
-        .item-price { font-size: 0.9rem; color: #555; }
-        .item-actions { display: flex; align-items: center; gap: 0.75rem; }
-        .qty-btn { background: #f3f4f6; border: 1px solid #e5e7eb; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; line-height: 1; display: flex; align-items: center; justify-content: center; }
-        .remove-btn { background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; line-height: 1; }
-        .item-quantity { font-weight: bold; min-width: 20px; text-align: center; }
+        /* Inputs Estilo Shopify */
+        input, select, textarea { 
+            border: 1px solid var(--border); 
+            padding: 0.9rem; 
+            border-radius: 5px; 
+            width: 100%; 
+            box-sizing: border-box; 
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+            color: var(--text);
+            background: #fff;
+        }
+        input:focus, select:focus { 
+            border-color: var(--focus-ring); 
+            outline: none; 
+            box-shadow: 0 0 0 1px var(--focus-ring); 
+        }
+        label { font-weight: 500; font-size: 0.85rem; margin-bottom: 0.4rem; display: block; color: var(--text); }
+        .form-group { margin-bottom: 1rem; }
+
+        /* Botón de Pago */
+        .btn { 
+            background: var(--primary); 
+            color: #fff; 
+            padding: 1.2rem; 
+            border-radius: 5px; 
+            width: 100%; 
+            font-size: 1rem; 
+            font-weight: 600; 
+            border: none; 
+            cursor: pointer; 
+            transition: opacity 0.3s; 
+            margin-top: 1rem;
+        }
+        .btn:hover { opacity: 0.9; }
+
+        /* Estilos de Lista de Productos (Checkout Style) */
+        .item-row { display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+        #order-total { font-size: 1.5rem; font-weight: 700; }
+        
+        /* Contenedor de imagen con badge de cantidad */
+        .item-image-container { position: relative; width: 64px; height: 64px; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; background: #fff; flex-shrink: 0; margin-right: 15px; }
+        .item-image { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; padding: 2px; box-sizing: border-box; }
+        .qty-badge {
+            position: absolute; top: -10px; right: -10px;
+            background: #717171; color: #fff;
+            width: 20px; height: 20px; border-radius: 50%;
+            font-size: 0.75rem; font-weight: 600;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 10;
+        }
+
+        .item-details { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+        .item-name { display: block; font-weight: 600; font-size: 0.9rem; color: var(--text); margin-bottom: 2px; }
+        .item-meta { font-size: 0.8rem; color: var(--text-light); }
+        .item-price { font-weight: 600; font-size: 0.95rem; color: var(--text); white-space: nowrap; }
+
+        /* Controles pequeños para editar */
+        .mini-actions { margin-top: 4px; display: flex; gap: 8px; }
+        .mini-btn { font-size: 0.75rem; color: var(--text-light); background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline; }
+        .mini-btn:hover { color: var(--primary); }
+
+        /* Sección de Totales (Estilo Sidebar) */
+        .order-summary-box {
+            background: var(--bg-summary);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+        }
+        .summary-row { display: flex; justify-content: space-between; margin-top: 0.8rem; font-size: 0.9rem; color: var(--text-light); }
+        .total-row { display: flex; justify-content: space-between; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(0,0,0,0.05); align-items: center; }
+        .total-label { font-size: 1.1rem; color: var(--text); font-weight: 500; }
+        .total-value { font-size: 1.6rem; font-weight: 700; color: var(--text); letter-spacing: -0.5px; }
+        .currency { font-size: 0.75rem; color: var(--text-light); font-weight: 400; vertical-align: middle; margin-right: 4px; }
+
+        @media (min-width: 900px) {
+            .container { flex-direction: row; align-items: flex-start; }
+            .form-column { flex: 1.2; order: 1; }
+            .summary-column { flex: 0.8; order: 2; background: var(--bg-summary); padding: 2rem; border-radius: 8px; border: 1px solid var(--border); margin-top: 0; }
+            .order-summary-box { border: none; padding: 0; margin: 0; background: transparent; }
+        }
     `;
     document.head.appendChild(style);
 
@@ -135,24 +223,41 @@ function renderOrderSummary() {
         // 4. Fallback final
         if (!imageUrl) imageUrl = 'img/placeholder.png';
 
+        const subtotalItem = item.price * item.quantity;
+
         return `
             <div class="item-row">
-                <img src="${imageUrl}" class="item-image" alt="${item.name}" onerror="this.onerror=null;this.src='img/placeholder.png';">
-                <div class="item-info">
+                <div class="item-image-container">
+                    <img src="${imageUrl}" class="item-image" alt="${item.name}" onerror="this.onerror=null;this.src='img/placeholder.png';">
+                    <span class="qty-badge">${item.quantity}</span>
+                </div>
+                <div class="item-details">
                     <span class="item-name">${item.name}</span>
-                    <span class="item-price">$${(item.price * item.quantity).toFixed(2)}</span>
+                    <div class="mini-actions">
+                        <button type="button" class="mini-btn" onclick="updateOrderItemQuantity(${index}, -1)">Disminuir</button>
+                        <button type="button" class="mini-btn" onclick="updateOrderItemQuantity(${index}, 1)">Aumentar</button>
+                        <button type="button" class="mini-btn" style="color:#ef4444;" onclick="removeOrderItem(${index})">Quitar</button>
+                    </div>
                 </div>
-                <div class="item-actions">
-                    <button type="button" class="qty-btn" onclick="updateOrderItemQuantity(${index}, -1)">-</button>
-                    <span class="item-quantity">${item.quantity}</span>
-                    <button type="button" class="qty-btn" onclick="updateOrderItemQuantity(${index}, 1)">+</button>
-                    <button type="button" class="remove-btn" onclick="removeOrderItem(${index})">&times;</button>
-                </div>
+                <span class="item-price">$${subtotalItem.toFixed(2)}</span>
             </div>
         `;
     }).join('');
 
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+    // Agregar resumen final estilo checkout debajo de los items
+    itemsList.innerHTML += `
+        <div class="summary-row" style="margin-top: 1.5rem;">
+            <span>Subtotal</span>
+            <span>$${total.toFixed(2)}</span>
+        </div>
+        <div class="summary-row">
+            <span>Envío</span>
+            <span style="font-size: 0.8rem;">Calculado en el siguiente paso</span>
+        </div>
+    `;
+
     totalEl.textContent = '$' + total.toFixed(2);
 }
 
@@ -255,8 +360,8 @@ async function submitOrder(e) {
         
         localStorage.removeItem('lvs_cart'); // Limpiar carrito
 
-        // Si no hay usuario logueado (invitado), guardamos el ID localmente para que no lo pierda
-        const isLogged = await verifySession();
+        // Verificar sesión usando la variable global ya cargada, ahorrando una petición
+        const isLogged = window.currentUser !== null;
         if (!isLogged) {
             const guestOrders = JSON.parse(localStorage.getItem('lvs_guest_orders')) || [];
             guestOrders.push(serverOrder.id);
@@ -279,17 +384,6 @@ async function submitOrder(e) {
         // Siempre reactivar el botón, haya éxito (antes de redirección) o error
         submitButton.disabled = false;
         submitButton.textContent = 'Confirmar Pedido';
-    }
-}
-
-async function verifySession() {
-    try {
-        const response = await fetch('/api/auth/status');
-        if (!response.ok) return false;
-        const data = await response.json();
-        return !!data.user;
-    } catch (error) {
-        return false;
     }
 }
 
