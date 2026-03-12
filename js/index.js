@@ -31,7 +31,7 @@ function init() {
         .btn:hover { background-color: #333; border-color: #333; }
         .btn-outline { background: transparent; color: #000; border: 1px solid #e5e5e5; }
         .btn-outline:hover { border-color: #000; background: #fff; }
-        .product-card { border: 1px solid #f0f0f0; box-shadow: none; transition: transform 0.3s, box-shadow 0.3s; border-radius: 0; }
+        .product-card { border: 1px solid #1c1c1c; box-shadow: none; transition: transform 0.3s, box-shadow 0.3s; border-radius: 0; }
         .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
         
         /* Overlay negro para productos */
@@ -122,6 +122,13 @@ function init() {
         }
         .footer-links a:hover { text-decoration: underline; }
         .copyright { font-size: 0.85rem; margin-top: 1.5rem; color: #999; }
+
+        /* --- ESTILOS CARRITO MEJORADOS --- */
+        .cart-content {
+            width: 100%;
+            max-width: 500px; /* Modal más ancho */
+            margin: 0 auto;
+        }
 
         /* --- ESTILOS DEL MODAL DE PRODUCTO (TIPO SHOPIFY) --- */
         .product-modal-overlay {
@@ -793,19 +800,28 @@ function updateCartUI() {
         `).join('');
     }
 
-    // Botón de pago (Siempre visible, pero Deshabilitado si está vacío)
-    const isDisabled = cart.length === 0;
-    htmlContent += `
-        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
-            <button onclick="window.location.href='pedido.html'" class="btn" 
-            style="width: 100%; padding: 15px; font-size: 1rem; ${isDisabled ? 'opacity: 0.5; cursor: not-allowed; background-color: #999; border-color: #999;' : ''}" 
-            ${isDisabled ? 'disabled' : ''}>Ir a Pagar</button>
-        </div>
-    `;
-
     modalItems.innerHTML = htmlContent;
     const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    modalTotal.textContent = '$' + total.toFixed(2);
+    
+    // Actualizar el footer del modal (Total y Botones)
+    // Buscamos el contenedor del footer. En el HTML está justo después de modalItems.
+    const modalFooter = modalItems.nextElementSibling;
+    
+    if (modalFooter) {
+        modalFooter.innerHTML = `
+            <p style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 1rem;">
+                <span>Total:</span>
+                <span id="modal-total">$${total.toFixed(2)}</span>
+            </p>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="window.location.href='carrito.html'" class="btn btn-outline" style="flex: 1; text-align: center;">Ver Carrito</button>
+                ${cart.length > 0 ? `<button onclick="window.location.href='pedido.html'" class="btn" style="flex: 1; text-align: center;">Pagar Ahora</button>` : ''}
+            </div>
+        `;
+    } else {
+        // Fallback por si la estructura HTML cambia, actualizamos solo el texto del total si existe la referencia antigua
+        if(modalTotal) modalTotal.textContent = '$' + total.toFixed(2);
+    }
 }
 
 function removeFromCart(index) {
