@@ -318,7 +318,8 @@ adminStyle.innerHTML = `
         background-color: #111827 !important; /* gray-900 */
     }
     div:where(.swal2-cancel) {
-        color: #374151 !important;
+        background-color: #ef4444 !important;
+        color: #ffffff !important;
     }
 
     /* --- Estilos para Acordeón de Configuración --- */

@@ -267,9 +267,9 @@ function injectStyles() {
             box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important; 
         }
         div:where(.swal2-cancel) {
-            background-color: #fff !important;
-            color: #4b5563 !important;
-            border: 1px solid #d1d5db !important;
+            background-color: #ef4444 !important;
+            color: #ffffff !important;
+            border: 1px solid #ef4444 !important;
         }
         div:where(.swal2-icon.swal2-success) {
             border-color: #10b981 !important;

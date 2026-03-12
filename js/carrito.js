@@ -40,16 +40,16 @@ if (!document.getElementById('swal-custom-style')) {
             box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2) !important;
         }
         div:where(.swal2-cancel) {
-            background-color: #ffffff !important;
-            color: #4b5563 !important;
-            border: 1px solid #d1d5db !important;
+            background-color: #ef4444 !important;
+            color: #ffffff !important;
+            border: 1px solid #ef4444 !important;
             border-radius: 6px !important;
             padding: 0.75rem 1.5rem !important;
             font-weight: 600 !important;
         }
         div:where(.swal2-cancel):hover {
-            background-color: #f9fafb !important;
-            border-color: #9ca3af !important;
+            background-color: #dc2626 !important;
+            border-color: #dc2626 !important;
         }
         div:where(.swal2-icon) {
             border-color: #e5e7eb !important;

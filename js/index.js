@@ -76,9 +76,9 @@ function init() {
             padding: 12px 24px !important;
         }
         div:where(.swal2-cancel) {
-            background-color: #fff !important;
-            color: #4b5563 !important;
-            border: 1px solid #d1d5db !important;
+            background-color: #ef4444 !important;
+            color: #ffffff !important;
+            border: 1px solid #ef4444 !important;
             border-radius: 8px !important;
             padding: 12px 24px !important;
         }
