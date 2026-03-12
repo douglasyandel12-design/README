@@ -82,6 +82,10 @@ function injectStyles() {
         .item-name { display: block; font-weight: 600; font-size: 0.9rem; color: var(--text); margin-bottom: 2px; }
         .item-meta { font-size: 0.8rem; color: var(--text-light); }
         .item-price { font-weight: 600; font-size: 0.95rem; color: var(--text); white-space: nowrap; }
+        
+        /* Estilo para la imagen del producto en el resumen */
+        .item-image-box { width: 64px; height: 64px; border-radius: 6px; overflow: hidden; border: 1px solid #e5e5e5; margin-right: 15px; flex-shrink: 0; background: #fff; display: flex; align-items: center; justify-content: center; }
+        .item-image-box img { width: 100%; height: 100%; object-fit: contain; }
 
         /* Controles de Cantidad (+/-) */
         .qty-wrapper { display: flex; align-items: center; gap: 5px; margin-top: 6px; }
@@ -189,9 +193,22 @@ function renderOrderSummary() {
 
     itemsList.innerHTML = cart.map((item, index) => {
         const subtotalItem = item.price * item.quantity;
+        
+        // Obtener imagen actualizada desde la base de datos (productos cargados en memoria)
+        const product = products.find(p => String(p.id) === String(item.id));
+        let imgUrl = '';
+        if (product) {
+            if (product.images && product.images.length > 0) imgUrl = product.images[0];
+            else if (product.image) imgUrl = product.image;
+        }
+        // Si no se encuentra en BD (raro), usar la del carrito o un placeholder
+        if (!imgUrl) imgUrl = item.image || 'https://placehold.co/64x64?text=Foto';
 
         return `
             <div class="item-row">
+                <div class="item-image-box">
+                    <img src="${imgUrl}" alt="${item.name}" onerror="this.style.display='none'">
+                </div>
                 <div class="item-details">
                     <span class="item-name">${item.name}</span>
                     <div class="qty-wrapper">
