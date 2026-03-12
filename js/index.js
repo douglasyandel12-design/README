@@ -149,6 +149,24 @@ function init() {
             .pm-details { padding: 1.5rem; }
         }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* --- VIEWER DE IMAGEN (ZOOM) --- */
+        .image-modal-overlay {
+            display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%;
+            overflow: auto; background-color: rgba(0,0,0,0.9); backdrop-filter: blur(5px);
+            justify-content: center; align-items: center; flex-direction: column; animation: fadeIn 0.3s;
+        }
+        .image-modal-content {
+            margin: auto; display: block; width: auto; max-width: 95%; max-height: 90vh;
+            object-fit: contain; border-radius: 4px; box-shadow: 0 5px 25px rgba(0,0,0,0.5);
+            animation: zoomIn 0.3s;
+        }
+        .image-modal-close {
+            position: absolute; top: 20px; right: 30px; color: #fff; font-size: 40px;
+            font-weight: bold; transition: 0.3s; cursor: pointer; z-index: 10001; text-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+        .image-modal-close:hover { color: #ccc; }
+        @keyframes zoomIn { from {transform:scale(0.9); opacity:0} to {transform:scale(1); opacity:1} }
     `;
     document.head.appendChild(style);
 
@@ -350,7 +368,7 @@ function renderProductGallery(images, videoUrl) {
 
     if (images.length > 0) {
         galleryHtml = `<div id="pm-gallery-wrapper" class="pm-gallery-wrapper">`;
-        galleryHtml += `<img id="pm-main-img" src="${images[0]}" style="width:100%; height:auto; max-height:400px; object-fit:contain;">`;
+        galleryHtml += `<img id="pm-main-img" src="${images[0]}" style="width:100%; height:auto; max-height:400px; object-fit:contain; cursor: zoom-in;" onclick="openImageModal(this.src, 'Vista Previa')">`;
         if (images.length > 1) {
             galleryHtml += `<div class="pm-thumbnails">${images.map((img, idx) => `<img src="${img}" class="pm-thumb ${idx===0?'active':''}" onclick="changeModalImage('${img}', this)">`).join('')}</div>`;
         }
@@ -820,3 +838,19 @@ window.addEventListener('storage', (e) => {
         location.reload();
     }
 });
+
+// Función Global para abrir el modal de imagen (Zoom)
+window.openImageModal = function(src, alt) {
+    let modal = document.getElementById('image-viewer-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'image-viewer-modal';
+        modal.className = 'image-modal-overlay';
+        modal.innerHTML = `<span class="image-modal-close">&times;</span><img class="image-modal-content" id="img-modal-target">`;
+        document.body.appendChild(modal);
+        modal.querySelector('.image-modal-close').onclick = () => modal.style.display = "none";
+        modal.onclick = (e) => { if (e.target === modal || e.target.tagName === 'IMG') modal.style.display = "none"; };
+    }
+    document.getElementById('img-modal-target').src = src;
+    modal.style.display = "flex";
+}
