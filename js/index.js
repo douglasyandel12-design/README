@@ -73,7 +73,7 @@ function init() {
         div:where(.swal2-cancel) {
             background-color: #fff !important;
             color: #555 !important;
-            border: 1px solid #e5e5e5 !important;
+            border: 1px solid #000 !important;
             border-radius: 8px !important;
             padding: 12px 24px !important;
         }
@@ -388,12 +388,14 @@ function updateModalPriceDisplay(product, quantity) {
         html += ` <small style="color:#ef4444; font-size:0.8rem">(-${product.discount}%)</small>`;
     }
 
-    if (globalSettings.promo_progressive_active === true && quantity >= 2) {
+    const canSeeProgressivePromo = globalSettings.promo_progressive_active === true && (window.currentUser || globalSettings.promo_progressive_public === true);
+    if (canSeeProgressivePromo && quantity >= 2) {
          const discount = Math.min(quantity, 5);
          html += `<small style="color: #d97706; display:block; font-size:0.8rem; margin-top:5px;">🔥 ¡Ahorras $${discount} por unidad!</small>`;
     }
     
-    if (globalSettings.promo_login_5 === true && window.currentUser) {
+    const canSeeMemberPromo = globalSettings.promo_login_5 === true && window.currentUser;
+    if (canSeeMemberPromo) {
          html += `<small style="color:green; display:block; font-size:0.8rem; margin-top:2px;">+ 5% Descuento Socio</small>`;
     }
 
@@ -683,6 +685,8 @@ function renderProducts() {
     let originalPriceHtml = '';
     let promoMsg = '';
 
+    const canSeeProgressivePromo = globalSettings.promo_progressive_active === true && (window.currentUser || globalSettings.promo_progressive_public === true);
+
     if (product.discount && product.discount > 0) {
         displayPrice = product.price * (1 - product.discount / 100);
         originalPriceHtml = `<span class="original-price" style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">$${product.price.toFixed(2)}</span>`;
@@ -690,7 +694,7 @@ function renderProducts() {
     
     // Si la promoción progresiva está activa, lo indicamos en la tarjeta.
     // El precio real se calcula al añadir al carrito.
-    if (globalSettings.promo_progressive_active === true) {
+    if (canSeeProgressivePromo) {
         promoMsg = `<small style="color: #d97706; display:block; font-size:0.7rem; margin-top:2px;">¡Promo por cantidad activa!</small>`;
     }
     
@@ -734,7 +738,7 @@ function renderProducts() {
 // Función auxiliar para calcular precio (incluye la nueva lógica progresiva)
 function calculateItemPrice(product, quantity) {
     let priceAfterPrimaryDiscount;
-    const isProgressivePromoActive = globalSettings.promo_progressive_active === true;
+    const isProgressivePromoActive = globalSettings.promo_progressive_active === true && (window.currentUser || globalSettings.promo_progressive_public === true);
 
     // 1. Lógica de descuento primario (Progresivo o Fijo)
     if (isProgressivePromoActive) {
@@ -857,7 +861,8 @@ function updateCartUI() {
                         }
                     </span>
                     ${ (globalSettings.promo_progressive_active === true && item.price < item.originalPrice)
-                        ? `<small style="color: #d97706; font-weight: 600; display: block; margin-top: 2px;">🔥 ¡Descuento progresivo aplicado!</small>` 
+                        // Solo mostrar si el usuario puede ver la promo
+                        && (window.currentUser || globalSettings.promo_progressive_public === true) ? `<small style="color: #d97706; font-weight: 600; display: block; margin-top: 2px;">🔥 ¡Descuento progresivo aplicado!</small>` 
                         : ''
                     }
                 </div>

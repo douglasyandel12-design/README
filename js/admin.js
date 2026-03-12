@@ -320,6 +320,26 @@ adminStyle.innerHTML = `
     div:where(.swal2-cancel) {
         color: #374151 !important;
     }
+
+    /* --- Estilos para Acordeón de Configuración --- */
+    .setting-accordion {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+    .accordion-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        cursor: pointer;
+        background: #fff;
+    }
+    .accordion-arrow { font-size: 1.2rem; transition: transform 0.3s; }
+    .setting-accordion.open .accordion-arrow { transform: rotate(180deg); }
+    .accordion-content { padding: 0 1rem 1rem 1rem; max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease; }
+    .setting-accordion.open .accordion-content { max-height: 200px; }
 `;
 document.head.appendChild(adminStyle);
 
@@ -406,24 +426,35 @@ async function renderSettingsPanel() {
 
         const isLoginPromoActive = settings.promo_login_5 === true;
         const isProgressivePromoActive = settings.promo_progressive_active === true;
+        const isProgressivePromoPublic = settings.promo_progressive_public === true;
 
         panel.innerHTML = `
             <h3>⚙️ Configuración Global de Promociones</h3>
             
-            <div style="padding: 1rem; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 1.5rem;">
+            <div class="setting-accordion" style="background: #fff;">
                 <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight: bold;">
                     <input type="checkbox" id="promo-toggle" ${isLoginPromoActive ? 'checked' : ''} style="width: 20px; height: 20px;">
                     <span>Activar <strong>Descuento para Socios</strong></span>
                 </label>
-                <p style="font-size: 0.9rem; color: #666; margin: 0.5rem 0 0 30px;">Aplica un 5% de descuento automático a todos los productos para usuarios que han iniciado sesión.</p>
             </div>
 
-            <div style="padding: 1rem; border: 1px solid #ddd; border-radius: 6px;">
-                 <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight: bold;">
-                    <input type="checkbox" id="progressive-promo-toggle" ${isProgressivePromoActive ? 'checked' : ''} style="width: 20px; height: 20px;">
-                    <span>🌟 Activar promoción "Más compras, más barato"</span>
-                </label>
-                <p style="font-size: 0.9rem; color: #666; margin: 0.5rem 0 0 30px;">Si activas esto, <strong>cualquier producto</strong> bajará de precio según la cantidad que se añada al carrito (ej: 2 items = $2 menos, 3 items = $3 menos, etc.).</p>
+            <div class="setting-accordion">
+                <div class="accordion-header" onclick="this.parentElement.classList.toggle('open')">
+                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight: bold;" onclick="event.stopPropagation()">
+                        <input type="checkbox" id="progressive-promo-toggle" ${isProgressivePromoActive ? 'checked' : ''} style="width: 20px; height: 20px;">
+                        <span>🌟 Activar promoción "Más compras, más barato"</span>
+                    </label>
+                    <span class="accordion-arrow">▼</span>
+                </div>
+                <div class="accordion-content">
+                    <p style="font-size: 0.9rem; color: #666; margin: 0.5rem 0 1rem 0;">Si activas esto, <strong>cualquier producto</strong> bajará de precio según la cantidad que se añada al carrito (ej: 2 items = $2 menos, 3 items = $3 menos, etc.).</p>
+                    <hr style="border: none; border-top: 1px solid #eee; margin-bottom: 1rem;">
+                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                        <input type="checkbox" id="promo-progressive-public-toggle" ${isProgressivePromoPublic ? 'checked' : ''} style="width: 20px; height: 20px;">
+                        <span>Permitir acceso a usuarios no registrados</span>
+                    </label>
+                    <small style="color: #666; display: block; margin-left: 30px;">Por defecto, esta promoción es solo para usuarios que han iniciado sesión.</small>
+                </div>
             </div>
         `;
 
@@ -453,6 +484,15 @@ async function renderSettingsPanel() {
                 body: JSON.stringify({ key: 'promo_product_id', value: '' })
             });
             showAdminToast('Promoción progresiva actualizada.');
+        });
+
+        document.getElementById('promo-progressive-public-toggle').addEventListener('change', async (e) => {
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: 'promo_progressive_public', value: e.target.checked })
+            });
+            showAdminToast('Visibilidad de la promoción actualizada.');
         });
     }
 }

@@ -252,7 +252,7 @@ router.post('/orders', async (req, res) => {
         const settings = {};
         settingsDB.forEach(s => settings[s.key] = s.value);
         
-        const isProgressivePromoActive = settings.promo_progressive_active === true;
+        const isProgressivePromoActive = settings.promo_progressive_active === true && (req.user || settings.promo_progressive_public === true);
         const isMemberPromoActive = settings.promo_login_5 === true && req.user; // req.user existe si hay sesión válida
 
         let serverTotal = 0;

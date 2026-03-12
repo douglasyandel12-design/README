@@ -269,7 +269,7 @@ function injectStyles() {
         div:where(.swal2-cancel) {
             background-color: #fff !important;
             color: #555 !important;
-            border: 1px solid #ddd !important;
+            border: 1px solid #000 !important;
         }
         div:where(.swal2-icon.swal2-success) {
             border-color: #10b981 !important;
@@ -396,7 +396,7 @@ async function loadStatesForCountry(countryName, preSelectedRegion = null) {
 
 function calculateItemPrice(product, quantity) {
     let priceAfterPrimaryDiscount;
-    const isProgressivePromoActive = globalSettings.promo_progressive_active === true;
+    const isProgressivePromoActive = globalSettings.promo_progressive_active === true && (window.currentUser || globalSettings.promo_progressive_public === true);
 
     // 1. Lógica de descuento primario (Progresivo o Fijo)
     if (isProgressivePromoActive) {
