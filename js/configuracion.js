@@ -80,11 +80,14 @@ function injectSettingsStyles() {
 }
 
 function renderSettingsUI(container) {
+    // Verificar si es usuario de Google para ocultar seguridad
+    const isGoogleUser = currentUser.provider === 'google';
+
     container.innerHTML = `
         <div class="settings-layout">
             <div class="settings-sidebar">
                 <button class="settings-menu-btn active" onclick="switchSettingsTab('profile')">👤 Mi Perfil</button>
-                <button class="settings-menu-btn" onclick="switchSettingsTab('security')">🔒 Seguridad</button>
+                ${!isGoogleUser ? `<button class="settings-menu-btn" onclick="switchSettingsTab('security')">🔒 Seguridad</button>` : ''}
                 <button class="settings-menu-btn" onclick="switchSettingsTab('shipping')">🚚 Datos de Envío</button>
             </div>
             
@@ -120,6 +123,7 @@ function renderSettingsUI(container) {
                 </div>
 
                 <!-- SECCIÓN SEGURIDAD -->
+                ${!isGoogleUser ? `
                 <div id="tab-security" class="settings-section">
                     <div class="settings-header">
                         <h2>Contraseña y Seguridad</h2>
@@ -141,6 +145,7 @@ function renderSettingsUI(container) {
                         <button type="submit" class="btn-save">Actualizar Contraseña</button>
                     </form>
                 </div>
+                ` : ''}
 
                 <!-- SECCIÓN ENVÍO -->
                 <div id="tab-shipping" class="settings-section">

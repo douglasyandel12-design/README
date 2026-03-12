@@ -113,7 +113,8 @@ passport.use(new GoogleStrategy({
       id: profile.id,
       name: profile.displayName,
       email: profile.emails[0].value,
-      picture: profile.photos[0].value
+      picture: profile.photos[0].value,
+      provider: 'google' // Marcamos que viene de Google
     };
     return done(null, user);
   }
@@ -208,7 +209,8 @@ router.post('/auth/login', async (req, res) => {
           name: dbUser.name, 
           email: dbUser.email, 
           isAdmin: dbUser.isAdmin, 
-          picture: dbUser.picture 
+          picture: dbUser.picture,
+          provider: 'local' // Marcamos que es cuenta local
         };
         return req.login(userPayload, (err) => {
           if (err) return res.status(500).json({ message: 'Error de sesión' });
@@ -222,7 +224,7 @@ router.post('/auth/login', async (req, res) => {
     const adminPass = process.env.ADMIN_PASSWORD;
 
     if (adminEmail && adminPass && email === adminEmail && password === adminPass) {
-      const user = { id: 'admin', name: 'Administrador Principal', email, isAdmin: true, picture: null };
+      const user = { id: 'admin', name: 'Administrador Principal', email, isAdmin: true, picture: null, provider: 'local' };
       return req.login(user, (err) => {
         if (err) return res.status(500).json({ message: 'Error de sesión' });
         return res.json({ message: 'Bienvenido Admin', user });
@@ -372,7 +374,7 @@ router.post('/auth/verify', async (req, res) => {
             await user.save();
 
             // Iniciar sesión automáticamente
-            const userPayload = { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin, picture: user.picture };
+            const userPayload = { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin, picture: user.picture, provider: 'local' };
             req.login(userPayload, (err) => {
                 if (err) return res.status(500).json({ message: 'Verificado, pero error al iniciar sesión.' });
                 return res.json({ message: '¡Cuenta verificada con éxito!', user: userPayload });
@@ -439,6 +441,10 @@ router.put('/auth/change-password', isAuthenticated, async (req, res) => {
   try {
     await connectToDatabase();
     const { currentPassword, newPassword } = req.body;
+
+    if (req.user.provider === 'google') {
+        return res.status(400).json({ message: 'Los usuarios de Google no tienen contraseña para cambiar.' });
+    }
 
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ message: 'Todos los campos son obligatorios.' });
