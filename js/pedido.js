@@ -83,10 +83,12 @@ function injectStyles() {
         .item-meta { font-size: 0.8rem; color: var(--text-light); }
         .item-price { font-weight: 600; font-size: 0.95rem; color: var(--text); white-space: nowrap; }
 
-        /* Controles pequeños para editar */
-        .mini-actions { margin-top: 4px; display: flex; gap: 8px; }
-        .mini-btn { font-size: 0.75rem; color: var(--text-light); background: none; border: none; cursor: pointer; padding: 0; text-decoration: underline; }
-        .mini-btn:hover { color: var(--primary); }
+        /* Controles de Cantidad (+/-) */
+        .qty-wrapper { display: flex; align-items: center; gap: 5px; margin-top: 6px; }
+        .qty-btn { width: 28px; height: 28px; border: 1px solid #d9d9d9; background: #fff; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; line-height: 1; color: #333; transition: all 0.2s; padding-bottom: 2px; }
+        .qty-btn:hover { border-color: #000; color: #000; background-color: #f9f9f9; }
+        .qty-val { font-size: 0.95rem; font-weight: 600; min-width: 24px; text-align: center; }
+        .remove-link { font-size: 0.75rem; color: #ef4444; text-decoration: underline; margin-left: 8px; cursor: pointer; background: none; border: none; }
 
         /* Sección de Totales (Estilo Sidebar) */
         .order-summary-box {
@@ -192,11 +194,11 @@ function renderOrderSummary() {
             <div class="item-row">
                 <div class="item-details">
                     <span class="item-name">${item.name}</span>
-                    <span class="item-meta">Cant: ${item.quantity}</span>
-                    <div class="mini-actions">
-                        <button type="button" class="mini-btn" onclick="updateOrderItemQuantity(${index}, -1)">Disminuir</button>
-                        <button type="button" class="mini-btn" onclick="updateOrderItemQuantity(${index}, 1)">Aumentar</button>
-                        <button type="button" class="mini-btn" style="color:#ef4444;" onclick="removeOrderItem(${index})">Quitar</button>
+                    <div class="qty-wrapper">
+                        <button type="button" class="qty-btn" onclick="updateOrderItemQuantity(${index}, -1)">−</button>
+                        <span class="qty-val">${item.quantity}</span>
+                        <button type="button" class="qty-btn" onclick="updateOrderItemQuantity(${index}, 1)">+</button>
+                        <button type="button" class="remove-link" onclick="removeOrderItem(${index})">Eliminar</button>
                     </div>
                 </div>
                 <span class="item-price">$${subtotalItem.toFixed(2)}</span>
