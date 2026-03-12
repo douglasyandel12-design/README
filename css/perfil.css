@@ -56,10 +56,11 @@ nav { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-b
 
 /* Responsive */
 @media (max-width: 600px) {
+    .container { margin: 1.5rem auto; }
     .profile-card {
         flex-direction: column;
         text-align: center;
-        padding: 1.5rem;
+        padding: 1.5rem 1rem;
     }
     .profile-pic { margin-bottom: 1rem; width: 100px; height: 100px; }
 }

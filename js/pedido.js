@@ -51,7 +51,7 @@ function injectStyles() {
         .container { 
             max-width: 1100px; 
             margin: 0 auto; 
-            padding: 2rem 1.5rem;
+            padding: 2rem 1rem;
             display: flex;
             flex-direction: column; /* Mobile First: Apilado verticalmente */
             gap: 1.5rem;
@@ -90,7 +90,7 @@ function injectStyles() {
         /* Estilo Tarjeta para Formulario y Resumen */
         form, .order-summary {
             background: var(--bg-card);
-            padding: 2rem;
+            padding: 1.5rem;
             border-radius: 16px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
             border: 1px solid var(--border-color);

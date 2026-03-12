@@ -140,9 +140,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         @media (max-width: 600px) {
             .order-header { padding: 1rem; flex-direction: column; align-items: flex-start; }
-            .order-total { padding: 1rem; justify-content: space-between; }
-            .tracker-container { padding: 1.5rem 1rem; }
-            .step-name { font-size: 0.65rem; }
+            .order-info-group { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; }
+            .order-total { padding: 1rem; flex-direction: column; gap: 0.5rem; align-items: flex-end; }
+            .tracker-container { padding: 1rem 0.5rem; overflow-x: auto; }
+            .step-name { font-size: 0.6rem; margin-top: 4px; }
             .step-counter { width: 28px; height: 28px; font-size: 0.7rem; }
         }
     `;

@@ -215,8 +215,17 @@ function init() {
         
         @media (max-width: 768px) {
             .product-modal-content { flex-direction: column; max-height: 95vh; }
-            .pm-image-container { padding: 1rem; height: auto; max-height: 350px; position: static; }
-            .pm-details { padding: 1.5rem; } 
+            .pm-image-container { padding: 0; height: auto; max-height: 350px; position: relative; background: #fff; }
+            .pm-image-container img { max-height: 300px; padding: 1rem; }
+            .pm-details { padding: 1.25rem; } 
+            .pm-close { 
+                top: 10px; right: 10px; 
+                background: rgba(255,255,255,0.9); 
+                width: 36px; height: 36px; 
+                border-radius: 50%; 
+                display: flex; align-items: center; justify-content: center;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
         }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
