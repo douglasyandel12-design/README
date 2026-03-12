@@ -110,13 +110,34 @@ function renderOrderSummary() {
     if (!itemsList) return;
 
     itemsList.innerHTML = cart.map((item, index) => {
-        const product = products.find(p => p.id == item.id) || {};
-        const productImg = (product.images && product.images.length > 0) ? product.images[0] : product.image;
-        const imageUrl = item.image || productImg || 'img/placeholder.png';
+        // Buscar producto actualizado (Fresca de la BD)
+        const product = products.find(p => p.id == item.id);
+        
+        // Lógica de imagen idéntica al Admin: Priorizar BD > Array > String Legacy > Carrito > Placeholder
+        let imageUrl = '';
+        
+        if (product) {
+            // 1. Intentar sacar del array de imágenes (nuevo sistema)
+            if (product.images && product.images.length > 0) {
+                imageUrl = product.images[0];
+            } 
+            // 2. Intentar sacar string de imagen (sistema antiguo)
+            else if (product.image) {
+                imageUrl = product.image;
+            }
+        }
+
+        // 3. Si no hay imagen en BD (o producto no existe), usar la del carrito local
+        if (!imageUrl && item.image) {
+            imageUrl = item.image;
+        }
+
+        // 4. Fallback final
+        if (!imageUrl) imageUrl = 'img/placeholder.png';
 
         return `
             <div class="item-row">
-                <img src="${imageUrl}" class="item-image" alt="${item.name}" onerror="this.src='img/placeholder.png'">
+                <img src="${imageUrl}" class="item-image" alt="${item.name}" onerror="this.onerror=null;this.src='img/placeholder.png';">
                 <div class="item-info">
                     <span class="item-name">${item.name}</span>
                     <span class="item-price">$${(item.price * item.quantity).toFixed(2)}</span>
@@ -194,9 +215,16 @@ async function submitOrder(e) {
         // Enviamos solo los datos necesarios para que el backend verifique y procese.
         items: cart.map(item => {
             const product = products.find(p => p.id == item.id);
-            // Incluimos la imagen para que se guarde en el historial del pedido
-            const image = (product && product.images && product.images.length > 0) ? product.images[0] : (product ? product.image : '');
-            return { id: item.id, name: item.name, quantity: item.quantity, image: image };
+            
+            // Usar la misma lógica prioritaria para guardar la imagen correcta en el pedido
+            let imageToSave = '';
+            if (product) {
+                if (product.images && product.images.length > 0) imageToSave = product.images[0];
+                else if (product.image) imageToSave = product.image;
+            }
+            if (!imageToSave) imageToSave = item.image || ''; // Respaldo del carrito
+
+            return { id: item.id, name: item.name, quantity: item.quantity, image: imageToSave };
         })
     };
 
