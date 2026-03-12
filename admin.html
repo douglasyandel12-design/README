@@ -102,11 +102,9 @@
                             <input type="file" id="img-file-edit" accept="image/*" multiple onchange="addImageFromFile('edit')">
                             <div id="img-preview-edit" class="img-preview-list"></div>
                         </div>
-                        <div class="form-group" style="margin-top: 1rem;">
-                            <label>Video o Imagen Principal</label>
-                            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;"><input type="text" id="edit-video" class="input-field" placeholder="URL de YouTube/Vimeo..." oninput="tempVideo = this.value"><div style="flex:0 0 auto;"><label for="edit-video-file" class="custom-file-upload" style="margin:0;">📂 Subir Archivo</label><input type="file" id="edit-video-file" accept="video/*,image/*" onchange="handleVideoUpload(this)"></div></div>
-                            <div id="video-preview-msg" style="font-size:0.8rem; color:#666; margin-top:5px;"></div>
-                        </div>
+                        <!-- Contenedor para múltiples videos -->
+                        <div id="video-manager-ui" class="image-manager" style="margin-top: 1rem; border-color: #e5e7eb;"></div>
+
                         <div id="edit-promo-container" style="margin-top: 1rem; padding: 0.5rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px;">
                             <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color: #166534; font-weight: 500;"><input type="checkbox" id="edit-is-promo"><span>🌟 Activar promoción "Más compras, más barato"</span></label><small style="display:block; margin-top:4px; color:#166534;">Si activas esto, este producto bajará de precio según la cantidad (2 items = $2 menos, etc).</small>
                         </div>

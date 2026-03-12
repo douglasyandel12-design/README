@@ -441,8 +441,10 @@ window.viewProductDetails = function(id) {
     // Soporte para array de imágenes o string antiguo
     const images = (product.images && product.images.length > 0) ? product.images : (product.image ? [product.image] : []);
     
+    const videos = (product.videos && product.videos.length > 0) ? product.videos : (product.video ? [product.video] : []);
+
     // Renderizar la vista de galería por defecto
-    renderProductGallery(images, product.video);
+    renderProductGallery(images, videos);
     
     // Reset cantidad
     document.getElementById('pm-qty').value = 1;
@@ -489,7 +491,7 @@ window.closeProductModal = function() {
     document.getElementById('product-modal').classList.remove('active');
 }
 
-function renderProductGallery(images, videoUrl) {
+function renderProductGallery(images, videos) {
     const mediaContainer = document.getElementById('pm-media-display');
     let galleryHtml = '';
     let togglesHtml = '';
@@ -504,47 +506,70 @@ function renderProductGallery(images, videoUrl) {
         togglesHtml += `<button id="photo-toggle" class="active" onclick="toggleMediaView('photo')">Fotos</button>`;
     }
 
-    if (videoUrl) {
-        const mediaType = videoUrl.startsWith('data:image') ? 'Ver Imagen' : 'Video';
-        togglesHtml += `<button id="video-toggle" onclick="toggleMediaView('video', '${videoUrl}')">${mediaType}</button>`;
+    if (videos && videos.length > 0) {
+        videos.forEach((vid, index) => {
+            const label = videos.length > 1 ? `Video ${index + 1}` : 'Video';
+            // Escapar comillas simples para el onclick
+            const safeVid = vid.replace(/'/g, "\\'");
+            togglesHtml += `<button class="video-toggle-btn" onclick="toggleMediaView('video', '${safeVid}', this)">${label}</button>`;
+        });
     }
 
     mediaContainer.innerHTML = `${galleryHtml}<div class="pm-media-toggle">${togglesHtml}</div><div id="pm-video-player" style="display:none;"></div>`;
 }
 
-window.toggleMediaView = function(view, videoUrl = '') {
+window.toggleMediaView = function(view, videoUrl = '', btnElement = null) {
     const gallery = document.getElementById('pm-gallery-wrapper');
     const videoPlayer = document.getElementById('pm-video-player');
     const photoToggle = document.getElementById('photo-toggle');
-    const videoToggle = document.getElementById('video-toggle');
+    
+    // Gestionar clases active
+    const allButtons = document.querySelectorAll('.pm-media-toggle button');
+    allButtons.forEach(b => b.classList.remove('active'));
 
     if (view === 'video') {
         if (gallery) gallery.style.display = 'none';
-        videoPlayer.style.display = 'block';
-        if (photoToggle) photoToggle.classList.remove('active');
-        if (videoToggle) videoToggle.classList.add('active');
+        videoPlayer.style.display = 'block'; 
+        
+        if (btnElement) btnElement.classList.add('active');
 
         // Si el video no está cargado, lo cargamos
-        if (!videoPlayer.innerHTML) {
+        // Siempre recargamos el contenido si cambiamos de video
+        // if (!videoPlayer.innerHTML) { <--- Eliminado para permitir cambio de videos
             if (videoUrl.startsWith('data:video')) {
                 videoPlayer.innerHTML = `<video controls autoplay class="pm-video-container" src="${videoUrl}"></video>`;
             } else if (videoUrl.startsWith('data:image')) {
                 videoPlayer.innerHTML = `<img src="${videoUrl}" style="width:100%; height:100%; object-fit:contain;">`;
-            } else { // Asumimos URL de YouTube/Vimeo
+            } else { // Asumimos URL de YouTube/Facebook/TikTok/Vimeo
                 let embedUrl = videoUrl;
-                if (videoUrl.includes('youtube.com/watch?v=')) {
-                    const videoId = new URL(videoUrl).searchParams.get('v');
-                    embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+                
+                // YouTube (Formatos: youtube.com y youtu.be)
+                if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
+                    let videoId = '';
+                    if (videoUrl.includes('youtu.be')) videoId = videoUrl.split('youtu.be/')[1].split('?')[0];
+                    else if (videoUrl.includes('v=')) videoId = videoUrl.split('v=')[1].split('&')[0];
+                    
+                    if (videoId) embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
                 }
-                videoPlayer.innerHTML = `<iframe class="pm-video-container" src="${embedUrl}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+                // Facebook (Requiere plugin oficial)
+                else if (videoUrl.includes('facebook.com') || videoUrl.includes('fb.watch')) {
+                    embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(videoUrl)}&show_text=false&t=0`;
+                }
+                // TikTok (Extraer ID y usar embed v2)
+                else if (videoUrl.includes('tiktok.com')) {
+                    const match = videoUrl.match(/\/video\/(\d+)/);
+                    if (match && match[1]) {
+                        embedUrl = `https://www.tiktok.com/embed/v2/${match[1]}`;
+                    }
+                }
+
+                videoPlayer.innerHTML = `<iframe class="pm-video-container" src="${embedUrl}" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe>`;
             }
-        }
     } else { // view === 'photo'
         if (gallery) gallery.style.display = 'flex';
         videoPlayer.style.display = 'none';
         videoPlayer.innerHTML = ''; // Detener video al cambiar
         if (photoToggle) photoToggle.classList.add('active');
-        if (videoToggle) videoToggle.classList.remove('active');
     }
 }
 

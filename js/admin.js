@@ -3,7 +3,7 @@ let products = [];
 let allOrders = []; // Variable para guardar los pedidos cargados
 let quillEdit; // Editor para editar
 let tempImages = []; // Array temporal para gestionar imágenes antes de guardar
-let tempVideo = ''; // Variable temporal para el video
+let tempVideos = []; // Array temporal para gestionar videos
 let cropInstance = null;
 let cropResolve = null;
 
@@ -873,8 +873,8 @@ function openProductModal(id = null) {
         tempImages = product.images || (product.image ? [product.image] : []);
         if (quillEdit) quillEdit.root.innerHTML = product.description || '';
         
-        // Video
-        tempVideo = product.video || '';
+        // Videos (soporte para múltiples o legado único)
+        tempVideos = product.videos || (product.video ? [product.video] : []);
         
         // Stock
         if(document.getElementById('edit-stock')) document.getElementById('edit-stock').value = (product.stock !== undefined && product.stock !== null) ? product.stock : '';
@@ -890,13 +890,13 @@ function openProductModal(id = null) {
         tempImages = [];
         if (quillEdit) quillEdit.setContents([]);
         
-        tempVideo = '';
+        tempVideos = [];
         if(document.getElementById('edit-stock')) document.getElementById('edit-stock').value = '';
     }
     
     // Renderizar gestores de imagen separados
     renderSeparatedImageUIs();
-    updateVideoUI(); // Actualizar UI del video
+    renderVideoManager(); // Renderizar gestor de videos
 
     editModal.classList.add('active');
 }
@@ -934,7 +934,8 @@ async function saveProductModal(e) {
             description: descriptionContent,
             images: [...tempImages],
             image: tempImages.length > 0 ? tempImages[0] : '',
-            video: tempVideo
+            videos: [...tempVideos],
+            video: tempVideos.length > 0 ? tempVideos[0] : '' // Mantener compatibilidad
         };
     } else {
         // --- CREAR NUEVO ---
@@ -947,7 +948,8 @@ async function saveProductModal(e) {
             description: descriptionContent,
             images: [...tempImages],
             image: tempImages.length > 0 ? tempImages[0] : '',
-            video: tempVideo
+            videos: [...tempVideos],
+            video: tempVideos.length > 0 ? tempVideos[0] : ''
         };
     }
 
@@ -1293,30 +1295,40 @@ window.removeGalleryImage = function(galleryIndex) {
     renderGalleryImagePreview();
 }
 
-// --- FUNCIONES AUXILIARES VIDEO ---
-function updateVideoUI() {
-    const input = document.getElementById('edit-video');
-    const msg = document.getElementById('video-preview-msg');
-    if(input) input.value = tempVideo.startsWith('data:') ? '' : tempVideo;
-    if(msg) {
-        if (tempVideo.startsWith('data:video')) {
-            msg.innerText = '✅ Video cargado desde archivo.';
-        } else if (tempVideo.startsWith('data:image')) {
-            msg.innerText = '✅ Imagen cargada desde archivo.';
-        } else if (tempVideo) {
-            msg.innerText = '🔗 Video vinculado por URL.';
-        } else {
-            msg.innerText = '';
-        }
+// --- GESTOR DE VIDEOS (Múltiples Links) ---
+function renderVideoManager() {
+    const container = document.getElementById('video-manager-ui');
+    if (!container) return;
+    
+    container.innerHTML = `
+        <h4>Videos del Producto (Enlaces)</h4>
+        <div class="img-input-group">
+            <input type="text" id="new-video-url" placeholder="Pegar enlace de YouTube/TikTok/Facebook..." style="margin-bottom:0;">
+            <button type="button" class="btn" onclick="addVideoLink()" style="width:auto; padding: 5px 10px; background-color:#000;">+</button>
+        </div>
+        <div class="video-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 5px;">
+            ${tempVideos.map((v, i) => `
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 8px; border-radius: 4px; border: 1px solid #ddd; font-size: 0.85rem;">
+                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 85%; color: #555;">🎥 ${v}</span>
+                    <button type="button" onclick="removeVideoLink(${i})" style="color: #ef4444; border: none; background: none; cursor: pointer; font-weight:bold;">&times;</button>
+                </div>
+            `).join('')}
+            ${tempVideos.length === 0 ? '<p style="font-size:0.8rem; color:#999; margin:0;">No hay videos añadidos.</p>' : ''}
+        </div>
+    `;
+}
+
+window.addVideoLink = function() {
+    const input = document.getElementById('new-video-url');
+    if(input && input.value.trim()) {
+        tempVideos.push(input.value.trim());
+        renderVideoManager();
     }
 }
 
-window.handleVideoUpload = function(input) {
-    // Deshabilitamos la subida de videos locales para evitar superar el límite de Vercel.
-    Swal.fire('Opción no disponible', 'Por favor, suba su video a un servicio como YouTube o Vimeo y pegue el enlace. Los videos locales pesan demasiado.', 'info');
-    if (input) {
-        input.value = ''; // Limpiar el input para que el usuario pueda volver a intentarlo si quiere
-    }
+window.removeVideoLink = function(i) {
+    tempVideos.splice(i, 1);
+    renderVideoManager();
 }
 
 // --- SISTEMA DE RECORTE (Admin Copy) ---
