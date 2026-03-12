@@ -739,7 +739,11 @@ function updateCartUI() {
                     <button onclick="removeFromCart(${index})" style="color: #ef4444; border: none; background: none; cursor: pointer; font-size: 1.2rem; padding: 0; line-height: 1;">&times;</button>
                 </div>
             </div>
-        `).join('');
+        `).join('') + `
+            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
+                <button onclick="window.location.href='pedido.html'" class="btn" style="width: 100%; padding: 15px; font-size: 1rem;">Ir a Pagar</button>
+            </div>
+        `;
         
         const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         modalTotal.textContent = '$' + total.toFixed(2);
