@@ -627,7 +627,7 @@ async function renderOrders(filterText = '') {
             return (
                 order.id.toLowerCase().includes(search) ||
                 order.customer.name.toLowerCase().includes(search) ||
-                order.customer.email.toLowerCase().includes(search)
+                (order.customer.email && order.customer.email.toLowerCase().includes(search))
             );
         });
 
@@ -657,6 +657,7 @@ async function renderOrders(filterText = '') {
                 </div>
                 <div style="font-size: 0.9rem; line-height: 1.6;">
                     <p><strong>Cliente:</strong> ${order.customer.name}</p>
+                    <p><strong>Email:</strong> ${order.customer.email || '<span style="color:#999;font-style:italic">No indicado</span>'}</p>
                     <p><strong>Teléfono:</strong> ${order.customer.phone}</p>
                     <p><strong>Dirección:</strong> ${order.customer.address}</p>
                     <p><strong>Pago:</strong> ${order.customer.payment}</p>
@@ -783,7 +784,7 @@ function exportOrdersToCSV() {
         const escape = (str) => `"${String(str || '').replace(/"/g, '""')}"`;
 
         const row = [
-            order.id, order.date, order.status, customer.name, customer.email, customer.phone,
+            order.id, order.date, order.status, customer.name, customer.email || '', customer.phone,
             escape(customer.address), customer.payment, order.total.toFixed(2), escape(productsStr)
         ];
         return row.join(',');

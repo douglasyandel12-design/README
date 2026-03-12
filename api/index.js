@@ -475,6 +475,24 @@ router.put('/auth/change-password', isAuthenticated, async (req, res) => {
   }
 });
 
+// RUTA: Eliminar Cuenta Permanentemente
+router.delete('/auth/delete-account', isAuthenticated, async (req, res) => {
+  try {
+    await connectToDatabase();
+    // Eliminar usuario de la base de datos
+    await User.findByIdAndDelete(req.user.id);
+    
+    // Destruir la sesión
+    req.logout((err) => {
+      if (err) return res.status(500).json({ message: 'Cuenta eliminada, pero error al cerrar sesión.' });
+      res.json({ message: 'Tu cuenta ha sido eliminada permanentemente.' });
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error al eliminar la cuenta.' });
+  }
+});
+
 router.get('/products', async (req, res) => {
   try {
     await connectToDatabase();

@@ -541,8 +541,8 @@ async function submitOrder(e) {
     };
 
     // Validación simple de que se llenaron los campos de dirección
-    if (!customer.name || !customer.email || !customer.phone || !document.getElementById('client-street').value) {
-        Swal.fire({ title: 'Faltan datos', text: 'Por favor, rellena toda la información de envío para que podamos entregar tu pedido.', icon: 'warning', confirmButtonText: 'Entendido' });
+    if (!customer.name || !customer.phone || !document.getElementById('client-street').value) {
+        Swal.fire({ title: 'Faltan datos', text: 'Por favor, rellena nombre, teléfono y dirección para poder entregar tu pedido.', icon: 'warning', confirmButtonText: 'Entendido' });
         return;
     }
 
@@ -687,6 +687,17 @@ async function initPedido() {
         renderOrderSummary();
         prefillUserData();
         detectUserLocation(); // Intentar detectar ubicación
+
+        // CONFIGURACIÓN DE FORMULARIO: Email opcional, Teléfono obligatorio
+        const emailInput = document.getElementById('client-email');
+        if (emailInput) {
+            emailInput.removeAttribute('required');
+            if (!emailInput.placeholder.includes('Opcional')) {
+                emailInput.placeholder = (emailInput.placeholder || '') + " (Opcional)";
+            }
+        }
+        const phoneInput = document.getElementById('client-phone');
+        if (phoneInput) phoneInput.setAttribute('required', 'true');
 
     } catch (error) {
         console.error('Error al inicializar la página de pedido:', error);

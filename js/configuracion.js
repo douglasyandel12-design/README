@@ -83,10 +83,13 @@ function renderSettingsUI(container) {
     // Verificar si es usuario de Google para ocultar seguridad
     const isGoogleUser = currentUser.provider === 'google';
 
+    // Icono SVG
+    const googleIcon = isGoogleUser ? `<svg width="14" height="14" viewBox="0 0 24 24" style="vertical-align: -2px; margin-left: 4px;"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>` : '';
+
     container.innerHTML = `
         <div class="settings-layout">
             <div class="settings-sidebar">
-                <button class="settings-menu-btn active" onclick="switchSettingsTab('profile')">👤 Mi Perfil</button>
+                <button class="settings-menu-btn active" onclick="switchSettingsTab('profile')">👤 Mi Perfil ${googleIcon}</button>
                 ${!isGoogleUser ? `<button class="settings-menu-btn" onclick="switchSettingsTab('security')">🔒 Seguridad</button>` : ''}
                 <button class="settings-menu-btn" onclick="switchSettingsTab('shipping')">🚚 Datos de Envío</button>
             </div>
@@ -110,7 +113,7 @@ function renderSettingsUI(container) {
 
                     <form onsubmit="handleUpdateProfile(event)">
                         <div class="form-group">
-                            <label>Nombre Completo</label>
+                            <label>Nombre Completo ${googleIcon}</label>
                             <input type="text" id="profile-name" value="${currentUser.name || ''}" required>
                         </div>
                         <div class="form-group">
@@ -120,6 +123,17 @@ function renderSettingsUI(container) {
                         </div>
                         <button type="submit" class="btn-save">Guardar Cambios</button>
                     </form>
+
+                    <!-- ZONA DE PELIGRO -->
+                    <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #fee2e2;">
+                        <h3 style="color: #991b1b; font-size: 1.1rem; margin-top: 0;">Zona de Peligro</h3>
+                        <p style="color: #7f1d1d; font-size: 0.9rem; margin-bottom: 1rem;">
+                            Si eliminas tu cuenta, perderás acceso a tu historial y perfil. Esta acción es irreversible.
+                        </p>
+                        <button type="button" onclick="handleDeleteAccount()" class="btn-save" style="background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; width: auto;">
+                            Eliminar Cuenta Permanentemente
+                        </button>
+                    </div>
                 </div>
 
                 <!-- SECCIÓN SEGURIDAD -->
@@ -316,6 +330,33 @@ window.handleAvatarUpload = async function(input) {
     } finally {
         document.getElementById('avatar-img').style.opacity = '1';
         input.value = ''; // Limpiar input
+    }
+}
+
+window.handleDeleteAccount = async function() {
+    const result = await Swal.fire({
+        title: '¿Estás absolutamente seguro?',
+        text: "Esta acción no se puede deshacer. Tu cuenta y tus datos personales serán borrados permanentemente.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626', // Rojo intenso
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Sí, eliminar mi cuenta',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            const res = await fetch('/api/auth/delete-account', { method: 'DELETE' });
+            if (res.ok) {
+                await Swal.fire('Cuenta Eliminada', 'Lamentamos que te vayas. Tu cuenta ha sido borrada.', 'success');
+                window.location.href = 'index.html';
+            } else {
+                Swal.fire('Error', 'No se pudo eliminar la cuenta. Inténtalo más tarde.', 'error');
+            }
+        } catch (error) {
+            Swal.fire('Error', 'Error de conexión.', 'error');
+        }
     }
 }
 
