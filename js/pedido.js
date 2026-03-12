@@ -517,6 +517,13 @@ window.removeOrderItem = function(index) {
 
 function saveCart() {
     localStorage.setItem('lvs_cart', JSON.stringify(cart));
+    if (window.currentUser) {
+        fetch('/api/cart', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cart })
+        }).catch(console.error);
+    }
 }
 
 async function submitOrder(e) {
@@ -608,6 +615,11 @@ async function submitOrder(e) {
         });
         
         localStorage.removeItem('lvs_cart'); // Limpiar carrito
+        // Limpiar carrito en la nube también
+        if (window.currentUser) {
+            cart = []; // Variable global vacía
+            saveCart(); // Sincronizar vacío
+        }
 
         // Verificar sesión usando la variable global ya cargada, ahorrando una petición
         const isLogged = window.currentUser !== null;
@@ -697,6 +709,23 @@ async function initPedido() {
         globalSettings = settingsRes.ok ? await settingsRes.json() : {};
         const sessionData = sessionRes.ok ? await sessionRes.json() : { user: null };
         window.currentUser = sessionData.user;
+
+        // Sincronizar carrito al cargar checkout (por si cambió en otra pestaña)
+        if (window.currentUser) {
+            try {
+                const cartRes = await fetch('/api/cart');
+                if (cartRes.ok) {
+                    const serverCart = await cartRes.json();
+                    if (serverCart && serverCart.length > 0) {
+                        cart = serverCart;
+                        localStorage.setItem('lvs_cart', JSON.stringify(cart));
+                    } else if (cart.length > 0) {
+                        // Si servidor vacío y local lleno, sincronizar hacia arriba
+                        saveCart();
+                    }
+                }
+            } catch(e) {}
+        }
 
         recalculateCart(); // Recalcular precios con la info fresca (settings y usuario)
         renderOrderSummary();

@@ -182,6 +182,7 @@ function init() {
         .pm-image-container { flex: 1; background: #f9f9f9; display: flex; align-items: center; justify-content: center; padding: 2rem; position: sticky; top: 0; }
         .pm-image-container img { max-width: 100%; max-height: 500px; object-fit: contain; mix-blend-mode: multiply; }
         .pm-details { flex: 1; padding: 3rem 2rem; } /* Sin scroll interno */
+        .pm-description img { max-width: 100%; height: auto; border-radius: 4px; display: block; margin: 10px 0; }
         .product-modal-content::-webkit-scrollbar { width: 6px; }
         .product-modal-content::-webkit-scrollbar-thumb { background-color: #ccc; border-radius: 3px; }
         
@@ -208,7 +209,7 @@ function init() {
         
         @media (max-width: 768px) {
             .product-modal-content { flex-direction: column; max-height: 95vh; }
-            .pm-image-container { padding: 1rem; height: 300px; position: static; }
+            .pm-image-container { padding: 1rem; height: auto; max-height: 350px; position: static; }
             .pm-details { padding: 1.5rem; } 
         }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -266,6 +267,24 @@ async function loadAndRender() {
         try { sessionData = sessionResponse.ok ? await sessionResponse.json() : { user: null }; } catch(e) {}
         
         window.currentUser = sessionData.user;
+
+        // --- SINCRONIZACIÓN DE CARRITO ---
+        if (window.currentUser) {
+            try {
+                const cartRes = await fetch('/api/cart');
+                if (cartRes.ok) {
+                    const serverCart = await cartRes.json();
+                    if (serverCart && serverCart.length > 0) {
+                        // Si la nube tiene items, usamos esos (prioridad a la cuenta)
+                        cart = serverCart;
+                        localStorage.setItem('lvs_cart', JSON.stringify(cart));
+                    } else if (cart.length > 0) {
+                        // Si la nube está vacía pero local tiene items (recién registrado), subimos los locales
+                        saveCart(); 
+                    }
+                }
+            } catch (e) { console.error('Error sincronizando carrito:', e); }
+        }
 
         // 3. Renderizar la UI una vez que todos los datos están listos
         renderToolbar();
@@ -895,6 +914,14 @@ function orderNow(id) {
 
 function saveCart() {
     localStorage.setItem('lvs_cart', JSON.stringify(cart));
+    // Si el usuario está conectado, guardamos también en la nube
+    if (window.currentUser) {
+        fetch('/api/cart', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cart })
+        }).catch(e => console.error('Error guardando en nube:', e));
+    }
 }
 
 function updateCartUI() {

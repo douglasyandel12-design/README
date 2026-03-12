@@ -66,6 +66,28 @@ async function loadSettings() {
             globalSettings = await res.json();
             renderCart();
         }
+        
+        // Verificar sesión y sincronizar carrito
+        const authRes = await fetch('/api/auth/status');
+        if (authRes.ok) {
+            const authData = await authRes.json();
+            window.currentUser = authData.user;
+            
+            if (window.currentUser) {
+                const cartRes = await fetch('/api/cart');
+                if (cartRes.ok) {
+                    const serverCart = await cartRes.json();
+                    // Sincronizar: Si servidor tiene datos, ganan. Si no, subimos lo local.
+                    if (serverCart && serverCart.length > 0) {
+                        cart = serverCart;
+                        localStorage.setItem('lvs_cart', JSON.stringify(cart));
+                        renderCart();
+                    } else if (cart.length > 0) {
+                        saveCart(); // Subir local a nube
+                    }
+                }
+            }
+        }
     } catch (error) {
         console.error('Error cargando configuración:', error);
     }
@@ -128,7 +150,7 @@ function renderCart() {
 
 function removeItem(index) {
     cart.splice(index, 1);
-    localStorage.setItem('lvs_cart', JSON.stringify(cart));
+    saveCart();
     renderCart();
 }
 
@@ -144,11 +166,22 @@ function clearCart() {
     }).then((result) => {
         if (result.isConfirmed) {
             cart = [];
-            localStorage.setItem('lvs_cart', JSON.stringify(cart));
+            saveCart();
             renderCart();
             Swal.fire({ title: '¡Listo!', text: 'Tu carrito ha sido vaciado.', icon: 'success', confirmButtonText: 'Ok' });
         }
     });
+}
+
+function saveCart() {
+    localStorage.setItem('lvs_cart', JSON.stringify(cart));
+    if (window.currentUser) {
+        fetch('/api/cart', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cart })
+        }).catch(console.error);
+    }
 }
 
 renderCart();

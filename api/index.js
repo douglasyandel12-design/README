@@ -74,7 +74,8 @@ const UserSchema = new mongoose.Schema({
   isAdmin: { type: Boolean, default: false },
   picture: String,
   isVerified: { type: Boolean, default: false },
-  verificationCode: String
+  verificationCode: String,
+  cart: { type: Array, default: [] } // Campo para guardar el carrito
 }, { timestamps: true });
 const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
@@ -385,6 +386,31 @@ router.post('/auth/verify', async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: 'Error en verificación.' });
     }
+});
+
+// RUTA: Obtener Carrito (Sincronización)
+router.get('/cart', isAuthenticated, async (req, res) => {
+  try {
+    await connectToDatabase();
+    const user = await User.findById(req.user.id);
+    // Devolvemos el carrito guardado o un array vacío
+    res.json(user.cart || []);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json([]);
+  }
+});
+
+// RUTA: Guardar Carrito
+router.post('/cart', isAuthenticated, async (req, res) => {
+  try {
+    await connectToDatabase();
+    const { cart } = req.body;
+    await User.findByIdAndUpdate(req.user.id, { cart });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al guardar el carrito' });
+  }
 });
 
 // RUTA: Actualizar Perfil (Nombre)
