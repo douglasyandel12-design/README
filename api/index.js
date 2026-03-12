@@ -53,7 +53,13 @@ const OrderSchema = new mongoose.Schema({
     address: String,
     payment: String
   },
-  items: Array,
+  items: [{
+    id: mongoose.Schema.Types.Mixed, // Puede ser String o Number según tu lógica actual
+    name: String,
+    price: Number,
+    quantity: Number,
+    image: String
+  }],
   total: Number
 }, { timestamps: true });
 const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
@@ -134,7 +140,12 @@ router.get('/auth/google/callback',
 
 router.post('/auth/login', (req, res) => {
   const { email, password } = req.body;
-  if (email === 'admin@lvs-shop.com' && password === '0991412359') {
+  
+  // SEGURIDAD: Usar variables de entorno en lugar de texto plano
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+  const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
+
+  if (email === adminEmail && password === adminPass) {
     const user = { id: 'admin', name: 'Administrador', email, isAdmin: true, picture: null };
     req.login(user, (err) => {
       if (err) return res.status(500).json({ message: 'Error de sesión' });
