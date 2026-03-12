@@ -350,6 +350,7 @@ function updateModalPriceDisplay(product, quantity) {
     if (!priceEl || !product) return;
 
     const unitPrice = calculateItemPrice(product, quantity);
+    const totalPrice = unitPrice * quantity;
     
     let html = `$${unitPrice.toFixed(2)}`;
     
@@ -370,6 +371,13 @@ function updateModalPriceDisplay(product, quantity) {
          html += `<small style="color:green; display:block; font-size:0.8rem; margin-top:2px;">+ 5% Descuento Socio</small>`;
     }
 
+    // Añadir el precio total si la cantidad es mayor a 1
+    if (quantity > 1) {
+        html += `<div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #eee; font-size: 1.2rem; font-weight: 700;">
+                    <span>Total:</span>
+                    <span style="float: right;">$${totalPrice.toFixed(2)}</span>
+                 </div>`;
+    }
     priceEl.innerHTML = html;
 }
 
