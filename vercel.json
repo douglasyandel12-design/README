@@ -1,7 +1,5 @@
 {
-    "api": {
-        "bodyParser": {
-            "sizeLimit": "100mb"
-        }
-    }
+    "rewrites": [
+        { "source": "/api/(.*)", "destination": "/api/index.js" }
+    ]
 }
