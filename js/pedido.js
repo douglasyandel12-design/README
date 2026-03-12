@@ -110,19 +110,19 @@ function renderOrderSummary() {
     if (!itemsList) return;
 
     itemsList.innerHTML = cart.map((item, index) => {
-        // Buscar producto actualizado (Fresca de la BD)
-        const product = products.find(p => p.id == item.id);
+        // Buscar producto actualizado (Fresca de la BD) - Comparación segura de Strings
+        const product = products.find(p => String(p.id) === String(item.id));
         
         // Lógica de imagen idéntica al Admin: Priorizar BD > Array > String Legacy > Carrito > Placeholder
         let imageUrl = '';
         
         if (product) {
             // 1. Intentar sacar del array de imágenes (nuevo sistema)
-            if (product.images && product.images.length > 0) {
+            if (Array.isArray(product.images) && product.images.length > 0) {
                 imageUrl = product.images[0];
             } 
             // 2. Intentar sacar string de imagen (sistema antiguo)
-            else if (product.image) {
+            else if (product.image && typeof product.image === 'string') {
                 imageUrl = product.image;
             }
         }
@@ -214,13 +214,13 @@ async function submitOrder(e) {
         customer,
         // Enviamos solo los datos necesarios para que el backend verifique y procese.
         items: cart.map(item => {
-            const product = products.find(p => p.id == item.id);
+            const product = products.find(p => String(p.id) === String(item.id));
             
             // Usar la misma lógica prioritaria para guardar la imagen correcta en el pedido
             let imageToSave = '';
             if (product) {
-                if (product.images && product.images.length > 0) imageToSave = product.images[0];
-                else if (product.image) imageToSave = product.image;
+                if (Array.isArray(product.images) && product.images.length > 0) imageToSave = product.images[0];
+                else if (product.image && typeof product.image === 'string') imageToSave = product.image;
             }
             if (!imageToSave) imageToSave = item.image || ''; // Respaldo del carrito
 
