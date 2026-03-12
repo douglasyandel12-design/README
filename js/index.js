@@ -344,6 +344,35 @@ function createProductModal() {
 
 window.currentModalProductId = null;
 
+// Función auxiliar para actualizar el precio en el modal según cantidad y promos
+function updateModalPriceDisplay(product, quantity) {
+    const priceEl = document.getElementById('pm-price');
+    if (!priceEl || !product) return;
+
+    const unitPrice = calculateItemPrice(product, quantity);
+    
+    let html = `$${unitPrice.toFixed(2)}`;
+    
+    if (unitPrice < product.price) {
+        html = `<span style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">$${product.price.toFixed(2)}</span> <span style="font-weight:bold; color:#000;">$${unitPrice.toFixed(2)}</span>`;
+    }
+
+    if (product.discount > 0) {
+        html += ` <small style="color:#ef4444; font-size:0.8rem">(-${product.discount}%)</small>`;
+    }
+
+    if (globalSettings.promo_progressive_active === true && quantity >= 2) {
+         const discount = Math.min(quantity, 5);
+         html += `<small style="color: #d97706; display:block; font-size:0.8rem; margin-top:5px;">🔥 ¡Ahorras $${discount} por unidad!</small>`;
+    }
+    
+    if (globalSettings.promo_login_5 === true && window.currentUser) {
+         html += `<small style="color:green; display:block; font-size:0.8rem; margin-top:2px;">+ 5% Descuento Socio</small>`;
+    }
+
+    priceEl.innerHTML = html;
+}
+
 window.viewProductDetails = function(id) {
     const product = products.find(p => p.id == id);
     if (!product) return;
@@ -352,8 +381,8 @@ window.viewProductDetails = function(id) {
     document.getElementById('pm-title').textContent = product.name;
     
     // Precio
-    const price = product.discount ? product.price * (1 - product.discount/100) : product.price;
-    document.getElementById('pm-price').innerHTML = `$${price.toFixed(2)} ${product.discount ? `<small style="color:#ef4444; font-size:0.8rem">(-${product.discount}%)</small>` : ''}`;
+    // Usamos la nueva función para mostrar el precio inicial (cantidad 1)
+    updateModalPriceDisplay(product, 1);
     
     // Descripción (HTML seguro)
     document.getElementById('pm-desc').innerHTML = product.description || 'Sin descripción detallada.';
@@ -469,6 +498,12 @@ window.updateModalQty = function(change) {
     let val = parseInt(input.value) + change;
     if (val < 1) val = 1;
     input.value = val;
+    
+    // Actualizar precio dinámicamente
+    const product = products.find(p => p.id == window.currentModalProductId);
+    if (product) {
+        updateModalPriceDisplay(product, val);
+    }
 }
 
 function handleGuestData() {
@@ -809,10 +844,10 @@ function updateCartUI() {
     
     if (modalFooter) {
         modalFooter.innerHTML = `
-            <p style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 1rem;">
-                <span>Total:</span>
-                <span id="modal-total">$${total.toFixed(2)}</span>
-            </p>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <span style="font-weight: bold; font-size: 1.1rem;">Total: <span id="modal-total">$${total.toFixed(2)}</span></span>
+                ${cart.length > 0 ? `<button onclick="clearCart()" style="background:none; border:none; color:#ef4444; font-size:0.85rem; cursor:pointer; text-decoration:underline; padding:0;">Vaciar Todo</button>` : ''}
+            </div>
             <div style="display: flex; gap: 10px;">
                 <button onclick="window.location.href='carrito.html'" class="btn btn-outline" style="flex: 1; text-align: center;">Ver Carrito</button>
                 ${cart.length > 0 ? `<button onclick="window.location.href='pedido.html'" class="btn" style="flex: 1; text-align: center;">Pagar Ahora</button>` : ''}
@@ -842,6 +877,14 @@ function removeFromCart(index) {
     }
     saveCart();
     updateCartUI();
+}
+
+function clearCart() {
+    if (confirm('¿Estás seguro de que quieres vaciar todo el carrito?')) {
+        cart = [];
+        saveCart();
+        updateCartUI();
+    }
 }
 
 function toggleCart() {
