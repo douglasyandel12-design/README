@@ -4,6 +4,8 @@ let allOrders = []; // Variable para guardar los pedidos cargados
 let quillEdit; // Editor para editar
 let tempImages = []; // Array temporal para gestionar imágenes antes de guardar
 let tempVideo = ''; // Variable temporal para el video
+let cropInstance = null;
+let cropResolve = null;
 
 // Helper function for debouncing, add at the top of the file
 function debounce(func, delay) {
@@ -1181,16 +1183,37 @@ window.setMainImageFromUrl = function() {
 
 window.setMainImageFromFile = async function(input) {
     if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        // VALIDACIÓN DE TIPO
+        if (!file.type.startsWith('image/')) {
+            Swal.fire('Archivo incorrecto', 'El archivo seleccionado no es una imagen válida (JPG/PNG).', 'error');
+            input.value = '';
+            return;
+        }
+
+        // VALIDACIÓN DE TAMAÑO (2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            Swal.fire('Archivo muy pesado', 'La imagen no puede superar los 2MB.', 'warning');
+            input.value = '';
+            return;
+        }
+
         if (tempImages.length >= 5) {
             Swal.fire('Límite alcanzado', 'Máximo 5 imágenes permitidas por producto.', 'info');
             input.value = '';
             return;
         }
-        const file = input.files[0];
         try {
-            const compressedImage = await compressImage(file);
-            tempImages.length > 0 ? tempImages[0] = compressedImage : tempImages.unshift(compressedImage);
-            renderMainImagePreview();
+            // RECORTE: Usamos promptCrop (NaN permite recorte libre)
+            const croppedImage = await promptCrop(file, NaN);
+            if (croppedImage) {
+                tempImages.length > 0 ? tempImages[0] = croppedImage : tempImages.unshift(croppedImage);
+                renderMainImagePreview();
+            } else {
+                // Si cancela, limpiamos el input para que pueda seleccionar de nuevo
+                input.value = '';
+            }
         } catch (error) {
             console.error("Error comprimiendo la imagen:", error);
             Swal.fire({
@@ -1221,7 +1244,16 @@ window.addGalleryImageFromUrl = function() {
 
 window.addGalleryImageFromFile = function(input) {
     if (input.files && input.files.length > 0) {
-        const filesToAdd = Array.from(input.files).slice(0, 5 - tempImages.length);
+        // Filtrar solo imágenes válidas
+        const allFiles = Array.from(input.files);
+        // Validar Tipo y Tamaño (2MB)
+        const validFiles = allFiles.filter(f => f.type.startsWith('image/') && f.size <= 2 * 1024 * 1024);
+
+        if (validFiles.length < allFiles.length) {
+            Swal.fire('Atención', 'Algunos archivos fueron ignorados por no ser imágenes o exceder los 2MB.', 'warning');
+        }
+
+        const filesToAdd = validFiles.slice(0, 5 - tempImages.length);
         if (filesToAdd.length === 0) {
             Swal.fire('Límite alcanzado', 'Máximo 5 imágenes permitidas por producto.', 'info');
             input.value = '';
@@ -1283,4 +1315,66 @@ window.handleVideoUpload = function(input) {
     if (input) {
         input.value = ''; // Limpiar el input para que el usuario pueda volver a intentarlo si quiere
     }
+}
+
+// --- SISTEMA DE RECORTE (Admin Copy) ---
+async function promptCrop(file, aspectRatio = NaN) {
+    // Cargar librería dinámicamente
+    if (!document.getElementById('cropper-css')) {
+        const link = document.createElement('link'); link.id = 'cropper-css'; link.rel = 'stylesheet'; link.href = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css'; document.head.appendChild(link);
+    }
+    if (typeof Cropper === 'undefined') {
+        await new Promise(resolve => {
+            const script = document.createElement('script'); script.src = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js'; 
+            script.onload = resolve; document.head.appendChild(script);
+        });
+    }
+
+    // Crear Modal
+    if (!document.getElementById('crop-modal')) {
+        const modal = document.createElement('div');
+        modal.id = 'crop-modal';
+        modal.style.cssText = "display:none; position:fixed; z-index:11000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.9); flex-direction:column; align-items:center; justify-content:center;";
+        modal.innerHTML = `
+            <div style="position:relative; width:90%; height:80%; max-width:1000px; background:#111; display:flex; justify-content:center; align-items:center; border-radius:4px; overflow:hidden;">
+                <img id="crop-image-target" style="max-width:100%; max-height:100%; display:block;">
+            </div>
+            <div style="margin-top:20px; display:flex; gap:15px; z-index:11001;">
+                <button onclick="closeCropModal(false)" style="background:#4b5563; color:white; padding:10px 20px; border:none; border-radius:4px; cursor:pointer; font-weight:bold; font-size:0.9rem;">Cancelar</button>
+                <button onclick="closeCropModal(true)" style="background:#2563eb; color:white; padding:10px 20px; border:none; border-radius:4px; cursor:pointer; font-weight:bold; font-size:0.9rem;">Recortar Imagen</button>
+            </div>
+            <div style="position:absolute; top:20px; right:20px; color:white; background:rgba(0,0,0,0.5); padding:5px 10px; border-radius:4px; font-size:0.8rem;">
+                Usa la rueda del ratón para hacer zoom
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    return new Promise((resolve) => {
+        cropResolve = resolve;
+        const modal = document.getElementById('crop-modal');
+        const img = document.getElementById('crop-image-target');
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+            img.src = e.target.result;
+            modal.style.display = 'flex';
+            if (cropInstance) cropInstance.destroy();
+            cropInstance = new Cropper(img, { aspectRatio: aspectRatio, viewMode: 1, autoCropArea: 0.9, background: false });
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+window.closeCropModal = function(save) {
+    document.getElementById('crop-modal').style.display = 'none';
+    if (save && cropInstance) {
+        // Para productos usamos mayor resolución
+        const canvas = cropInstance.getCroppedCanvas({ width: 1000, height: 1000, imageSmoothingQuality: 'high' });
+        const base64 = canvas.toDataURL('image/jpeg', 0.85);
+        if (cropResolve) cropResolve(base64);
+    } else {
+        if (cropResolve) cropResolve(null);
+    }
+    if (cropInstance) { cropInstance.destroy(); cropInstance = null; }
 }

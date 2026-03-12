@@ -1,4 +1,6 @@
 let currentUser = null;
+let cropInstance = null; // Instancia del recortador
+let cropResolve = null;  // Promesa para manejar la respuesta
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Inyectar estilos profesionales
@@ -258,20 +260,39 @@ window.handleAvatarUpload = async function(input) {
     const file = input.files[0];
     if (!file) return;
 
+    // VALIDACIÓN: Solo permitir imágenes
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    if (!validTypes.includes(file.type)) {
+        Swal.fire('Formato no válido', 'Por favor selecciona una imagen JPG o PNG.', 'warning');
+        input.value = ''; // Limpiar el input
+        return;
+    }
+
+    // VALIDACIÓN: Tamaño máximo 2MB
+    if (file.size > 2 * 1024 * 1024) { // 2MB en bytes
+        Swal.fire('Archivo muy pesado', 'La imagen no puede pesar más de 2MB.', 'warning');
+        input.value = '';
+        return;
+    }
+
+    // INICIO DEL RECORTE
+    // En lugar de comprimir directo, primero abrimos el recortador
+    const croppedBase64 = await promptCrop(file, 1); // 1 = Relación de aspecto Cuadrada (1:1)
+    if (!croppedBase64) return; // Si el usuario canceló
+
     try {
         // Mostrar cargando
         const preview = document.getElementById('avatar-img');
         const originalSrc = preview.src;
         preview.style.opacity = '0.5';
 
-        // Comprimir imagen (Reutilizamos lógica simplificada de admin)
-        const compressedBase64 = await compressImage(file);
+        // Ya tenemos la imagen recortada y comprimida desde promptCrop
 
         // Enviar al servidor
         const res = await fetch('/api/auth/profile-picture', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ picture: compressedBase64 })
+            body: JSON.stringify({ picture: croppedBase64 })
         });
 
         if (res.ok) {
@@ -324,4 +345,64 @@ function compressImage(file) {
         };
         reader.readAsDataURL(file);
     });
+}
+
+// --- SISTEMA DE RECORTE (CROPPER.JS) ---
+
+async function promptCrop(file, aspectRatio = NaN) {
+    // 1. Cargar librería dinámicamente si no existe
+    if (!document.getElementById('cropper-css')) {
+        const link = document.createElement('link'); link.id = 'cropper-css'; link.rel = 'stylesheet'; link.href = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css'; document.head.appendChild(link);
+    }
+    if (typeof Cropper === 'undefined') {
+        await new Promise(resolve => {
+            const script = document.createElement('script'); script.src = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js'; 
+            script.onload = resolve; document.head.appendChild(script);
+        });
+    }
+
+    // 2. Crear Modal si no existe
+    if (!document.getElementById('crop-modal')) {
+        const modal = document.createElement('div');
+        modal.id = 'crop-modal';
+        modal.style.cssText = "display:none; position:fixed; z-index:10000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.95); flex-direction:column; align-items:center; justify-content:center;";
+        modal.innerHTML = `
+            <div style="position:relative; width:90%; height:80%; max-width:800px; background:#000; display:flex; justify-content:center; align-items:center; border-radius:8px; overflow:hidden;">
+                <img id="crop-image-target" style="max-width:100%; max-height:100%; display:block;">
+            </div>
+            <div style="margin-top:20px; display:flex; gap:15px; z-index:10001;">
+                <button onclick="closeCropModal(false)" style="background:#ef4444; color:white; padding:12px 24px; border:none; border-radius:6px; cursor:pointer; font-weight:bold; font-size:1rem;">Cancelar</button>
+                <button onclick="closeCropModal(true)" style="background:#10b981; color:white; padding:12px 24px; border:none; border-radius:6px; cursor:pointer; font-weight:bold; font-size:1rem;">✅ Recortar y Guardar</button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    // 3. Iniciar lógica
+    return new Promise((resolve) => {
+        cropResolve = resolve;
+        const modal = document.getElementById('crop-modal');
+        const img = document.getElementById('crop-image-target');
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+            img.src = e.target.result;
+            modal.style.display = 'flex';
+            if (cropInstance) cropInstance.destroy();
+            cropInstance = new Cropper(img, { aspectRatio: aspectRatio, viewMode: 1, autoCropArea: 0.9 });
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+window.closeCropModal = function(save) {
+    document.getElementById('crop-modal').style.display = 'none';
+    if (save && cropInstance) {
+        const canvas = cropInstance.getCroppedCanvas({ width: 600, height: 600, imageSmoothingQuality: 'high' });
+        const base64 = canvas.toDataURL('image/jpeg', 0.85); // Calidad alta pero optimizada
+        if (cropResolve) cropResolve(base64);
+    } else {
+        if (cropResolve) cropResolve(null);
+    }
+    if (cropInstance) { cropInstance.destroy(); cropInstance = null; }
 }
