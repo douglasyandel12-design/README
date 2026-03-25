@@ -528,24 +528,24 @@ function renderTable() {
             : `<div class="preview-img" style="display:flex;align-items:center;justify-content:center;font-size:0.7rem;">Sin Foto</div>`;
 
         const row = `
-            <tr>
-                <td data-label="Imagen">${imgDisplay}</td>
-                <td data-label="Nombre">
-                    <strong style="font-size: 1rem;">${p.name}</strong>
-                </td>
-                <td data-label="Precio">
-                    $${p.price.toFixed(2)}
-                    ${p.discount > 0 ? `<br><small style="color:#ef4444; font-weight:bold;">-${p.discount}% OFF</small>` : ''}
-                </td>
-                <td data-label="Stock">${(p.stock !== undefined && p.stock !== null && p.stock !== "") ? p.stock : '∞'}</td>
-                <td data-label="Acciones">
-                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap: wrap;">
-                        <button class="btn" style="background-color: #2563eb;" onclick="openProductModal('${p.id}')">Editar</button>
-                        <button class="btn btn-danger" onclick="deleteProduct('${p.id}')">Borrar</button>
-                    </div>
-                </td>
-            </tr>
-        `;
+        <tr>
+            <td data-label="Imagen">${imgDisplay}</td>
+            <td data-label="Nombre">
+                <strong style="font-size: 1rem;">${p.name}</strong>
+            </td>
+            <td data-label="Precio">
+                $${p.price.toFixed(2)}
+                ${p.discount > 0 ? `<br><small style="color:#ef4444; font-weight:bold;">-${p.discount}% OFF</small>` : ''}
+            </td>
+            <td data-label="Stock">${(p.stock !== undefined && p.stock !== null && p.stock !== "") ? p.stock : '∞'}</td>
+            <td data-label="Acciones">
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap: wrap;">
+                    <button class="btn" style="background-color: #2563eb;" onclick="openProductModal('${p.id}')">Editar</button>
+                    <button class="btn btn-danger" onclick="deleteProduct('${p.id}')">Borrar</button>
+                </div>
+            </td>
+        </tr>
+    `;
         tbody.innerHTML += row;
     });
 }
@@ -644,40 +644,40 @@ async function renderOrders(filterText = '') {
                 : '';
 
             return `
-            <div class="order-card" id="order-card-${order.id}">
-                <div class="order-header">
-                    <span>📅 ${order.date}</span>
-                    <span>Total: $${order.total.toFixed(2)}</span>
-                </div>
-                <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: #eef2ff; border-radius: 4px;">
-                    <strong style="display:block; margin-bottom:5px; font-size:0.85rem; color:#4b5563;">Cambiar Estado:</strong>
-                    <div class="status-btn-group">
-                        ${['En progreso', 'Aceptado', 'Enviado', 'Entregado'].map(status => `
-                            <button class="status-btn ${order.status === status ? 'active' : ''}" 
-                                    data-status="${status}"
-                                    onclick="updateOrderStatus(this, '${order.id}', '${status}')">
-                                ${status === 'Entregado' ? '✅' : ''} ${status}
-                            </button>
-                        `).join('')}
-                    </div>
-                </div>
-                <div style="font-size: 0.9rem; line-height: 1.6;">
-                    <p><strong>Cliente:</strong> ${order.customer.name}</p>
-                    <p><strong>Email:</strong> ${order.customer.email || '<span style="color:#999;font-style:italic">No indicado</span>'}</p>
-                    <p><strong>Teléfono:</strong> ${order.customer.phone}</p>
-                    <p><strong>Dirección:</strong> ${order.customer.address}</p>
-                    ${countryHtml}
-                    <p><strong>Pago:</strong> ${order.customer.payment}</p>
-                    <div style="margin-top: 0.5rem; background: white; padding: 0.5rem; border: 1px solid #eee;">
-                        <strong>Productos:</strong>
-                        <ul style="padding-left: 1.5rem; margin-top: 0.25rem;">
-                            ${order.items.map(item => `<li>${item.quantity}x ${item.name}</li>`).join('')}
-                        </ul>
-                    </div>
-                    <button class="btn btn-danger" style="margin-top: 1rem; width: auto;" onclick="deleteOrder('${order.id}')">Eliminar Pedido</button>
+        <div class="order-card" id="order-card-${order.id}">
+            <div class="order-header">
+                <span>📅 ${order.date}</span>
+                <span>Total: $${order.total.toFixed(2)}</span>
+            </div>
+            <div style="margin-bottom: 0.5rem; padding: 0.5rem; background: #eef2ff; border-radius: 4px;">
+                <strong style="display:block; margin-bottom:5px; font-size:0.85rem; color:#4b5563;">Cambiar Estado:</strong>
+                <div class="status-btn-group">
+                    ${['En progreso', 'Aceptado', 'Enviado', 'Entregado'].map(status => `
+                        <button class="status-btn ${order.status === status ? 'active' : ''}" 
+                                data-status="${status}"
+                                onclick="updateOrderStatus(this, '${order.id}', '${status}')">
+                            ${status === 'Entregado' ? '✅' : ''} ${status}
+                        </button>
+                    `).join('')}
                 </div>
             </div>
-        `;
+            <div style="font-size: 0.9rem; line-height: 1.6;">
+                <p><strong>Cliente:</strong> ${order.customer.name}</p>
+                <p><strong>Email:</strong> ${order.customer.email || '<span style="color:#999;font-style:italic">No indicado</span>'}</p>
+                <p><strong>Teléfono:</strong> ${order.customer.phone}</p>
+                <p><strong>Dirección:</strong> ${order.customer.address}</p>
+                ${countryHtml}
+                <p><strong>Pago:</strong> ${order.customer.payment}</p>
+                <div style="margin-top: 0.5rem; background: white; padding: 0.5rem; border: 1px solid #eee;">
+                    <strong>Productos:</strong>
+                    <ul style="padding-left: 1.5rem; margin-top: 0.25rem;">
+                        ${order.items.map(item => `<li>${item.quantity}x ${item.name}</li>`).join('')}
+                    </ul>
+                </div>
+                <button class="btn btn-danger" style="margin-top: 1rem; width: auto;" onclick="deleteOrder('${order.id}')">Eliminar Pedido</button>
+            </div>
+        </div>
+    `;
         }).join('');
     } catch (error) {
         console.error('Error al cargar pedidos:', error);

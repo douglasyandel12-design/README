@@ -36,7 +36,7 @@ const connectToDatabase = async () => {
 
 // --- MODELOS ---
 const ProductSchema = new mongoose.Schema({
-  id: { type: Number, required: true },
+  id: { type: Number, required: true, unique: true, index: true },
   name: String,
   price: Number,
   image: String,
@@ -45,7 +45,7 @@ const ProductSchema = new mongoose.Schema({
 const Product = mongoose.models.Product || mongoose.model('Product', ProductSchema);
 
 const OrderSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
+  id: { type: String, required: true, unique: true, index: true },
   status: String,
   date: String,
   customer: {
@@ -69,7 +69,7 @@ const OrderSchema = new mongoose.Schema({
 const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
 
 const UserSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true, index: true },
   name: String,
   hash: String, // Contraseña encriptada
   salt: String, // Llave de encriptación única por usuario
@@ -366,49 +366,48 @@ router.post('/auth/register', async (req, res) => {
     const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
 
     if (existingUser && existingUser.isVerified === false) {
-        // Si existe pero NO está verificado, actualizamos sus datos y reenviamos código
-        existingUser.name = name;
-        existingUser.hash = hash;
-        existingUser.salt = salt;
-        existingUser.verificationCode = verificationCode;
-        await existingUser.save();
+      // Si existe pero NO está verificado, actualizamos sus datos y reenviamos código
+      existingUser.name = name;
+      existingUser.hash = hash;
+      existingUser.salt = salt;
+      existingUser.verificationCode = verificationCode;
+      await existingUser.save();
     } else {
-        // 3. Crear el usuario nuevo (NO verificado)
-        const newUser = new User({
-          email,
-          name,
-          hash,
-          salt,
-          isAdmin: false,
-          isVerified: false, // Importante: Falso al inicio
-          verificationCode: verificationCode,
-          picture: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`
-        });
-        await newUser.save();
+      // 3. Crear el usuario nuevo (NO verificado)
+      const newUser = new User({
+        email,
+        name,
+        hash,
+        salt,
+        isAdmin: false,
+        isVerified: false, // Importante: Falso al inicio
+        verificationCode: verificationCode,
+        picture: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`
+      });
+      await newUser.save();
     }
 
-    // 4. Enviar correo (Intentar enviar, si falla avisar pero no romper todo el flujo si es posible)
+    // 4. Enviar correo (Intentar enviar)
     try {
-        if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-            await sendVerificationEmail(email, verificationCode, name);
-            res.status(200).json({ 
-                message: 'Código enviado', 
-                requiresVerification: true, 
-                email: email 
-            });
-        } else {
-            console.warn('EMAIL_USER o EMAIL_PASS no configurados. Código:', verificationCode);
-            // Para desarrollo local sin email configurado, devolvemos el código en consola del server
-            res.status(200).json({ 
-                message: 'Sistema de correo no configurado (Check Server Logs)', 
-                requiresVerification: true, 
-                email: email,
-                devCode: verificationCode // SOLO PARA DEBUG, QUITAR EN PRODUCCIÓN
-            });
-        }
+      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        await sendVerificationEmail(email, verificationCode, name);
+        res.status(200).json({ 
+          message: 'Código enviado', 
+          requiresVerification: true, 
+          email: email 
+        });
+      } else {
+        console.warn('EMAIL_USER o EMAIL_PASS no configurados. Código:', verificationCode);
+        res.status(200).json({ 
+          message: 'Sistema de correo no configurado (Check Server Logs)', 
+          requiresVerification: true, 
+          email: email,
+          devCode: verificationCode // SOLO PARA DEBUG, QUITAR EN PRODUCCIÓN
+        });
+      }
     } catch (emailError) {
-        console.error('Error enviando correo:', emailError);
-        res.status(500).json({ message: 'Error al enviar el correo de verificación.' });
+      console.error('Error enviando correo:', emailError);
+      res.status(500).json({ message: 'Error al enviar el correo de verificación.' });
     }
 
   } catch (error) {

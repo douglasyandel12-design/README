@@ -301,39 +301,40 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             return `
-            <div class="order-card">
-                <div class="order-header">
-                    <div class="order-info-group">
-                        <span class="order-label">Nº Pedido</span>
-                        <span class="order-value">#${order.id}</span>
-                    </div>
-                    ${countryHtml}
-                    <div class="order-info-group" style="align-items: flex-end;">
-                         <span class="order-label" style="text-align:right;">Fecha</span>
-                         <span class="order-date-val">${formattedDate}</span>
-                    </div>
+        <div class="order-card">
+            <div class="order-header">
+                <div class="order-info-group">
+                    <span class="order-label">Nº Pedido</span>
+                    <span class="order-value">#${order.id}</span>
                 </div>
-                
-                <div class="tracker-container">
-                    ${getOrderStatusTracker(order.status)}
-                </div>
-
-                <div class="order-body">
-                    <ul class="order-item-list">
-                        ${order.items.map(item => `
-                            <li class="order-item">
-                                <span class="item-name"><span class="item-qty">${item.quantity}x</span> ${item.name}</span>
-                                <span class="item-price">${currencyManager.format(item.price * item.quantity)}</span>
-                            </li>
-                        `).join('')}
-                    </ul>
-                </div>
-                <div class="order-total">
-                    <span class="total-label">Total del Pedido</span>
-                    <span class="total-amount">${currencyManager.format(order.total)}</span>
+                ${countryHtml}
+                <div class="order-info-group" style="align-items: flex-end;">
+                     <span class="order-label" style="text-align:right;">Fecha</span>
+                     <span class="order-date-val">${formattedDate}</span>
                 </div>
             </div>
-        `}).join('');
+            
+            <div class="tracker-container">
+                ${getOrderStatusTracker(order.status)}
+            </div>
+
+            <div class="order-body">
+                <ul class="order-item-list">
+                    ${order.items.map(item => `
+                        <li class="order-item">
+                            <span class="item-name"><span class="item-qty">${item.quantity}x</span> ${item.name}</span>
+                            <span class="item-price">${currencyManager.format(item.price * item.quantity)}</span>
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>
+            <div class="order-total">
+                <span class="total-label">Total del Pedido</span>
+                <span class="total-amount">${currencyManager.format(order.total)}</span>
+            </div>
+        </div>
+        `;
+        }).join('');
         };
 
         // Renderizar inmediatamente con precios base (USD)

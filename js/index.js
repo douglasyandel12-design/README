@@ -167,7 +167,7 @@ function init() {
         .search-input:focus { background: #fff; border-color: #000; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         
         .filter-container { display: flex; justify-content: center; gap: 0.5rem; margin-bottom: 2rem; }
-        @media (max-width: 768px) { .header-search-container { order: 3; margin: 1rem 0 0 0; min-width: 100%; } nav { flex-wrap: wrap; } }
+        @media (max-width: 768px) { .header-search-container { order: 3; margin: 1rem 0 0 0; width: 100%; max-width: 100%; } nav { flex-wrap: wrap; } }
 
         .filter-chip { 
             padding: 8px 16px; border-radius: 50px; background: #f3f4f6; color: #333; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; border: 1px solid transparent;
@@ -655,37 +655,35 @@ window.toggleMediaView = function(view, videoUrl = '', btnElement = null) {
         if (btnElement) btnElement.classList.add('active');
 
         // Si el video no está cargado, lo cargamos
-        // Siempre recargamos el contenido si cambiamos de video
-        // if (!videoPlayer.innerHTML) { <--- Eliminado para permitir cambio de videos
-            if (videoUrl.startsWith('data:video')) {
-                videoPlayer.innerHTML = `<video controls autoplay class="pm-video-container" src="${videoUrl}"></video>`;
-            } else if (videoUrl.startsWith('data:image')) {
-                videoPlayer.innerHTML = `<img src="${videoUrl}" style="width:100%; height:100%; object-fit:contain;">`;
-            } else { // Asumimos URL de YouTube/Facebook/TikTok/Vimeo
-                let embedUrl = videoUrl;
+        if (videoUrl.startsWith('data:video')) {
+            videoPlayer.innerHTML = `<video controls autoplay class="pm-video-container" src="${videoUrl}"></video>`;
+        } else if (videoUrl.startsWith('data:image')) {
+            videoPlayer.innerHTML = `<img src="${videoUrl}" style="width:100%; height:100%; object-fit:contain;">`;
+        } else { // Asumimos URL de YouTube/Facebook/TikTok/Vimeo
+            let embedUrl = videoUrl;
+            
+            // YouTube (Formatos: youtube.com y youtu.be)
+            if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
+                let videoId = '';
+                if (videoUrl.includes('youtu.be')) videoId = videoUrl.split('youtu.be/')[1].split('?')[0];
+                else if (videoUrl.includes('v=')) videoId = videoUrl.split('v=')[1].split('&')[0];
                 
-                // YouTube (Formatos: youtube.com y youtu.be)
-                if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
-                    let videoId = '';
-                    if (videoUrl.includes('youtu.be')) videoId = videoUrl.split('youtu.be/')[1].split('?')[0];
-                    else if (videoUrl.includes('v=')) videoId = videoUrl.split('v=')[1].split('&')[0];
-                    
-                    if (videoId) embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-                }
-                // Facebook (Requiere plugin oficial)
-                else if (videoUrl.includes('facebook.com') || videoUrl.includes('fb.watch')) {
-                    embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(videoUrl)}&show_text=false&t=0`;
-                }
-                // TikTok (Extraer ID y usar embed v2)
-                else if (videoUrl.includes('tiktok.com')) {
-                    const match = videoUrl.match(/\/video\/(\d+)/);
-                    if (match && match[1]) {
-                        embedUrl = `https://www.tiktok.com/embed/v2/${match[1]}`;
-                    }
-                }
-
-                videoPlayer.innerHTML = `<iframe class="pm-video-container" src="${embedUrl}" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe>`;
+                if (videoId) embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
             }
+            // Facebook (Requiere plugin oficial)
+            else if (videoUrl.includes('facebook.com') || videoUrl.includes('fb.watch')) {
+                embedUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(videoUrl)}&show_text=false&t=0`;
+            }
+            // TikTok (Extraer ID y usar embed v2)
+            else if (videoUrl.includes('tiktok.com')) {
+                const match = videoUrl.match(/\/video\/(\d+)/);
+                if (match && match[1]) {
+                    embedUrl = `https://www.tiktok.com/embed/v2/${match[1]}`;
+                }
+            }
+
+            videoPlayer.innerHTML = `<iframe class="pm-video-container" src="${embedUrl}" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe>`;
+        }
     } else { // view === 'photo'
         if (gallery) gallery.style.display = 'flex';
         videoPlayer.style.display = 'none';
@@ -861,63 +859,61 @@ function renderProducts() {
     }
 
     filteredProducts.forEach((product, index) => {
-    // Obtener imagen principal (array o string legacy)
-    const mainImage = (product.images && product.images.length > 0) ? product.images[0] : (product.image || '');
-        
-    // Determinar si mostrar imagen o placeholder
-    // MEJORA: Añadimos loading="lazy" para que las imágenes solo se carguen cuando sean visibles.
-    const imgContent = mainImage 
-        ? `<img src="${mainImage}" alt="${product.name}" loading="lazy" decoding="async">` 
-        : `<span>${product.name}</span>`;
+        // Obtener imagen principal (array o string legacy)
+        const mainImage = (product.images && product.images.length > 0) ? product.images[0] : (product.image || '');
+            
+        // Determinar si mostrar imagen o placeholder
+        // MEJORA: Añadimos loading="lazy" para que las imágenes solo se carguen cuando sean visibles.
+        const imgContent = mainImage 
+            ? `<img src="${mainImage}" alt="${product.name}" loading="lazy" decoding="async">` 
+            : `<span>${product.name}</span>`;
 
-    // --- LÓGICA DE PRECIOS (Solo visualización estándar) ---
-    let displayPrice = product.price;
-    let originalPriceHtml = '';
-    let promoMsg = '';
+        // --- LÓGICA DE PRECIOS (Solo visualización estándar) ---
+        let displayPrice = product.price;
+        let originalPriceHtml = '';
+        let promoMsg = '';
 
-    const canSeeProgressivePromo = globalSettings.promo_progressive_active === true && (window.currentUser || globalSettings.promo_progressive_public === true);
+        const canSeeProgressivePromo = globalSettings.promo_progressive_active === true && (window.currentUser || globalSettings.promo_progressive_public === true);
 
-    if (product.discount && product.discount > 0) {
-        displayPrice = product.price * (1 - product.discount / 100);
-        originalPriceHtml = `<span class="original-price" style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">$${product.price.toFixed(2)}</span>`;
-    }
-    
-    // Si la promoción progresiva está activa, lo indicamos en la tarjeta.
-    // El precio real se calcula al añadir al carrito.
-    if (canSeeProgressivePromo) {
-        promoMsg = `<small style="color: #d97706; display:block; font-size:0.7rem; margin-top:2px;">¡Promo por cantidad activa!</small>`;
-    }
-    
-    // Aplicar descuento de socio (5%) para visualización si está activo
-    if (isPromoActive) {
-        displayPrice = displayPrice * 0.95;
-        if (!originalPriceHtml && displayPrice < product.price) {
-            originalPriceHtml = `<span class="original-price" style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">$${product.price.toFixed(2)}</span>`;
+        if (product.discount && product.discount > 0) {
+            displayPrice = product.price * (1 - product.discount / 100);
+            originalPriceHtml = `<span class="original-price" style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">${currencyManager.format(product.price)}</span>`;
         }
-        promoMsg += `<small style="color:green; display:block; font-size:0.7rem; margin-top:2px;">+ 5% Descuento Socio</small>`;
-    }
-    
-    const priceHtml = `<div class="price-container">${originalPriceHtml}<span class="product-price">$${displayPrice.toFixed(2)}</span>${promoMsg}</div>`;
-
-    const card = document.createElement('div');
-    card.className = 'product-card';
-    card.style.animation = `fadeInUp 0.5s ease forwards ${index * 0.05}s`; // Animación mejorada
-    card.innerHTML = `
-        <div class="product-image" onclick="viewProductDetails(${product.id})" style="cursor:pointer;">
-            ${imgContent}
-            <div class="product-overlay">
-                <span class="overlay-text">Ver Detalles</span>
+        
+        // Si la promoción progresiva está activa, lo indicamos en la tarjeta.
+        // El precio real se calcula al añadir al carrito.
+        if (canSeeProgressivePromo) {
+            promoMsg = `<small style="color: #d97706; display:block; font-size:0.7rem; margin-top:2px;">¡Promo por cantidad activa!</small>`;
+        }
+        
+        // Aplicar descuento de socio (5%) para visualización si está activo
+        if (isPromoActive) {
+            displayPrice = displayPrice * 0.95;
+            if (!originalPriceHtml && displayPrice < product.price) {
+                originalPriceHtml = `<span class="original-price" style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">${currencyManager.format(product.price)}</span>`;
+            }
+            promoMsg += `<small style="color:green; display:block; font-size:0.7rem; margin-top:2px;">+ 5% Descuento Socio</small>`;
+        }
+        
+        const card = document.createElement('div');
+        card.className = 'product-card';
+        card.style.animation = `fadeInUp 0.5s ease forwards ${index * 0.05}s`; // Animación mejorada
+        card.innerHTML = `
+            <div class="product-image" onclick="viewProductDetails(${product.id})" style="cursor:pointer;">
+                ${imgContent}
+                <div class="product-overlay">
+                    <span class="overlay-text">Ver Detalles</span>
+                </div>
             </div>
-        </div>
-        <div class="product-info">
-            <h3 class="product-title">${product.name}</h3>
-            <div class="price-container">${originalPriceHtml}<span class="product-price">${currencyManager.format(displayPrice)}</span>${promoMsg}</div>
-            <div class="btn-container">
-                <button class="btn btn-outline" onclick="addToCart(${product.id})">Añadir</button>
-                <button class="btn" onclick="orderNow(${product.id})">Pedir ahora</button>
+            <div class="product-info">
+                <h3 class="product-title">${product.name}</h3>
+                <div class="price-container">${originalPriceHtml}<span class="product-price">${currencyManager.format(displayPrice)}</span>${promoMsg}</div>
+                <div class="btn-container">
+                    <button class="btn btn-outline" onclick="addToCart(${product.id})">Añadir</button>
+                    <button class="btn" onclick="orderNow(${product.id})">Pedir ahora</button>
+                </div>
             </div>
-        </div>
-    `;
+        `;
         fragment.appendChild(card); // Añadir al fragmento en lugar de al DOM directamente
     });
 
