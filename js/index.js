@@ -2,6 +2,11 @@
 let products = [];
 let globalSettings = {}; // Para guardar config de promociones
 
+// --- NUEVO: Estado para paginación ---
+let currentPage = 1;
+let totalPages = 1;
+let isLoading = false; // Previene cargas múltiples simultáneas
+
 const currencyManager = {
     rates: null,
     userCurrency: 'USD',
@@ -306,65 +311,80 @@ init();
 
 // Nueva función para centralizar la carga y el renderizado inicial
 async function loadAndRender() {
-    const grid = document.getElementById('product-grid');
-    grid.innerHTML = '<p style="text-align:center; width:100%; color:#666;">Cargando catálogo...</p>'; // Mostrar un estado de carga
+    document.getElementById('product-grid').innerHTML = '<p style="text-align:center; width:100%; color:#666;">Cargando configuración...</p>';
 
     try {
-        // Esperar a que la moneda esté lista antes de cargar otros datos
         await currencyManager.init();
 
-        // 1. Cargar todos los datos necesarios en paralelo
-        const [settingsResponse, productsResponse, sessionResponse] = await Promise.all([
+        // 1. Cargar datos de configuración y sesión primero. Los productos se cargarán por separado.
+        const [settingsResponse, sessionResponse] = await Promise.all([
             fetch('/api/settings'),
-            fetch('/api/products'),
             fetch('/api/auth/status')
         ]);
 
         // 2. Procesar las respuestas
-        // Usamos try-catch individuales para evitar que un fallo en settings rompa los productos
         try {
             globalSettings = settingsResponse.ok ? await settingsResponse.json() : {};
         } catch(e) { console.warn('Error cargando configuración:', e); }
-
-        try {
-            products = productsResponse.ok ? await productsResponse.json() : [];
-        } catch(e) { console.error('Error crítico cargando productos:', e); products = []; }
 
         let sessionData = { user: null };
         try { sessionData = sessionResponse.ok ? await sessionResponse.json() : { user: null }; } catch(e) {}
         
         window.currentUser = sessionData.user;
 
-        // --- SINCRONIZACIÓN DE CARRITO ---
+        // 3. Sincronizar carrito si el usuario está logueado
         if (window.currentUser) {
             try {
                 const cartRes = await fetch('/api/cart');
                 if (cartRes.ok) {
                     const serverCart = await cartRes.json();
-                    if (serverCart && serverCart.length > 0) {
-                        // Si la nube tiene items, usamos esos (prioridad a la cuenta)
-                        cart = serverCart;
-                        localStorage.setItem('lvs_cart', JSON.stringify(cart));
-                    } else if (cart.length > 0) {
-                        // Si la nube está vacía pero local tiene items (recién registrado), subimos los locales
-                        saveCart(); 
-                    }
+                    if (serverCart && serverCart.length > 0) { cart = serverCart; localStorage.setItem('lvs_cart', JSON.stringify(cart)); } 
+                    else if (cart.length > 0) { saveCart(); }
                 }
             } catch (e) { console.error('Error sincronizando carrito:', e); }
         }
 
-        // 3. Renderizar la UI una vez que todos los datos están listos
+        // 4. Renderizar la UI principal que no depende de los productos
         renderToolbar();
-        renderProducts(); // Renderiza los productos una sola vez
         updateCartUI();
         renderUserMenu(sessionData); // Nueva función para manejar el menú de usuario
         renderFooter();
         createProductModal();
-        recalculateCartPrices(); // Recalcula precios del carrito con los datos de promos y usuario ya cargados
+
+        // 5. Cargar la primera página de productos
+        await loadProducts(1);
 
     } catch (error) {
         console.error('Error en la carga inicial:', error);
-        grid.innerHTML = '<div style="text-align:center; width:100%; padding: 2rem;"><p style="color:#ef4444; font-weight:bold;">⚠️ Error de conexión con el servidor.</p><p style="color:#666; font-size:0.9rem;">Si eres el administrador, verifica las Variables de Entorno en Vercel (MONGODB_URI).</p></div>';
+        document.getElementById('product-grid').innerHTML = '<div style="text-align:center; width:100%; padding: 2rem;"><p style="color:#ef4444; font-weight:bold;">⚠️ Error de conexión con el servidor.</p><p style="color:#666; font-size:0.9rem;">No se pudo cargar la tienda. Intenta recargar la página.</p></div>';
+    }
+}
+
+// --- NUEVO: Función para cargar productos con paginación ---
+async function loadProducts(page) {
+    if (isLoading) return;
+    isLoading = true;
+    
+    const loadMoreContainer = document.getElementById('load-more-container');
+    if (loadMoreContainer) loadMoreContainer.innerHTML = '<p style="color:#666;">Cargando...</p>';
+    if (page === 1) document.getElementById('product-grid').innerHTML = '<p style="text-align:center; width:100%; color:#666;">Cargando catálogo...</p>';
+
+    try {
+        const res = await fetch(`/api/products?page=${page}&limit=12`);
+        const data = await res.json();
+
+        products = page === 1 ? data.products : [...products, ...data.products];
+        currentPage = data.currentPage;
+        totalPages = data.totalPages;
+
+        renderProducts(); // Volver a renderizar la lista de productos
+        recalculateCartPrices();
+
+    } catch (error) {
+        console.error("Error cargando productos:", error);
+        document.getElementById('product-grid').innerHTML += '<p style="color:red;text-align:center;">Error al cargar más productos.</p>';
+    } finally {
+        isLoading = false;
     }
 }
 
@@ -795,11 +815,11 @@ function logout() {
 // Renderizar productos
 function renderProducts() {
     const fragment = document.createDocumentFragment(); // Usar un fragmento para mejorar rendimiento
+    const grid = document.getElementById('product-grid');
 
     // Verificar si aplica promo de socio (Usuario logueado + Config activa)
     const isPromoActive = globalSettings.promo_login_5 === true && window.currentUser;
 
-    // --- FILTRADO DINÁMICO ---
     const filteredProducts = products.filter(p => {
         // Filtro de Stock: Si el stock es 0, el producto no se muestra
         if (p.stock !== undefined && p.stock !== null && p.stock !== "" && parseInt(p.stock) <= 0) return false;
@@ -816,9 +836,13 @@ function renderProducts() {
         return matchesSearch && matchesCategory;
     });
 
+    // Limpiar el grid antes de renderizar. Esto es más simple y robusto que intentar añadir solo los nuevos.
+    grid.innerHTML = '';
+
     if(filteredProducts.length === 0) {
-        grid.innerHTML = '<p style="text-align:center; width:100%; color:#666;">No se encontraron productos.</p>';
-        return; // Salir si no hay productos
+        grid.innerHTML = (products.length > 0)
+            ? '<p style="text-align:center; width:100%; color:#666;">No se encontraron productos con los filtros actuales.</p>'
+            : '<p style="text-align:center; width:100%; color:#666;">No hay productos disponibles en este momento.</p>';
     }
 
     filteredProducts.forEach((product, index) => {
@@ -882,8 +906,22 @@ function renderProducts() {
         fragment.appendChild(card); // Añadir al fragmento en lugar de al DOM directamente
     });
 
-    grid.innerHTML = ''; // Limpiar grid justo antes de añadir el contenido nuevo
     grid.appendChild(fragment); // Añadir el fragmento al DOM una sola vez
+
+    // --- GESTIÓN DEL BOTÓN "CARGAR MÁS" ---
+    let loadMoreContainer = document.getElementById('load-more-container');
+    if (!loadMoreContainer) {
+        loadMoreContainer = document.createElement('div');
+        loadMoreContainer.id = 'load-more-container';
+        loadMoreContainer.style.cssText = 'text-align: center; margin-top: 2rem; width: 100%; grid-column: 1 / -1;';
+        grid.parentNode.insertBefore(loadMoreContainer, grid.nextSibling);
+    }
+
+    if (currentPage < totalPages && !isLoading) {
+        loadMoreContainer.innerHTML = `<button class="btn" onclick="loadProducts(${currentPage + 1})">Cargar Más Productos</button>`;
+    } else if (!isLoading) {
+        loadMoreContainer.innerHTML = ''; // Ocultar si no hay más páginas o si se está cargando
+    }
 }
 
 // Función auxiliar para calcular precio (incluye la nueva lógica progresiva)

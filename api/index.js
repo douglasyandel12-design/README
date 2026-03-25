@@ -581,8 +581,21 @@ router.delete('/auth/delete-account', isAuthenticated, async (req, res) => {
 router.get('/products', async (req, res) => {
   try {
     await connectToDatabase();
-    const products = await Product.find({});
-    res.json(products);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 12; // Cargar en lotes de 12 para una carga inicial más rápida
+    const skip = (page - 1) * limit;
+
+    // Ejecutar consultas de conteo y búsqueda en paralelo para mayor eficiencia
+    const [products, totalProducts] = await Promise.all([
+        Product.find({}).sort({ _id: -1 }).skip(skip).limit(limit), // Ordenar por más nuevos es una buena práctica
+        Product.countDocuments({})
+    ]);
+    
+    res.json({
+        products,
+        totalPages: Math.ceil(totalProducts / limit),
+        currentPage: page
+    });
   } catch (error) {
     res.status(500).json({ error: 'Error al cargar productos' });
   }
