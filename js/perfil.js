@@ -5,8 +5,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         userCurrency: 'USD',
 
         async init() {
-            const storedRates = sessionStorage.getItem('currencyRates');
-            const storedCurrency = sessionStorage.getItem('userCurrency');
+            const storedRates = sessionStorage.getItem('currencyRates_v2');
+            const storedCurrency = sessionStorage.getItem('userCurrency_v2');
 
             if (storedRates && storedCurrency) {
                 this.rates = JSON.parse(storedRates);
@@ -26,13 +26,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             try {
-                const ratesRes = await fetch('https://api.frankfurter.app/latest?from=USD');
+                // Se cambia a una API más completa que soporta PEN, COP, ARS, CLP, MXN, etc.
+                const ratesRes = await fetch('https://open.er-api.com/v6/latest/USD');
                 if (ratesRes.ok) {
                     const ratesData = await ratesRes.json();
                     this.rates = ratesData.rates;
-                    this.rates['USD'] = 1;
-                    sessionStorage.setItem('currencyRates', JSON.stringify(this.rates));
-                    sessionStorage.setItem('userCurrency', this.userCurrency);
+                    sessionStorage.setItem('currencyRates_v2', JSON.stringify(this.rates));
+                    sessionStorage.setItem('userCurrency_v2', this.userCurrency);
                 }
             } catch (e) {
                 console.error('No se pudieron obtener las tasas de cambio.');
@@ -230,13 +230,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Renderizar tarjeta de perfil
-        document.getElementById('profile-card').innerHTML = `
-            <div class="profile-pic"><img src="${user.picture}" alt="Foto de perfil"></div>
-            <div class="profile-info">
-                <h2>${user.name}</h2>
-                <p>${user.email}</p>
-            </div>
-        `;
+        const profileCard = document.getElementById('profile-card');
+        if (profileCard) {
+            profileCard.innerHTML = `
+                <div class="profile-pic"><img src="${user.picture}" alt="Foto de perfil"></div>
+                <div class="profile-info">
+                    <h2>${user.name}</h2>
+                    <p>${user.email}</p>
+                </div>
+            `;
+        }
 
         // MEJORA: Se pide al nuevo endpoint seguro que solo devuelve los pedidos del usuario actual.
         // Esto es más rápido y seguro que traer todos los pedidos y filtrarlos en el cliente.
@@ -264,77 +267,78 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const renderHistory = (orders) => {
-            // MEJORA: Formateo de fecha más legible para el usuario.
-            const formattedDate = new Date(order.date).toLocaleDateString('es-ES', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-
-            // Lógica para mostrar la bandera y el país
-            let countryHtml = '';
-            if (order.customer.countryCode && order.customer.country) {
-                countryHtml = `
-                    <div class="order-info-group">
-                        <span class="order-label">País</span>
-                        <span class="order-value" style="display: flex; align-items: center; gap: 8px;">
-                            <img src="https://flagcdn.com/w20/${order.customer.countryCode.toLowerCase()}.png"
-                                 srcset="https://flagcdn.com/w40/${order.customer.countryCode.toLowerCase()}.png 2x"
-                                 width="20"
-                                 alt="Bandera de ${order.customer.country}">
-                            ${order.customer.country}
-                        </span>
-                    </div>
-                `;
-            } else if (order.customer.address) {
-                // Fallback para pedidos antiguos: intentar mostrar el país desde la dirección
-                const addressParts = order.customer.address.split(',');
-                const countryName = addressParts.length > 1 ? addressParts[addressParts.length - 1].trim() : '';
-                if (countryName) {
+            return orders.map(order => {
+                // MEJORA: Formateo de fecha más legible para el usuario.
+                const formattedDate = new Date(order.date).toLocaleDateString('es-ES', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+    
+                // Lógica para mostrar la bandera y el país
+                let countryHtml = '';
+                if (order.customer.countryCode && order.customer.country) {
                     countryHtml = `
                         <div class="order-info-group">
                             <span class="order-label">País</span>
-                            <span class="order-value">${countryName}</span>
+                            <span class="order-value" style="display: flex; align-items: center; gap: 8px;">
+                                <img src="https://flagcdn.com/w20/${order.customer.countryCode.toLowerCase()}.png"
+                                     srcset="https://flagcdn.com/w40/${order.customer.countryCode.toLowerCase()}.png 2x"
+                                     width="20"
+                                     alt="Bandera de ${order.customer.country}">
+                                ${order.customer.country}
+                            </span>
                         </div>
                     `;
+                } else if (order.customer.address) {
+                    // Fallback para pedidos antiguos: intentar mostrar el país desde la dirección
+                    const addressParts = order.customer.address.split(',');
+                    const countryName = addressParts.length > 1 ? addressParts[addressParts.length - 1].trim() : '';
+                    if (countryName) {
+                        countryHtml = `
+                            <div class="order-info-group">
+                                <span class="order-label">País</span>
+                                <span class="order-value">${countryName}</span>
+                            </div>
+                        `;
+                    }
                 }
-            }
-
-            return `
-        <div class="order-card">
-            <div class="order-header">
-                <div class="order-info-group">
-                    <span class="order-label">Nº Pedido</span>
-                    <span class="order-value">#${order.id}</span>
-                </div>
-                ${countryHtml}
-                <div class="order-info-group" style="align-items: flex-end;">
-                     <span class="order-label" style="text-align:right;">Fecha</span>
-                     <span class="order-date-val">${formattedDate}</span>
-                </div>
-            </div>
+    
+                return `
+                    <div class="order-card">
+                        <div class="order-header">
+                            <div class="order-info-group">
+                                <span class="order-label">Nº Pedido</span>
+                                <span class="order-value">#${order.id}</span>
+                            </div>
+                            ${countryHtml}
+                            <div class="order-info-group" style="align-items: flex-end;">
+                                 <span class="order-label" style="text-align:right;">Fecha</span>
+                                 <span class="order-date-val">${formattedDate}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="tracker-container">
+                            ${getOrderStatusTracker(order.status)}
+                        </div>
             
-            <div class="tracker-container">
-                ${getOrderStatusTracker(order.status)}
-            </div>
-
-            <div class="order-body">
-                <ul class="order-item-list">
-                    ${order.items.map(item => `
-                        <li class="order-item">
-                            <span class="item-name"><span class="item-qty">${item.quantity}x</span> ${item.name}</span>
-                            <span class="item-price">${currencyManager.format(item.price * item.quantity)}</span>
-                        </li>
-                    `).join('')}
-                </ul>
-            </div>
-            <div class="order-total">
-                <span class="total-label">Total del Pedido</span>
-                <span class="total-amount">${currencyManager.format(order.total)}</span>
-            </div>
-        </div>
-        `;
-        }).join('');
+                        <div class="order-body">
+                            <ul class="order-item-list">
+                                ${order.items.map(item => `
+                                    <li class="order-item">
+                                        <span class="item-name"><span class="item-qty">${item.quantity}x</span> ${item.name}</span>
+                                        <span class="item-price">${currencyManager.format(item.price * item.quantity)}</span>
+                                    </li>
+                                `).join('')}
+                            </ul>
+                        </div>
+                        <div class="order-total">
+                            <span class="total-label">Total del Pedido</span>
+                            <span class="total-amount">${currencyManager.format(order.total)}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         };
 
         // Renderizar inmediatamente con precios base (USD)

@@ -12,8 +12,8 @@ const currencyManager = {
     userCurrency: 'USD',
 
     async init() {
-        const storedRates = sessionStorage.getItem('currencyRates');
-        const storedCurrency = sessionStorage.getItem('userCurrency');
+        const storedRates = sessionStorage.getItem('currencyRates_v2');
+        const storedCurrency = sessionStorage.getItem('userCurrency_v2');
 
         if (storedRates && storedCurrency) {
             this.rates = JSON.parse(storedRates);
@@ -33,13 +33,13 @@ const currencyManager = {
         }
         
         try {
-            const ratesRes = await fetch('https://api.frankfurter.app/latest?from=USD');
+            // Se cambia a una API más completa que soporta PEN, COP, ARS, CLP, MXN, etc.
+            const ratesRes = await fetch('https://open.er-api.com/v6/latest/USD');
             if (ratesRes.ok) {
                 const ratesData = await ratesRes.json();
                 this.rates = ratesData.rates;
-                this.rates['USD'] = 1;
-                sessionStorage.setItem('currencyRates', JSON.stringify(this.rates));
-                sessionStorage.setItem('userCurrency', this.userCurrency);
+                sessionStorage.setItem('currencyRates_v2', JSON.stringify(this.rates));
+                sessionStorage.setItem('userCurrency_v2', this.userCurrency);
             }
         } catch (e) {
             console.error('No se pudieron obtener las tasas de cambio.');
