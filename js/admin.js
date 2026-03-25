@@ -20,7 +20,7 @@ function debounce(func, delay) {
 // Cargar productos desde la nube al iniciar
 async function initAdmin() {
     try {
-        const res = await fetch('/api/products');
+        const res = await fetch('/api/products?all=true');
         if (res.ok) {
             products = await res.json();
             

@@ -581,13 +581,26 @@ router.delete('/auth/delete-account', isAuthenticated, async (req, res) => {
 router.get('/products', async (req, res) => {
   try {
     await connectToDatabase();
+
+    // Si el admin pide todos los productos para el panel de control
+    if (req.query.all === 'true') {
+        // Medida de seguridad: solo los administradores pueden usar este parámetro
+        if (!req.user || !req.user.isAdmin) {
+            return res.status(403).json({ error: 'Acceso denegado. Se requieren permisos de administrador.' });
+        }
+        const allProducts = await Product.find({}).sort({ _id: -1 });
+        // Devolvemos el array directamente para no romper el código del admin panel
+        return res.json(allProducts);
+    }
+
+    // Lógica de paginación normal para la tienda pública
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 12; // Cargar en lotes de 12 para una carga inicial más rápida
+    const limit = parseInt(req.query.limit) || 12;
     const skip = (page - 1) * limit;
 
-    // Ejecutar consultas de conteo y búsqueda en paralelo para mayor eficiencia
+    // Consultas en paralelo para eficiencia
     const [products, totalProducts] = await Promise.all([
-        Product.find({}).sort({ _id: -1 }).skip(skip).limit(limit), // Ordenar por más nuevos es una buena práctica
+        Product.find({}).sort({ _id: -1 }).skip(skip).limit(limit),
         Product.countDocuments({})
     ]);
     

@@ -311,18 +311,18 @@ init();
 
 // Nueva función para centralizar la carga y el renderizado inicial
 async function loadAndRender() {
-    document.getElementById('product-grid').innerHTML = '<p style="text-align:center; width:100%; color:#666;">Cargando configuración...</p>';
+    document.getElementById('product-grid').innerHTML = '<p style="text-align:center; width:100%; color:#666;">Cargando catálogo...</p>';
 
     try {
-        await currencyManager.init();
-
-        // 1. Cargar datos de configuración y sesión primero. Los productos se cargarán por separado.
-        const [settingsResponse, sessionResponse] = await Promise.all([
+        // 1. Iniciar todas las peticiones de red en paralelo para máxima velocidad
+        const [_, settingsResponse, sessionResponse, productsDataResponse] = await Promise.all([
+            currencyManager.init(),
             fetch('/api/settings'),
-            fetch('/api/auth/status')
+            fetch('/api/auth/status'),
+            fetch('/api/products?page=1&limit=12') // Cargar primera página de productos
         ]);
 
-        // 2. Procesar las respuestas
+        // 2. Procesar respuestas de configuración y sesión
         try {
             globalSettings = settingsResponse.ok ? await settingsResponse.json() : {};
         } catch(e) { console.warn('Error cargando configuración:', e); }
@@ -332,7 +332,17 @@ async function loadAndRender() {
         
         window.currentUser = sessionData.user;
 
-        // 3. Sincronizar carrito si el usuario está logueado
+        // 3. Procesar respuesta de productos
+        if (productsDataResponse.ok) {
+            const data = await productsDataResponse.json();
+            products = data.products;
+            currentPage = data.currentPage;
+            totalPages = data.totalPages;
+        } else {
+            products = []; // Asegurar que sea un array vacío en caso de error
+        }
+
+        // 4. Sincronizar carrito (depende de la sesión)
         if (window.currentUser) {
             try {
                 const cartRes = await fetch('/api/cart');
@@ -344,15 +354,16 @@ async function loadAndRender() {
             } catch (e) { console.error('Error sincronizando carrito:', e); }
         }
 
-        // 4. Renderizar la UI principal que no depende de los productos
+        // 5. Renderizar toda la UI ahora que tenemos todos los datos
         renderToolbar();
-        updateCartUI();
-        renderUserMenu(sessionData); // Nueva función para manejar el menú de usuario
+        renderUserMenu(sessionData);
         renderFooter();
         createProductModal();
-
-        // 5. Cargar la primera página de productos
-        await loadProducts(1);
+        
+        // Estas funciones dependen de todos los datos anteriores
+        recalculateCartPrices(); // Recalcula precios del carrito con promos, usuario y productos
+        updateCartUI(); // Actualiza el contador y el modal del carrito
+        renderProducts(); // Renderiza la cuadrícula de productos
 
     } catch (error) {
         console.error('Error en la carga inicial:', error);
@@ -367,22 +378,21 @@ async function loadProducts(page) {
     
     const loadMoreContainer = document.getElementById('load-more-container');
     if (loadMoreContainer) loadMoreContainer.innerHTML = '<p style="color:#666;">Cargando...</p>';
-    if (page === 1) document.getElementById('product-grid').innerHTML = '<p style="text-align:center; width:100%; color:#666;">Cargando catálogo...</p>';
 
     try {
         const res = await fetch(`/api/products?page=${page}&limit=12`);
         const data = await res.json();
 
-        products = page === 1 ? data.products : [...products, ...data.products];
+        products.push(...data.products); // Siempre añadir los nuevos productos
         currentPage = data.currentPage;
         totalPages = data.totalPages;
 
-        renderProducts(); // Volver a renderizar la lista de productos
+        renderProducts(); // Volver a renderizar la lista de productos completa
         recalculateCartPrices();
 
     } catch (error) {
         console.error("Error cargando productos:", error);
-        document.getElementById('product-grid').innerHTML += '<p style="color:red;text-align:center;">Error al cargar más productos.</p>';
+        if (loadMoreContainer) loadMoreContainer.innerHTML = '<p style="color:red;text-align:center;">Error al cargar más productos.</p>';
     } finally {
         isLoading = false;
     }
