@@ -639,19 +639,9 @@ async function renderOrders(filterText = '') {
 
         // La API ya los devuelve ordenados (más recientes primero)
         if (listContainer) listContainer.innerHTML = filteredOrders.map(order => {
-            
-            let countryHtml = '';
-            if (order.customer.countryCode && order.customer.country) {
-                countryHtml = `
-                    <p style="display: flex; align-items: center; gap: 6px; margin-top: 0.25rem; margin-bottom: 0;">
-                        <strong>País:</strong> 
-                        <img src="https://flagcdn.com/w20/${order.customer.countryCode.toLowerCase()}.png" width="16" alt="Bandera">
-                        ${order.customer.country}
-                    </p>
-                `;
-            } else if (order.customer.country) {
-                countryHtml = `<p style="margin-top: 0.25rem; margin-bottom: 0;"><strong>País:</strong> ${order.customer.country}</p>`;
-            }
+            const countryHtml = order.customer.country 
+                ? `<p><strong>País:</strong> ${order.customer.country}</p>` 
+                : '';
 
             return `
             <div class="order-card" id="order-card-${order.id}">
