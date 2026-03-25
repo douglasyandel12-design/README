@@ -1,5 +1,54 @@
 document.addEventListener('DOMContentLoaded', async () => {
     // --- ESTILOS PARA LA NUEVA BARRA DE PROGRESO DE PEDIDOS ---
+    const currencyManager = {
+        rates: null,
+        userCurrency: 'USD',
+
+        async init() {
+            const storedRates = sessionStorage.getItem('currencyRates');
+            const storedCurrency = sessionStorage.getItem('userCurrency');
+
+            if (storedRates && storedCurrency) {
+                this.rates = JSON.parse(storedRates);
+                this.userCurrency = storedCurrency;
+                return;
+            }
+
+            try {
+                const geoRes = await fetch('https://ipapi.co/json/');
+                if (geoRes.ok) {
+                    const geoData = await geoRes.json();
+                    this.userCurrency = geoData.currency || 'USD';
+                }
+            } catch (e) {
+                console.warn('No se pudo detectar la moneda, usando USD por defecto.');
+                this.userCurrency = 'USD';
+            }
+            
+            try {
+                const ratesRes = await fetch('https://api.frankfurter.app/latest?from=USD');
+                if (ratesRes.ok) {
+                    const ratesData = await ratesRes.json();
+                    this.rates = ratesData.rates;
+                    this.rates['USD'] = 1;
+                    sessionStorage.setItem('currencyRates', JSON.stringify(this.rates));
+                    sessionStorage.setItem('userCurrency', this.userCurrency);
+                }
+            } catch (e) {
+                console.error('No se pudieron obtener las tasas de cambio.');
+                this.rates = { 'USD': 1 };
+            }
+        },
+
+        format(amountInUSD) {
+            if (this.rates && this.rates[this.userCurrency]) {
+                const convertedAmount = amountInUSD * this.rates[this.userCurrency];
+                return new Intl.NumberFormat('es-ES', { style: 'currency', currency: this.userCurrency }).format(convertedAmount);
+            }
+            return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' }).format(amountInUSD);
+        }
+    };
+
     const style = document.createElement('style');
     style.innerHTML = `
         /* --- LAYOUT GENERAL --- */
@@ -153,6 +202,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     historyContainer.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 2rem 0;">Cargando tu historial de pedidos...</p>';
 
     // FIX FAVICON
+    await currencyManager.init();
+
     (function() {
         const link = document.querySelector("link[rel*='icon']");
         if (!link || link.href.startsWith('data:')) return;
@@ -273,14 +324,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                         ${order.items.map(item => `
                             <li class="order-item">
                                 <span class="item-name"><span class="item-qty">${item.quantity}x</span> ${item.name}</span>
-                                <span class="item-price">$${(item.price * item.quantity).toFixed(2)}</span>
+                                <span class="item-price">${currencyManager.format(item.price * item.quantity)}</span>
                             </li>
                         `).join('')}
                     </ul>
                 </div>
                 <div class="order-total">
                     <span class="total-label">Total del Pedido</span>
-                    <span class="total-amount">$${order.total.toFixed(2)}</span>
+                    <span class="total-amount">${currencyManager.format(order.total)}</span>
                 </div>
             </div>
         `}).join('');

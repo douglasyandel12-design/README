@@ -6,6 +6,55 @@ let products = [];
 let globalSettings = {};
 window.currentUser = null;
 
+const currencyManager = {
+    rates: null,
+    userCurrency: 'USD',
+
+    async init() {
+        const storedRates = sessionStorage.getItem('currencyRates');
+        const storedCurrency = sessionStorage.getItem('userCurrency');
+
+        if (storedRates && storedCurrency) {
+            this.rates = JSON.parse(storedRates);
+            this.userCurrency = storedCurrency;
+            return;
+        }
+
+        try {
+            const geoRes = await fetch('https://ipapi.co/json/');
+            if (geoRes.ok) {
+                const geoData = await geoRes.json();
+                this.userCurrency = geoData.currency || 'USD';
+            }
+        } catch (e) {
+            console.warn('No se pudo detectar la moneda, usando USD por defecto.');
+            this.userCurrency = 'USD';
+        }
+        
+        try {
+            const ratesRes = await fetch('https://api.frankfurter.app/latest?from=USD');
+            if (ratesRes.ok) {
+                const ratesData = await ratesRes.json();
+                this.rates = ratesData.rates;
+                this.rates['USD'] = 1;
+                sessionStorage.setItem('currencyRates', JSON.stringify(this.rates));
+                sessionStorage.setItem('userCurrency', this.userCurrency);
+            }
+        } catch (e) {
+            console.error('No se pudieron obtener las tasas de cambio.');
+            this.rates = { 'USD': 1 };
+        }
+    },
+
+    format(amountInUSD) {
+        if (this.rates && this.rates[this.userCurrency]) {
+            const convertedAmount = amountInUSD * this.rates[this.userCurrency];
+            return new Intl.NumberFormat('es-ES', { style: 'currency', currency: this.userCurrency }).format(convertedAmount);
+        }
+        return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' }).format(amountInUSD);
+    }
+};
+
 function injectStyles() {
     const style = document.createElement('style');
     style.innerHTML = `
@@ -465,7 +514,7 @@ function renderOrderSummary() {
                         <button type="button" class="remove-link" onclick="removeOrderItem(${index})">Eliminar</button>
                     </div>
                 </div>
-                <span class="item-price">$${subtotalItem.toFixed(2)}</span>
+                <span class="item-price">${currencyManager.format(subtotalItem)}</span>
             </div>
         `;
     }).join('');
@@ -476,7 +525,7 @@ function renderOrderSummary() {
     itemsList.innerHTML += `
         <div class="summary-row" style="margin-top: 1.5rem;">
             <span>Subtotal</span>
-            <span>$${total.toFixed(2)}</span>
+            <span>${currencyManager.format(total)}</span>
         </div>
         <div class="summary-row">
             <span>Envío</span>
@@ -484,7 +533,7 @@ function renderOrderSummary() {
         </div>
     `;
 
-    totalEl.textContent = '$' + total.toFixed(2);
+    totalEl.textContent = currencyManager.format(total);
 }
 
 window.updateOrderItemQuantity = function(index, change) {
@@ -702,6 +751,8 @@ async function initPedido() {
     forcePaymentMethod();
 
     try {
+        await currencyManager.init(); // Iniciar moneda primero
+
         itemsList.innerHTML = '<p>Cargando productos...</p>';
         const [productsRes, settingsRes, sessionRes] = await Promise.all([
             fetch('/api/products'),

@@ -1,5 +1,54 @@
 // Al cargar la página, verificamos URL y Sesión
 document.addEventListener('DOMContentLoaded', async () => {
+    const currencyManager = {
+        rates: null,
+        userCurrency: 'USD',
+
+        async init() {
+            const storedRates = sessionStorage.getItem('currencyRates');
+            const storedCurrency = sessionStorage.getItem('userCurrency');
+
+            if (storedRates && storedCurrency) {
+                this.rates = JSON.parse(storedRates);
+                this.userCurrency = storedCurrency;
+                return;
+            }
+
+            try {
+                const geoRes = await fetch('https://ipapi.co/json/');
+                if (geoRes.ok) {
+                    const geoData = await geoRes.json();
+                    this.userCurrency = geoData.currency || 'USD';
+                }
+            } catch (e) {
+                console.warn('No se pudo detectar la moneda, usando USD por defecto.');
+                this.userCurrency = 'USD';
+            }
+            
+            try {
+                const ratesRes = await fetch('https://api.frankfurter.app/latest?from=USD');
+                if (ratesRes.ok) {
+                    const ratesData = await ratesRes.json();
+                    this.rates = ratesData.rates;
+                    this.rates['USD'] = 1;
+                    sessionStorage.setItem('currencyRates', JSON.stringify(this.rates));
+                    sessionStorage.setItem('userCurrency', this.userCurrency);
+                }
+            } catch (e) {
+                console.error('No se pudieron obtener las tasas de cambio.');
+                this.rates = { 'USD': 1 };
+            }
+        },
+
+        format(amountInUSD) {
+            if (this.rates && this.rates[this.userCurrency]) {
+                const convertedAmount = amountInUSD * this.rates[this.userCurrency];
+                return new Intl.NumberFormat('es-ES', { style: 'currency', currency: this.userCurrency }).format(convertedAmount);
+            }
+            return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' }).format(amountInUSD);
+        }
+    };
+
     const container = document.querySelector('.container') || document.body;
 
     // Inyectar estilos CSS para la tarjeta y el efecto hover
@@ -129,7 +178,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             ${order.items.map(item => `
                                 <li style="display: flex; justify-content: space-between; font-size: 0.95rem; color: #374151; margin-bottom: 4px;">
                                     <span>${item.quantity}x ${item.name}</span>
-                                    <span style="font-weight: 500;">$${(item.price * item.quantity).toFixed(2)}</span>
+                                    <span style="font-weight: 500;">${currencyManager.format(item.price * item.quantity)}</span>
                                 </li>
                             `).join('')}
                         </ul>
@@ -138,7 +187,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.75rem; border-top: 1px dashed #d1d5db;">
                         <span style="font-size: 0.9rem; color: #4b5563;">Total</span>
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.2rem; font-weight: 800; color: #111827;">$${order.total.toFixed(2)}</span>
+                            <span style="font-size: 1.2rem; font-weight: 800; color: #111827;">${currencyManager.format(order.total)}</span>
                             <span id="icon-${order.id}" style="font-size: 0.8rem; color: #9ca3af;">▼</span>
                         </div>
                     </div>
@@ -158,6 +207,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
+        await currencyManager.init();
+
         // 1. Obtener usuario actual (si existe)
         const authRes = await fetch('/api/auth/status');
         const authData = await authRes.json();

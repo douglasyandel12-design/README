@@ -2,6 +2,55 @@
 let products = [];
 let globalSettings = {}; // Para guardar config de promociones
 
+const currencyManager = {
+    rates: null,
+    userCurrency: 'USD',
+
+    async init() {
+        const storedRates = sessionStorage.getItem('currencyRates');
+        const storedCurrency = sessionStorage.getItem('userCurrency');
+
+        if (storedRates && storedCurrency) {
+            this.rates = JSON.parse(storedRates);
+            this.userCurrency = storedCurrency;
+            return;
+        }
+
+        try {
+            const geoRes = await fetch('https://ipapi.co/json/');
+            if (geoRes.ok) {
+                const geoData = await geoRes.json();
+                this.userCurrency = geoData.currency || 'USD';
+            }
+        } catch (e) {
+            console.warn('No se pudo detectar la moneda, usando USD por defecto.');
+            this.userCurrency = 'USD';
+        }
+        
+        try {
+            const ratesRes = await fetch('https://api.frankfurter.app/latest?from=USD');
+            if (ratesRes.ok) {
+                const ratesData = await ratesRes.json();
+                this.rates = ratesData.rates;
+                this.rates['USD'] = 1;
+                sessionStorage.setItem('currencyRates', JSON.stringify(this.rates));
+                sessionStorage.setItem('userCurrency', this.userCurrency);
+            }
+        } catch (e) {
+            console.error('No se pudieron obtener las tasas de cambio.');
+            this.rates = { 'USD': 1 };
+        }
+    },
+
+    format(amountInUSD) {
+        if (this.rates && this.rates[this.userCurrency]) {
+            const convertedAmount = amountInUSD * this.rates[this.userCurrency];
+            return new Intl.NumberFormat('es-ES', { style: 'currency', currency: this.userCurrency }).format(convertedAmount);
+        }
+        return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' }).format(amountInUSD);
+    }
+};
+
 const grid = document.getElementById('product-grid');
 const cartCountEl = document.getElementById('cart-count');
 const modal = document.getElementById('cart-modal');
@@ -261,6 +310,9 @@ async function loadAndRender() {
     grid.innerHTML = '<p style="text-align:center; width:100%; color:#666;">Cargando catálogo...</p>'; // Mostrar un estado de carga
 
     try {
+        // Esperar a que la moneda esté lista antes de cargar otros datos
+        await currencyManager.init();
+
         // 1. Cargar todos los datos necesarios en paralelo
         const [settingsResponse, productsResponse, sessionResponse] = await Promise.all([
             fetch('/api/settings'),
@@ -425,11 +477,11 @@ function updateModalPriceDisplay(product, quantity) {
 
     const unitPrice = calculateItemPrice(product, quantity);
     const totalPrice = unitPrice * quantity;
-    
-    let html = `$${unitPrice.toFixed(2)}`;
-    
+
+    let html = currencyManager.format(unitPrice);
+
     if (unitPrice < product.price) {
-        html = `<span style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">$${product.price.toFixed(2)}</span> <span style="font-weight:bold; color:#000;">$${unitPrice.toFixed(2)}</span>`;
+        html = `<span style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">${currencyManager.format(product.price)}</span> <span style="font-weight:bold; color:#000;">${currencyManager.format(unitPrice)}</span>`;
     }
 
     if (product.discount > 0) {
@@ -451,7 +503,7 @@ function updateModalPriceDisplay(product, quantity) {
     if (quantity > 1) {
         html += `<div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #eee; font-size: 1.2rem; font-weight: 700;">
                     <span>Total:</span>
-                    <span style="float: right;">$${totalPrice.toFixed(2)}</span>
+                    <span style="float: right;">${currencyManager.format(totalPrice)}</span>
                  </div>`;
     }
     priceEl.innerHTML = html;
@@ -820,7 +872,7 @@ function renderProducts() {
         </div>
         <div class="product-info">
             <h3 class="product-title">${product.name}</h3>
-            ${priceHtml}
+            <div class="price-container">${originalPriceHtml}<span class="product-price">${currencyManager.format(displayPrice)}</span>${promoMsg}</div>
             <div class="btn-container">
                 <button class="btn btn-outline" onclick="addToCart(${product.id})">Añadir</button>
                 <button class="btn" onclick="orderNow(${product.id})">Pedir ahora</button>
@@ -963,8 +1015,8 @@ function updateCartUI() {
                         Cant: ${item.quantity} x 
                         ${
                             (item.originalPrice && item.price < item.originalPrice)
-                            ? `<span style="text-decoration: line-through; color: #ef4444; margin-right: 4px;">$${item.originalPrice.toFixed(2)}</span> <strong style="color: #000;">$${item.price.toFixed(2)}</strong>`
-                            : `$${item.price.toFixed(2)}`
+                            ? `<span style="text-decoration: line-through; color: #ef4444; margin-right: 4px;">${currencyManager.format(item.originalPrice)}</span> <strong style="color: #000;">${currencyManager.format(item.price)}</strong>`
+                            : currencyManager.format(item.price)
                         }
                     </span>
                     ${ (globalSettings.promo_progressive_active === true && item.price < item.originalPrice)
@@ -974,7 +1026,7 @@ function updateCartUI() {
                     }
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-weight:bold;">$${(item.price * item.quantity).toFixed(2)}</span>
+                    <span style="font-weight:bold;">${currencyManager.format(item.price * item.quantity)}</span>
                     <button onclick="removeFromCart(${index})" style="color: #ef4444; border: none; background: none; cursor: pointer; font-size: 1.2rem; padding: 0; line-height: 1;">&times;</button>
                 </div>
             </div>
@@ -991,7 +1043,7 @@ function updateCartUI() {
     if (modalFooter) {
         modalFooter.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <span style="font-weight: bold; font-size: 1.1rem;">Total: <span id="modal-total">$${total.toFixed(2)}</span></span>
+                <span style="font-weight: bold; font-size: 1.1rem;">Total: <span id="modal-total">${currencyManager.format(total)}</span></span>
                 ${cart.length > 0 ? `<button onclick="clearCart()" style="background:none; border:none; color:#ef4444; font-size:0.85rem; cursor:pointer; text-decoration:underline; padding:0;">Vaciar Todo</button>` : ''}
             </div>
             <div style="display: flex; gap: 10px;">
