@@ -154,6 +154,63 @@ const sendVerificationEmail = async (email, code, name) => {
   await transporter.sendMail(mailOptions);
 };
 
+const sendNewOrderNotificationEmail = async (order) => {
+  // Usamos una variable de entorno para el correo del admin, con fallback al que especificaste.
+  const adminEmail = process.env.ADMIN_EMAIL_NOTIFICATIONS || 'tlblucasbohorquez@gmail.com';
+
+  const itemsHtml = order.items.map(item => `
+    <tr>
+      <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.quantity}x ${item.name}</td>
+      <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">$${(item.price * item.quantity).toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  const mailOptions = {
+    from: '"LVS Shop Notificaciones" <' + process.env.EMAIL_USER + '>',
+    to: adminEmail, // Correo del administrador
+    subject: `📦 Nuevo Pedido #${order.id} de ${order.customer.name}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #000; text-align: center;">¡Nuevo Pedido Recibido!</h2>
+        <p>Has recibido un nuevo pedido en LVS Shop con el ID: <strong>#${order.id}</strong></p>
+        
+        <h3 style="border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 30px;">Detalles del Cliente</h3>
+        <p><strong>Nombre:</strong> ${order.customer.name}</p>
+        <p><strong>Email:</strong> ${order.customer.email || 'No proporcionado'}</p>
+        <p><strong>Teléfono:</strong> ${order.customer.phone}</p>
+        <p><strong>Dirección:</strong> ${order.customer.address}</p>
+        
+        <h3 style="border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 30px;">Resumen del Pedido</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr>
+              <th style="text-align: left; padding: 10px; background: #f9f9f9;">Producto</th>
+              <th style="text-align: right; padding: 10px; background: #f9f9f9;">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td style="padding: 15px 10px 0; font-weight: bold; text-align: right;">Total:</td>
+              <td style="padding: 15px 10px 0; font-weight: bold; font-size: 1.2rem; text-align: right;">$${order.total.toFixed(2)}</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div style="text-align: center; margin-top: 30px;">
+          <p>Puedes gestionar este pedido desde el panel de administrador.</p>
+        </div>
+        
+        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+        <p style="text-align: center; color: #999; font-size: 11px;">&copy; ${new Date().getFullYear()} LVS Shop. Notificación automática.</p>
+      </div>
+    `
+  };
+  await transporter.sendMail(mailOptions);
+};
+
 const router = express.Router();
 
 // Aumentamos el límite del body-parser. Vercel tiene un límite estricto de ~4.5MB.
@@ -679,7 +736,20 @@ router.post('/orders', async (req, res) => {
         }
 
         await session.commitTransaction();
-        res.status(201).json({ message: 'Pedido guardado.', order: newOrder }); // Devolver el pedido completo
+        
+        // Enviar correo de notificación al admin (sin bloquear la respuesta al cliente)
+        try {
+            if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+                // No usamos await aquí para no retrasar la respuesta al cliente
+                sendNewOrderNotificationEmail(newOrder).catch(err => console.error('Error enviando email al admin:', err));
+            } else {
+                console.warn('EMAIL_USER o EMAIL_PASS no configurados. No se enviará correo de pedido.');
+            }
+        } catch (emailError) {
+            console.error('Fallo al iniciar el envío de correo:', emailError);
+        }
+
+        res.status(201).json({ message: 'Pedido guardado.', order: newOrder });
 
     } catch (error) {
         await session.abortTransaction();
