@@ -221,6 +221,35 @@ document.addEventListener('DOMContentLoaded', async () => {
                 day: 'numeric'
             });
 
+            // Lógica para mostrar la bandera y el país
+            let countryHtml = '';
+            if (order.customer.countryCode && order.customer.country) {
+                countryHtml = `
+                    <div class="order-info-group">
+                        <span class="order-label">País</span>
+                        <span class="order-value" style="display: flex; align-items: center; gap: 8px;">
+                            <img src="https://flagcdn.com/w20/${order.customer.countryCode.toLowerCase()}.png"
+                                 srcset="https://flagcdn.com/w40/${order.customer.countryCode.toLowerCase()}.png 2x"
+                                 width="20"
+                                 alt="Bandera de ${order.customer.country}">
+                            ${order.customer.country}
+                        </span>
+                    </div>
+                `;
+            } else if (order.customer.address) {
+                // Fallback para pedidos antiguos: intentar mostrar el país desde la dirección
+                const addressParts = order.customer.address.split(',');
+                const countryName = addressParts.length > 1 ? addressParts[addressParts.length - 1].trim() : '';
+                if (countryName) {
+                    countryHtml = `
+                        <div class="order-info-group">
+                            <span class="order-label">País</span>
+                            <span class="order-value">${countryName}</span>
+                        </div>
+                    `;
+                }
+            }
+
             return `
             <div class="order-card">
                 <div class="order-header">
@@ -228,6 +257,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <span class="order-label">Nº Pedido</span>
                         <span class="order-value">#${order.id}</span>
                     </div>
+                    ${countryHtml}
                     <div class="order-info-group" style="align-items: flex-end;">
                          <span class="order-label" style="text-align:right;">Fecha</span>
                          <span class="order-date-val">${formattedDate}</span>

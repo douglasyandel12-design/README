@@ -100,12 +100,24 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (order.status === 'Entregado') statusColor = '#000'; // Negro (Completado)
             if (order.status === 'Cancelado') statusColor = '#999'; // Gris claro
 
+            // Lógica para país y bandera
+            let countryHtml = '';
+            if (order.customer.countryCode && order.customer.country) {
+                countryHtml = `
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: #6b7280; margin-top: 4px;">
+                        <img src="https://flagcdn.com/w20/${order.customer.countryCode.toLowerCase()}.png" width="16" alt="Bandera de ${order.customer.country}">
+                        <span>${order.customer.country}</span>
+                    </div>
+                `;
+            }
+
             return `
                 <div class="order-card" onclick="toggleDetails('${order.id}')">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid #f3f4f6;">
                         <div>
                             <span style="font-weight: 700; color: #111827; font-size: 1.1rem;">${order.id}</span>
                             <div style="font-size: 0.8rem; color: #6b7280; margin-top: 2px;">${order.date}</div>
+                            ${countryHtml}
                         </div>
                         <span style="background-color: ${statusColor}; color: white; padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;">
                             ${order.status || 'En progreso'}

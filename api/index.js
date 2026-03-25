@@ -53,7 +53,9 @@ const OrderSchema = new mongoose.Schema({
     email: String,
     phone: String,
     address: String,
-    payment: String
+    payment: String,
+    country: String,
+    countryCode: String
   },
   items: [{
     id: mongoose.Schema.Types.Mixed, // Puede ser String o Number según tu lógica actual

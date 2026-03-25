@@ -334,7 +334,7 @@ async function detectUserLocation() {
         const data = await res.json();
         if (!data.error) {
             countrySelect.innerHTML = '<option value="">Selecciona tu país</option>' + 
-                data.data.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+                data.data.map(c => `<option value="${c.name}" data-code="${c.iso2}">${c.name}</option>`).join('');
         }
     } catch (e) {
         countrySelect.innerHTML = '<option value="">Error cargando países</option>';
@@ -550,12 +550,16 @@ async function submitOrder(e) {
     ].filter(Boolean).join(', ');
 
     // 1. Validar campos y recolectar datos del cliente
+    const countrySelect = document.getElementById('client-country');
+    const selectedOption = countrySelect.options[countrySelect.selectedIndex];
     const customer = {
         name: document.getElementById('client-name').value,
         email: document.getElementById('client-email').value,
         phone: document.getElementById('client-phone').value,
         address: fullAddress, // Enviamos la dirección completa concatenada
-        payment: 'Pagar al recibir'
+        payment: 'Pagar al recibir',
+        country: countrySelect.value,
+        countryCode: selectedOption ? selectedOption.dataset.code : ''
     };
 
     // Validación simple de que se llenaron los campos de dirección
