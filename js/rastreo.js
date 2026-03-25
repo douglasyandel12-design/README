@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let allMyOrders = []; // Variable para guardar todos los pedidos del usuario
 
     // Función para renderizar una lista de pedidos
-    const renderOrderList = (orders) => {
+    const renderOrderList = (orders, forceRender = false) => {
         if (orders.length === 0) {
             listContainer.innerHTML = `
                 <div style="text-align: center; padding: 2rem; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
@@ -138,6 +138,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             `;
             return;
+        }
+
+        // Si no forzamos el render y ya hay contenido, no hacemos nada (para la actualización de moneda)
+        if (!forceRender && listContainer.querySelector('.order-card')) {
+             // No es la primera vez, solo actualizamos los precios
         }
 
         // Ordenar: Más recientes primero
@@ -207,8 +212,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     try {
-        await currencyManager.init();
-
+        // Iniciar carga de moneda en segundo plano
+        const currencyPromise = currencyManager.init();
         // 1. Obtener usuario actual (si existe)
         const authRes = await fetch('/api/auth/status');
         const authData = await authRes.json();
@@ -258,7 +263,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         allMyOrders = myOrders; // Guardar la lista completa
-        renderOrderList(allMyOrders); // Renderizar todos los pedidos inicialmente
+        renderOrderList(allMyOrders, true); // Renderizar todos los pedidos inicialmente (con precios base)
+
+        // Cuando la moneda esté lista, volver a renderizar para actualizar precios
+        await currencyPromise;
+        renderOrderList(allMyOrders, true);
 
         // 3. Añadir listeners a los botones de filtro
         const filterButtons = document.querySelectorAll('.filter-btn');

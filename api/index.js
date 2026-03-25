@@ -658,6 +658,22 @@ router.delete('/products/:id', isAuthenticated, isAdmin, async (req, res) => {
   }
 });
 
+// NEW ENDPOINT: Get specific products by their IDs
+router.post('/products-by-ids', async (req, res) => {
+    try {
+        await connectToDatabase();
+        const { ids } = req.body;
+        if (!ids || !Array.isArray(ids)) {
+            return res.status(400).json({ error: 'Se requiere un array de IDs.' });
+        }
+        // Ensure IDs are in the correct format if needed, but Mongoose is flexible.
+        const products = await Product.find({ 'id': { $in: ids } });
+        res.json(products);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al cargar productos por ID' });
+    }
+});
+
 router.get('/settings', async (req, res) => {
   try {
     await connectToDatabase();

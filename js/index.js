@@ -311,18 +311,17 @@ init();
 
 // Nueva función para centralizar la carga y el renderizado inicial
 async function loadAndRender() {
-    document.getElementById('product-grid').innerHTML = '<p style="text-align:center; width:100%; color:#666;">Cargando catálogo...</p>';
+    document.getElementById('product-grid').innerHTML = '<p style="text-align:center; width:100%; color:#666;">Cargando tienda...</p>';
 
     try {
-        // 1. Iniciar todas las peticiones de red en paralelo para máxima velocidad
-        const [_, settingsResponse, sessionResponse, productsDataResponse] = await Promise.all([
-            currencyManager.init(),
+        // --- PASO 1: Cargar datos críticos en paralelo (SIN moneda, que es lenta) ---
+        const [settingsResponse, sessionResponse, productsDataResponse] = await Promise.all([
             fetch('/api/settings'),
             fetch('/api/auth/status'),
             fetch('/api/products?page=1&limit=12') // Cargar primera página de productos
         ]);
 
-        // 2. Procesar respuestas de configuración y sesión
+        // --- PASO 2: Procesar respuestas críticas ---
         try {
             globalSettings = settingsResponse.ok ? await settingsResponse.json() : {};
         } catch(e) { console.warn('Error cargando configuración:', e); }
@@ -332,17 +331,16 @@ async function loadAndRender() {
         
         window.currentUser = sessionData.user;
 
-        // 3. Procesar respuesta de productos
         if (productsDataResponse.ok) {
             const data = await productsDataResponse.json();
             products = data.products;
             currentPage = data.currentPage;
             totalPages = data.totalPages;
         } else {
-            products = []; // Asegurar que sea un array vacío en caso de error
+            products = [];
         }
 
-        // 4. Sincronizar carrito (depende de la sesión)
+        // --- PASO 3: Sincronizar carrito ---
         if (window.currentUser) {
             try {
                 const cartRes = await fetch('/api/cart');
@@ -354,16 +352,23 @@ async function loadAndRender() {
             } catch (e) { console.error('Error sincronizando carrito:', e); }
         }
 
-        // 5. Renderizar toda la UI ahora que tenemos todos los datos
+        // --- PASO 4: Renderizar UI principal INMEDIATAMENTE con precios base (USD) ---
         renderToolbar();
         renderUserMenu(sessionData);
         renderFooter();
         createProductModal();
         
-        // Estas funciones dependen de todos los datos anteriores
-        recalculateCartPrices(); // Recalcula precios del carrito con promos, usuario y productos
-        updateCartUI(); // Actualiza el contador y el modal del carrito
-        renderProducts(); // Renderiza la cuadrícula de productos
+        recalculateCartPrices(); // Recalcula con promos (aún en USD)
+        updateCartUI();          // Actualiza el carrito (aún en USD)
+        renderProducts();        // Renderiza la cuadrícula de productos (aún en USD)
+
+        // --- PASO 5: Iniciar carga de moneda en segundo plano y actualizar precios cuando esté lista ---
+        currencyManager.init().then(() => {
+            // Una vez que la moneda está lista, volvemos a renderizar todo lo que tenga precios.
+            recalculateCartPrices();
+            updateCartUI();
+            renderProducts();
+        });
 
     } catch (error) {
         console.error('Error en la carga inicial:', error);

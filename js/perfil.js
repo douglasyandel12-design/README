@@ -201,9 +201,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const historyContainer = document.getElementById('order-history');
     historyContainer.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 2rem 0;">Cargando tu historial de pedidos...</p>';
 
-    // FIX FAVICON
-    await currencyManager.init();
-
     (function() {
         const link = document.querySelector("link[rel*='icon']");
         if (!link || link.href.startsWith('data:')) return;
@@ -220,6 +217,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     })();
 
     try {
+        // Iniciar carga de moneda en segundo plano
+        const currencyPromise = currencyManager.init();
+
         const response = await fetch('/api/auth/status');
         const data = await response.json();
         const user = data.user;
@@ -263,8 +263,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        // MEJORA: Se rediseña la tarjeta de pedido para ser más clara y moderna.
-        historyContainer.innerHTML = myOrders.map(order => {
+        const renderHistory = (orders) => {
             // MEJORA: Formateo de fecha más legible para el usuario.
             const formattedDate = new Date(order.date).toLocaleDateString('es-ES', {
                 year: 'numeric',
@@ -335,6 +334,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </div>
             </div>
         `}).join('');
+        };
+
+        // Renderizar inmediatamente con precios base (USD)
+        historyContainer.innerHTML = renderHistory(myOrders);
+
+        // Cuando la moneda esté lista, volver a renderizar para actualizar precios
+        await currencyPromise;
+        historyContainer.innerHTML = renderHistory(myOrders);
 
     } catch (error) {
         console.error('Error al cargar el perfil:', error);

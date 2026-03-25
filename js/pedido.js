@@ -744,28 +744,26 @@ window.openImageModal = function(src, alt) {
 
 // Función de inicio principal
 async function initPedido() {
-    // Asegurar referencia al elemento
     itemsList = document.getElementById('items-list');
     
     injectStyles();
     forcePaymentMethod();
 
     try {
-        await currencyManager.init(); // Iniciar moneda primero
+        // PASO 1: Cargar datos que no dependen de los productos y empezar carga de moneda en segundo plano
+        const currencyPromise = currencyManager.init();
 
-        itemsList.innerHTML = '<p>Cargando productos...</p>';
-        const [productsRes, settingsRes, sessionRes] = await Promise.all([
-            fetch('/api/products'),
+        itemsList.innerHTML = '<p>Cargando resumen...</p>';
+        const [settingsRes, sessionRes] = await Promise.all([
             fetch('/api/settings'),
             fetch('/api/auth/status')
         ]);
 
-        products = productsRes.ok ? await productsRes.json() : [];
         globalSettings = settingsRes.ok ? await settingsRes.json() : {};
         const sessionData = sessionRes.ok ? await sessionRes.json() : { user: null };
         window.currentUser = sessionData.user;
 
-        // Sincronizar carrito al cargar checkout (por si cambió en otra pestaña)
+        // PASO 2: Sincronizar carrito (puede que cambie el contenido de `cart`)
         if (window.currentUser) {
             try {
                 const cartRes = await fetch('/api/cart');
@@ -775,17 +773,34 @@ async function initPedido() {
                         cart = serverCart;
                         localStorage.setItem('lvs_cart', JSON.stringify(cart));
                     } else if (cart.length > 0) {
-                        // Si servidor vacío y local lleno, sincronizar hacia arriba
                         saveCart();
                     }
                 }
             } catch(e) {}
         }
 
-        recalculateCart(); // Recalcular precios con la info fresca (settings y usuario)
+        // PASO 3: Si el carrito no está vacío, cargar solo los productos necesarios
+        if (cart.length > 0) {
+            const productIds = cart.map(item => item.id);
+            const productsRes = await fetch('/api/products-by-ids', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: productIds })
+            });
+            products = productsRes.ok ? await productsRes.json() : [];
+        } else {
+            products = [];
+        }
+
+        // PASO 4: Renderizar todo. Primero con precios base (USD).
+        recalculateCart();
         renderOrderSummary();
         prefillUserData();
-        detectUserLocation(); // Intentar detectar ubicación
+        detectUserLocation();
+
+        // PASO 5: Cuando la moneda esté lista, actualizar la vista
+        await currencyPromise;
+        renderOrderSummary(); // Re-render con la moneda correcta
 
         fixPageFavicon();
         // CONFIGURACIÓN DE FORMULARIO: Email opcional, Teléfono obligatorio
