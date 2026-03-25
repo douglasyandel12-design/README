@@ -352,12 +352,20 @@ function renderDashboardView() {
     const container = document.getElementById('dashboard-view');
     container.innerHTML = `
         <div id="kpi-dashboard"></div>
-        <div id="sales-chart-container" style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-top: 2rem;">
-            <canvas id="salesChart"></canvas>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+            <div id="sales-chart-container" style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <h3 style="margin-top: 0; margin-bottom: 1rem; color: #374151; font-size: 1.1rem; text-align: center;">Ventas por Día</h3>
+                <canvas id="salesChart"></canvas>
+            </div>
+            <div id="country-chart-container" style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <h3 style="margin-top: 0; margin-bottom: 1rem; color: #374151; font-size: 1.1rem; text-align: center;">Pedidos por País</h3>
+                <canvas id="countryChart"></canvas>
+            </div>
         </div>
     `;
     renderDashboardStats();
     renderSalesChart();
+    renderCountryChart();
 }
 
 function renderProductsView() {
@@ -638,7 +646,22 @@ async function renderOrders(filterText = '') {
         }
 
         // La API ya los devuelve ordenados (más recientes primero)
-        if (listContainer) listContainer.innerHTML = filteredOrders.map(order => `
+        if (listContainer) listContainer.innerHTML = filteredOrders.map(order => {
+            
+            let countryHtml = '';
+            if (order.customer.countryCode && order.customer.country) {
+                countryHtml = `
+                    <p style="display: flex; align-items: center; gap: 6px; margin-top: 0.25rem; margin-bottom: 0;">
+                        <strong>País:</strong> 
+                        <img src="https://flagcdn.com/w20/${order.customer.countryCode.toLowerCase()}.png" width="16" alt="Bandera">
+                        ${order.customer.country}
+                    </p>
+                `;
+            } else if (order.customer.country) {
+                countryHtml = `<p style="margin-top: 0.25rem; margin-bottom: 0;"><strong>País:</strong> ${order.customer.country}</p>`;
+            }
+
+            return `
             <div class="order-card" id="order-card-${order.id}">
                 <div class="order-header">
                     <span>📅 ${order.date}</span>
@@ -661,6 +684,7 @@ async function renderOrders(filterText = '') {
                     <p><strong>Email:</strong> ${order.customer.email || '<span style="color:#999;font-style:italic">No indicado</span>'}</p>
                     <p><strong>Teléfono:</strong> ${order.customer.phone}</p>
                     <p><strong>Dirección:</strong> ${order.customer.address}</p>
+                    ${countryHtml}
                     <p><strong>Pago:</strong> ${order.customer.payment}</p>
                     <div style="margin-top: 0.5rem; background: white; padding: 0.5rem; border: 1px solid #eee;">
                         <strong>Productos:</strong>
@@ -671,7 +695,8 @@ async function renderOrders(filterText = '') {
                     <button class="btn btn-danger" style="margin-top: 1rem; width: auto;" onclick="deleteOrder('${order.id}')">Eliminar Pedido</button>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
     } catch (error) {
         console.error('Error al cargar pedidos:', error);
         if (listContainer) listContainer.innerHTML = `<p style="color: #ef4444;">${error.message}</p>`;
@@ -744,6 +769,8 @@ async function deleteOrder(id) {
                     setTimeout(() => {
                         orderCard.remove();
                         renderDashboardStats(); // Update stats after removing
+                        if (document.getElementById('salesChart')) renderSalesChart();
+                        if (document.getElementById('countryChart')) renderCountryChart();
                     }, 300);
                 }
 
@@ -1103,6 +1130,65 @@ function renderSalesChart() {
             }]
         },
         options: { scales: { y: { beginAtZero: true } } }
+    });
+}
+
+function renderCountryChart() {
+    const orders = allOrders;
+    const chartContainer = document.getElementById('country-chart-container');
+    if (orders.length === 0 || !chartContainer) {
+        if(chartContainer) chartContainer.innerHTML = '<p style="text-align:center; color:#666;">No hay datos para mostrar el gráfico.</p>';
+        return;
+    }
+
+    // Agrupar pedidos por país
+    const ordersByCountry = orders.reduce((acc, order) => {
+        const country = (order.customer && order.customer.country) ? order.customer.country : 'Desconocido';
+        acc[country] = (acc[country] || 0) + 1;
+        return acc;
+    }, {});
+
+    const chartLabels = Object.keys(ordersByCountry);
+    const chartData = Object.values(ordersByCountry);
+
+    const ctx = document.getElementById('countryChart').getContext('2d');
+    if (window.myCountryChart) {
+        window.myCountryChart.destroy();
+    }
+    
+    // Paleta de colores predefinida para la dona
+    const colors = [
+        'rgba(37, 99, 235, 0.8)',   // Azul
+        'rgba(16, 185, 129, 0.8)',  // Verde
+        'rgba(245, 158, 11, 0.8)',  // Amarillo
+        'rgba(239, 68, 68, 0.8)',   // Rojo
+        'rgba(139, 92, 246, 0.8)',  // Púrpura
+        'rgba(236, 72, 153, 0.8)',  // Rosa
+        'rgba(20, 184, 166, 0.8)'   // Turquesa
+    ];
+    
+    // Asignar color dinámicamente según la cantidad de países
+    const backgroundColors = chartLabels.map((_, i) => colors[i % colors.length]);
+
+    window.myCountryChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: chartLabels,
+            datasets: [{
+                label: 'Número de Pedidos',
+                data: chartData,
+                backgroundColor: backgroundColors,
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' }
+            },
+            layout: { padding: 10 }
+        }
     });
 }
 
