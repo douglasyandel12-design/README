@@ -354,6 +354,33 @@ adminStyle.innerHTML = `
     .setting-accordion.open .accordion-arrow { transform: rotate(180deg); }
     .accordion-content { padding: 0 1rem 1rem 1rem; max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease; }
     .setting-accordion.open .accordion-content { max-height: 200px; }
+
+    /* --- Estilos del Editor de Pantalla Completa --- */
+    .editor-wrapper-fullscreen {
+        position: fixed !important;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: #fff;
+        z-index: 105000;
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+    }
+    .editor-wrapper-fullscreen #edit-editor-container {
+        flex: 1;
+        overflow-y: auto;
+        background: #fff;
+        font-size: 1.1rem;
+        border: 1px solid #ccc;
+    }
+    .editor-wrapper-fullscreen .ql-toolbar {
+        background: #f9fafb;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        border: 1px solid #ccc;
+        border-bottom: none;
+    }
 `;
 document.head.appendChild(adminStyle);
 

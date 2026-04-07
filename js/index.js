@@ -416,14 +416,26 @@ async function loadAndRender() {
         
         recalculateCartPrices(); // Recalcula con promos (aún en USD)
         updateCartUI();          // Actualiza el carrito (aún en USD)
-        renderProducts();        // Renderiza la cuadrícula de productos (aún en USD)
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const pid = urlParams.get('id');
+        
+        if (pid) {
+            await renderSingleProductPage(pid);
+        } else {
+            renderProducts();        // Renderiza la cuadrícula de productos (aún en USD)
+        }
 
         // --- PASO 5: Iniciar carga de moneda en segundo plano y actualizar precios cuando esté lista ---
         currencyManager.init().then(() => {
             // Una vez que la moneda está lista, volvemos a renderizar todo lo que tenga precios.
             recalculateCartPrices();
             updateCartUI();
-            renderProducts();
+            if (pid) {
+                if(window.updateSpPriceDisplay) window.updateSpPriceDisplay(parseInt(document.getElementById('sp-qty')?.value || 1));
+            } else {
+                renderProducts();
+            }
         });
 
     } catch (error) {
