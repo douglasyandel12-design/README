@@ -613,8 +613,10 @@ function updateModalPriceDisplay(product, quantity) {
 }
 
 window.viewProductDetails = function(id) {
-    // En lugar de abrir un modal, cambiamos la URL para ir a la vista de página completa
-    window.location.href = '?id=' + id;
+    // Usamos History API para cambiar la URL sin recargar la página (Apertura instantánea)
+    window.history.pushState({ id: id }, '', '?id=' + id);
+    renderSingleProductPage(id);
+    window.scrollTo({ top: 0, behavior: 'smooth' }); // Sube la pantalla suavemente
 }
 
 async function renderSingleProductPage(id) {
@@ -663,6 +665,7 @@ async function renderSingleProductPage(id) {
         singleContainer.style.cssText = 'max-width: 1200px; margin: 2rem auto; padding: 0 1rem; animation: fadeIn 0.5s;';
         grid.parentNode.insertBefore(singleContainer, grid);
     }
+    singleContainer.style.display = 'block'; // Asegurar que sea visible si venimos de regreso
 
     const images = (product.images && product.images.length > 0) ? product.images : (product.image ? [product.image] : []);
     const videos = (product.videos && product.videos.length > 0) ? product.videos : (product.video ? [product.video] : []);
@@ -681,7 +684,7 @@ async function renderSingleProductPage(id) {
                 <div id="sp-media-display" style="background: #f9f9f9; padding: 2rem; border-radius: 12px; display: flex; flex-direction: column; align-items: center;"></div>
             </div>
             <div class="sp-details">
-                <nav style="font-size: 0.95rem; margin-bottom: 1.5rem;"><a href="index.html" style="color: #6b7280; text-decoration: none; font-weight: 600;">← Volver a la tienda</a></nav>
+                <nav style="font-size: 0.95rem; margin-bottom: 1.5rem;"><a href="#" onclick="event.preventDefault(); window.closeSingleProductPage();" style="color: #6b7280; text-decoration: none; font-weight: 600;">← Volver a la tienda</a></nav>
                 <h1 style="font-size: 2.5rem; font-weight: 800; margin: 0 0 1rem 0; line-height: 1.1; color: #111;">${product.name}</h1>
                 <div id="sp-price" style="font-size: 2rem; font-weight: 600; margin-bottom: 1.5rem; color: #111;"></div>
                 
@@ -704,6 +707,39 @@ async function renderSingleProductPage(id) {
     renderSpGallery(images, videos);
     window.updateSpPriceDisplay(1);
 }
+
+window.closeSingleProductPage = function() {
+    // Regresar la URL a la normalidad sin recargar
+    window.history.pushState({}, '', window.location.pathname);
+    showStoreGrid();
+}
+
+function showStoreGrid() {
+    const singleContainer = document.getElementById('single-product-view');
+    if (singleContainer) singleContainer.style.display = 'none';
+
+    // Restaurar visibilidad de los elementos de la portada
+    const hero = document.querySelector('.hero');
+    if (hero) hero.style.display = 'flex';
+    const filterContainer = document.querySelector('.filter-container');
+    if (filterContainer) filterContainer.style.display = 'flex';
+    if (grid) grid.style.display = ''; // Restaura el display por defecto (grid)
+    const loadMore = document.getElementById('load-more-container');
+    if (loadMore) loadMore.style.display = (currentPage < totalPages) ? 'block' : 'none';
+    
+    document.title = 'LVS² Shop | Inicio';
+}
+
+// Escuchar el botón de "Atrás" o "Adelante" del navegador para hacerlo instantáneo también
+window.addEventListener('popstate', (e) => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const pid = urlParams.get('id');
+    if (pid) {
+        renderSingleProductPage(pid);
+    } else {
+        showStoreGrid();
+    }
+});
 
 function renderSpGallery(images, videos) {
     const mediaContainer = document.getElementById('sp-media-display');
