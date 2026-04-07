@@ -4,6 +4,80 @@ const summary = document.getElementById('cart-summary');
 const totalEl = document.getElementById('total-amount');
 let globalSettings = {};
 
+const currencyManager = {
+    rates: null,
+    userCurrency: 'USD',
+
+    async init() {
+        const storedRates = sessionStorage.getItem('currencyRates_v4');
+        const storedCurrency = sessionStorage.getItem('userCurrency_v4');
+
+        if (storedRates && storedCurrency) {
+            this.rates = JSON.parse(storedRates);
+            this.userCurrency = storedCurrency;
+            return;
+        }
+
+        try {
+            let currencyCode = null;
+            try {
+                const res1 = await fetch('https://ipapi.co/json/');
+                if (res1.ok) { const data1 = await res1.json(); if (data1.currency) currencyCode = data1.currency; }
+            } catch(e) {}
+
+            if (!currencyCode) {
+                try {
+                    const res2 = await fetch('https://ipwho.is/');
+                    if (res2.ok) { const data2 = await res2.json(); if (data2.success && data2.currency && data2.currency.code) currencyCode = data2.currency.code; }
+                } catch(e) {}
+            }
+            
+            if (!currencyCode) {
+                try {
+                    const res3 = await fetch('https://freeipapi.com/api/json');
+                    if (res3.ok) { const data3 = await res3.json(); if (data3.currency && data3.currency.code) currencyCode = data3.currency.code; }
+                } catch(e) {}
+            }
+
+            if (!currencyCode) {
+                const navLang = navigator.language || 'es-US';
+                const countryMatch = navLang.split('-')[1]; 
+                const fallbackMap = {
+                    "AR":"ARS", "BO":"BOB", "BR":"BRL", "CL":"CLP", "CO":"COP", "CR":"CRC", "CU":"CUP",
+                    "DO":"DOP", "EC":"USD", "SV":"USD", "GT":"GTQ", "HN":"HNL", "MX":"MXN", "NI":"NIO",
+                    "PA":"PAB", "PY":"PYG", "PE":"PEN", "UY":"UYU", "VE":"VES", "US":"USD", "ES":"EUR"
+                };
+                currencyCode = fallbackMap[countryMatch];
+            }
+
+            this.userCurrency = currencyCode || 'USD';
+        } catch (e) {
+            this.userCurrency = 'USD';
+        }
+        
+        try {
+            const ratesRes = await fetch('https://open.er-api.com/v6/latest/USD');
+            if (ratesRes.ok) {
+                const ratesData = await ratesRes.json();
+                this.rates = ratesData.rates;
+                sessionStorage.setItem('currencyRates_v4', JSON.stringify(this.rates));
+                sessionStorage.setItem('userCurrency_v4', this.userCurrency);
+            }
+        } catch (e) {
+            this.rates = { 'USD': 1 };
+        }
+    },
+
+    format(amountInUSD) {
+        try {
+            if (!this.rates || !this.rates[this.userCurrency]) return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(amountInUSD);
+            return new Intl.NumberFormat(undefined, { style: 'currency', currency: this.userCurrency }).format(amountInUSD * this.rates[this.userCurrency]);
+        } catch (e) {
+            return '$' + amountInUSD.toFixed(2);
+        }
+    }
+};
+
 // Inyectar estilos de alerta si no existen (para página dedicada de carrito)
 if (!document.getElementById('swal-custom-style')) {
     const style = document.createElement('style');
@@ -60,6 +134,8 @@ if (!document.getElementById('swal-custom-style')) {
 
 // Cargar configuración para saber cuál es el producto en promo
 async function loadSettings() {
+    await currencyManager.init();
+
     try {
         const res = await fetch('/api/settings');
         if (res.ok) {
@@ -120,8 +196,8 @@ function renderCart() {
     cart.forEach((item, index) => {
         // Lógica para mostrar precio original vs. rebajado
         const priceDisplay = (item.originalPrice && item.price < item.originalPrice)
-            ? `<span style="text-decoration: line-through; color: #ef4444; margin-right: 4px;">$${item.originalPrice.toFixed(2)}</span> <strong style="color: #000;">$${item.price.toFixed(2)}</strong>`
-            : `$${item.price.toFixed(2)}`;
+            ? `<span style="text-decoration: line-through; color: #ef4444; margin-right: 4px;">${currencyManager.format(item.originalPrice)}</span> <strong style="color: #000;">${currencyManager.format(item.price)}</strong>`
+            : `${currencyManager.format(item.price)}`;
 
         const isPromo = globalSettings.promo_product_id && item.id == globalSettings.promo_product_id;
         const promoMsg = (isPromo && item.price < item.originalPrice) 
@@ -144,7 +220,7 @@ function renderCart() {
 
     html += `</tbody></table>`;
     container.innerHTML = html;
-    totalEl.textContent = '$' + total.toFixed(2);
+    totalEl.textContent = currencyManager.format(total);
     summary.style.display = 'block';
 }
 

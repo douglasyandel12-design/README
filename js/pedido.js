@@ -11,8 +11,8 @@ const currencyManager = {
     userCurrency: 'USD',
 
     async init() {
-        const storedRates = sessionStorage.getItem('currencyRates_v2');
-        const storedCurrency = sessionStorage.getItem('userCurrency_v2');
+        const storedRates = sessionStorage.getItem('currencyRates_v4');
+        const storedCurrency = sessionStorage.getItem('userCurrency_v4');
 
         if (storedRates && storedCurrency) {
             this.rates = JSON.parse(storedRates);
@@ -21,24 +21,68 @@ const currencyManager = {
         }
 
         try {
-            const geoRes = await fetch('https://ipapi.co/json/');
-            if (geoRes.ok) {
-                const geoData = await geoRes.json();
-                this.userCurrency = geoData.currency || 'USD';
+            let currencyCode = null;
+            
+            // Intento 1: ipapi.co
+            try {
+                const res1 = await fetch('https://ipapi.co/json/');
+                if (res1.ok) {
+                    const data1 = await res1.json();
+                    if (data1.currency) currencyCode = data1.currency;
+                }
+            } catch(e) {}
+
+            // Intento 2: ipwho.is
+            if (!currencyCode) {
+                try {
+                    const res2 = await fetch('https://ipwho.is/');
+                    if (res2.ok) {
+                        const data2 = await res2.json();
+                        if (data2.success && data2.currency && data2.currency.code) {
+                            currencyCode = data2.currency.code;
+                        }
+                    }
+                } catch(e) {}
             }
+            
+            // Intento 3: freeipapi.com
+            if (!currencyCode) {
+                try {
+                    const res3 = await fetch('https://freeipapi.com/api/json');
+                    if (res3.ok) {
+                        const data3 = await res3.json();
+                        if (data3.currency && data3.currency.code) {
+                            currencyCode = data3.currency.code;
+                        }
+                    }
+                } catch(e) {}
+            }
+
+            // Intento 4: Fallback por idioma del navegador (muy útil si bloquean APIs)
+            if (!currencyCode) {
+                const navLang = navigator.language || 'es-US';
+                const countryMatch = navLang.split('-')[1]; 
+                const fallbackMap = {
+                    "AR":"ARS", "BO":"BOB", "BR":"BRL", "CL":"CLP", "CO":"COP", "CR":"CRC", "CU":"CUP",
+                    "DO":"DOP", "EC":"USD", "SV":"USD", "GT":"GTQ", "HN":"HNL", "MX":"MXN", "NI":"NIO",
+                    "PA":"PAB", "PY":"PYG", "PE":"PEN", "UY":"UYU", "VE":"VES", "US":"USD", "ES":"EUR"
+                };
+                currencyCode = fallbackMap[countryMatch];
+            }
+
+            this.userCurrency = currencyCode || 'USD';
         } catch (e) {
-            console.warn('No se pudo detectar la moneda, usando USD por defecto.');
+            console.warn('Fallo global al detectar moneda, usando USD por defecto.', e);
             this.userCurrency = 'USD';
         }
         
         try {
-            // Se cambia a una API más completa que soporta PEN, COP, ARS, CLP, MXN, etc.
             const ratesRes = await fetch('https://open.er-api.com/v6/latest/USD');
             if (ratesRes.ok) {
                 const ratesData = await ratesRes.json();
                 this.rates = ratesData.rates;
-                sessionStorage.setItem('currencyRates_v2', JSON.stringify(this.rates));
-                sessionStorage.setItem('userCurrency_v2', this.userCurrency);
+                sessionStorage.setItem('currencyRates_v4', JSON.stringify(this.rates));
+                sessionStorage.setItem('userCurrency_v4', this.userCurrency);
             }
         } catch (e) {
             console.error('No se pudieron obtener las tasas de cambio.');
@@ -47,11 +91,15 @@ const currencyManager = {
     },
 
     format(amountInUSD) {
-        if (this.rates && this.rates[this.userCurrency]) {
+        try {
+            if (!this.rates || !this.rates[this.userCurrency]) {
+                return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(amountInUSD);
+            }
             const convertedAmount = amountInUSD * this.rates[this.userCurrency];
-            return new Intl.NumberFormat('es-ES', { style: 'currency', currency: this.userCurrency }).format(convertedAmount);
+            return new Intl.NumberFormat(undefined, { style: 'currency', currency: this.userCurrency }).format(convertedAmount);
+        } catch (e) {
+            return '$' + amountInUSD.toFixed(2);
         }
-        return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'USD' }).format(amountInUSD);
     }
 };
 
