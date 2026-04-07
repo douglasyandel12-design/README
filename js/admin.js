@@ -91,20 +91,120 @@ function renderAdminLayout() {
 function initEditors() {
     // Editor para el modal de EDITAR. Se inicializa una vez que el script de Quill ha cargado.
     if (document.getElementById('edit-editor-container') && !quillEdit) {
+        // Inyectar botón de pantalla completa encima del editor
+        const editorWrapper = document.getElementById('edit-editor-container').parentElement;
+        if (!document.getElementById('fullscreen-editor-btn')) {
+            const btn = document.createElement('button');
+            btn.id = 'fullscreen-editor-btn';
+            btn.type = 'button';
+            btn.className = 'btn btn-outline';
+            btn.innerHTML = '⛶ Abrir editor en pantalla completa';
+            btn.style.cssText = 'margin-bottom: 10px; width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px; font-weight: bold; transition: all 0.3s;';
+            btn.onclick = toggleFullScreenEditor;
+            editorWrapper.insertBefore(btn, document.getElementById('edit-editor-container'));
+        }
+
         quillEdit = new Quill('#edit-editor-container', { 
             theme: 'snow',
             placeholder: 'Detalles del producto, características, etc.',
             modules: {
-                toolbar: [
-                    [{ 'header': [1, 2, 3, false] }],
-                    ['bold', 'italic', 'underline', 'strike'],
-                    [{ 'color': [] }, { 'background': [] }],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    [{ 'align': [] }], // <-- Aquí agregamos la alineación
-                    ['link', 'clean']
-                ]
+                toolbar: {
+                    container: [
+                        // Muchas más funciones tipo Word: Fuentes, Tamaños, Headers
+                        [{ 'font': [] }, { 'size': ['small', false, 'large', 'huge'] }],
+                        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'script': 'sub'}, { 'script': 'super' }],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'indent': '-1'}, { 'indent': '+1' }], // Sangría
+                        [{ 'align': [] }],
+                        ['link', 'image', 'video'], // Opciones multimedia
+                        ['clean']
+                    ],
+                    handlers: {
+                        image: imageHandler
+                    }
+                }
             }
         });
+
+        // Interceptar "Copiar y Pegar" (Ctrl+V) de imágenes para comprimirlas
+        quillEdit.root.addEventListener('paste', handleQuillPaste);
+        // Interceptar "Arrastrar y Soltar" (Drag & Drop) de imágenes
+        quillEdit.root.addEventListener('drop', handleQuillDrop, false);
+    }
+}
+
+window.toggleFullScreenEditor = function() {
+    const wrapper = document.getElementById('edit-editor-container').parentElement;
+    const btn = document.getElementById('fullscreen-editor-btn');
+    wrapper.classList.toggle('editor-wrapper-fullscreen');
+    
+    if (wrapper.classList.contains('editor-wrapper-fullscreen')) {
+        btn.innerHTML = '✖ Cerrar pantalla completa';
+        btn.style.backgroundColor = '#ef4444';
+        btn.style.color = '#fff';
+        btn.style.borderColor = '#ef4444';
+        document.body.style.overflow = 'hidden';
+    } else {
+        btn.innerHTML = '⛶ Abrir editor en pantalla completa';
+        btn.style.backgroundColor = 'transparent';
+        btn.style.color = '#000';
+        btn.style.borderColor = '#e5e5e5';
+        document.body.style.overflow = '';
+    }
+}
+
+function imageHandler() {
+    const input = document.createElement('input');
+    input.setAttribute('type', 'file');
+    input.setAttribute('accept', 'image/*');
+    input.click();
+
+    input.onchange = async () => {
+        const file = input.files[0];
+        if (file) await processAndInsertQuillImage(file);
+    };
+}
+
+async function handleQuillPaste(e) {
+    if (e.clipboardData && e.clipboardData.items) {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                e.preventDefault(); // Evitar que se pegue el base64 sin comprimir y rompa Vercel
+                const file = items[i].getAsFile();
+                await processAndInsertQuillImage(file);
+            }
+        }
+    }
+}
+
+async function handleQuillDrop(e) {
+    if (e.dataTransfer && e.dataTransfer.files) {
+        const files = e.dataTransfer.files;
+        for (let i = 0; i < files.length; i++) {
+            if (files[i].type.indexOf('image') !== -1) {
+                e.preventDefault(); // Evitar que se arrastre el archivo original pesado
+                await processAndInsertQuillImage(files[i]);
+            }
+        }
+    }
+}
+
+async function processAndInsertQuillImage(file) {
+    try {
+        Swal.fire({ title: 'Insertando imagen...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        // Comprimir a 800px y max 200KB (crucial para no sobrepasar límites de Vercel)
+        const compressedBase64 = await compressImage(file, { maxWidth: 800, maxHeight: 800, targetSizeMB: 0.2 });
+        let range = quillEdit.getSelection(true);
+        if (!range) range = { index: quillEdit.getLength() }; // Si no hay cursor activo, añadir al final
+        quillEdit.insertEmbed(range.index, 'image', compressedBase64);
+        quillEdit.setSelection(range.index + 1);
+        Swal.close();
+    } catch (error) {
+        Swal.fire('Error', 'No se pudo cargar la imagen: ' + error.message, 'error');
     }
 }
 
