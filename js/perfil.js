@@ -75,12 +75,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const localeMap = { "ARS":"es-AR", "BOB":"es-BO", "BRL":"pt-BR", "CLP":"es-CL", "COP":"es-CO", "CRC":"es-CR", "CUP":"es-CU", "DOP":"es-DO", "EUR":"es-ES", "GTQ":"es-GT", "HNL":"es-HN", "MXN":"es-MX", "NIO":"es-NI", "PAB":"es-PA", "PEN":"es-PE", "PYG":"es-PY", "USD":"en-US", "UYU":"es-UY", "VES":"es-VE" };
                 const noDecimals = ['CLP', 'COP', 'PYG', 'ARS'].includes(target);
                 
-                return new Intl.NumberFormat(localeMap[target] || undefined, { 
+                const formatted = new Intl.NumberFormat(localeMap[target] || undefined, { 
                     style: 'currency', currency: target, currencyDisplay: 'narrowSymbol',
                     minimumFractionDigits: noDecimals ? 0 : 2, maximumFractionDigits: noDecimals ? 0 : 2
                 }).format(amount);
+                return `${formatted} ${target}`;
             } catch (e) {
-                return '$' + amountInUSD.toFixed(2);
+                return '$' + amountInUSD.toFixed(2) + ' USD';
             }
         }
     };
