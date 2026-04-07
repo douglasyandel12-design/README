@@ -734,10 +734,77 @@ async function renderSingleProductPage(id) {
                 </div>
             </div>
         </div>
+        <div id="sp-related-products" style="margin-top: 4rem; border-top: 1px solid #eaeaea; padding-top: 3rem;">
+            <h2 style="font-size: 2rem; font-weight: 800; margin-bottom: 2rem; text-align: center; color: #111;">Más productos</h2>
+            <div class="product-grid" id="sp-related-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem;"></div>
+        </div>
     `;
 
     renderSpGallery(images, videos);
     window.updateSpPriceDisplay(1);
+    renderRelatedProducts(id);
+}
+
+function renderRelatedProducts(currentId) {
+    const relatedGrid = document.getElementById('sp-related-grid');
+    if (!relatedGrid) return;
+
+    // Filtrar productos disponibles excluyendo el actual
+    const available = products.filter(p => p.id != currentId && (p.stock === undefined || p.stock === null || p.stock === "" || parseInt(p.stock) > 0));
+    
+    // Seleccionar hasta 8 productos al azar
+    const shuffled = available.sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, 8);
+
+    if (selected.length === 0) {
+        document.getElementById('sp-related-products').style.display = 'none';
+        return;
+    }
+
+    let html = '';
+    const isPromoActive = globalSettings.promo_login_5 === true && window.currentUser;
+    const canSeeProgressivePromo = globalSettings.promo_progressive_active === true && (window.currentUser || globalSettings.promo_progressive_public === true);
+
+    selected.forEach((product, index) => {
+        const mainImage = (product.images && product.images.length > 0) ? product.images[0] : (product.image || '');
+        const imgContent = mainImage ? `<img src="${mainImage}" alt="${product.name}" loading="lazy" decoding="async">` : `<span>${product.name}</span>`;
+
+        let displayPrice = product.price;
+        let originalPriceHtml = '';
+        let promoMsg = '';
+
+        if (product.discount && product.discount > 0) {
+            displayPrice = product.price * (1 - product.discount / 100);
+            originalPriceHtml = `<span class="original-price" style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">${currencyManager.format(product.price)}</span>`;
+        }
+        if (canSeeProgressivePromo) promoMsg = `<small style="color: #d97706; display:block; font-size:0.7rem; margin-top:2px;">¡Promo por cantidad activa!</small>`;
+        if (isPromoActive) {
+            displayPrice = displayPrice * 0.95;
+            if (!originalPriceHtml && displayPrice < product.price) {
+                originalPriceHtml = `<span class="original-price" style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">${currencyManager.format(product.price)}</span>`;
+            }
+            promoMsg += `<small style="color:green; display:block; font-size:0.7rem; margin-top:2px;">+ 5% Descuento Socio</small>`;
+        }
+
+        html += `
+            <div class="product-card" style="animation: fadeInUp 0.5s ease forwards ${index * 0.05}s; opacity: 0;">
+                <div class="product-image" onclick="viewProductDetails(${product.id})" style="cursor:pointer;">
+                    ${imgContent}
+                    <div class="product-overlay"><span class="overlay-text">Ver Detalles</span></div>
+                </div>
+                <div class="product-info">
+                    <h3 class="product-title">${product.name}</h3>
+                    <div class="price-container">${originalPriceHtml}<span class="product-price">${currencyManager.format(displayPrice)}</span>${promoMsg}</div>
+                    <div class="btn-container">
+                        <button class="btn btn-outline" onclick="addToCart(${product.id})">Añadir</button>
+                        <button class="btn" onclick="orderNow(${product.id})">Pedir ahora</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    relatedGrid.innerHTML = html;
 }
 
 window.closeSingleProductPage = function() {
