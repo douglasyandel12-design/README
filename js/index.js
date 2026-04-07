@@ -601,62 +601,203 @@ function updateModalPriceDisplay(product, quantity) {
 }
 
 window.viewProductDetails = function(id) {
-    const product = products.find(p => p.id == id);
-    if (!product) return;
+    // En lugar de abrir un modal, cambiamos la URL para ir a la vista de página completa
+    window.location.href = '?id=' + id;
+}
 
-    window.currentModalProductId = id;
-    document.getElementById('pm-title').textContent = product.name;
+async function renderSingleProductPage(id) {
+    let product = products.find(p => p.id == id);
     
-    // Precio
-    // Usamos la nueva función para mostrar el precio inicial (cantidad 1)
-    updateModalPriceDisplay(product, 1);
-    
-    // Descripción (HTML seguro)
-    document.getElementById('pm-desc').innerHTML = product.description || 'Sin descripción detallada.';
-    
-    // Imagen
-    // Soporte para array de imágenes o string antiguo
+    // Si se entró por link directo y el producto aún no está cargado (ej. página 2), lo solicitamos.
+    if (!product) {
+        try {
+            const res = await fetch('/api/products-by-ids', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: [id] })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    product = data[0];
+                    products.push(product); // Lo añadimos a la lista para cálculos de carrito
+                }
+            }
+        } catch(e) { console.error(e); }
+    }
+
+    if (!product) {
+        window.location.href = 'index.html'; // Fallback si no existe
+        return;
+    }
+
+    window.currentSpProductId = id;
+    document.title = product.name + ' - LVS² Shop'; // Cambiar título de la pestaña
+
+    // Ocultar elementos de la portada, lista y barra de herramientas
+    const hero = document.querySelector('.hero');
+    if (hero) hero.style.display = 'none';
+    const filterContainer = document.querySelector('.filter-container');
+    if (filterContainer) filterContainer.style.display = 'none';
+    if (grid) grid.style.display = 'none';
+    const loadMore = document.getElementById('load-more-container');
+    if (loadMore) loadMore.style.display = 'none';
+
+    // Crear y mostrar el contenedor del producto a página completa
+    let singleContainer = document.getElementById('single-product-view');
+    if (!singleContainer) {
+        singleContainer = document.createElement('div');
+        singleContainer.id = 'single-product-view';
+        singleContainer.style.cssText = 'max-width: 1200px; margin: 2rem auto; padding: 0 1rem; animation: fadeIn 0.5s;';
+        grid.parentNode.insertBefore(singleContainer, grid);
+    }
+
     const images = (product.images && product.images.length > 0) ? product.images : (product.image ? [product.image] : []);
-    
     const videos = (product.videos && product.videos.length > 0) ? product.videos : (product.video ? [product.video] : []);
 
-    // Renderizar la vista de galería por defecto
-    renderProductGallery(images, videos);
-    
-    // Reset cantidad
-    document.getElementById('pm-qty').value = 1;
-    
-    // Configurar botón
-    document.getElementById('pm-add-btn').onclick = () => {
-        const qty = parseInt(document.getElementById('pm-qty').value);
-        addToCart(id, qty);
-        closeProductModal();
-    };
+    // Inyectamos el diseño premium tipo Shopify
+    singleContainer.innerHTML = `
+        <style>
+            .sp-layout { display: flex; gap: 4rem; flex-wrap: wrap; align-items: flex-start; }
+            .sp-media { flex: 1; min-width: 300px; position: sticky; top: 2rem; }
+            .sp-details { flex: 1; min-width: 300px; padding: 1rem 0; }
+            .sp-description img { max-width: 100%; height: auto; border-radius: 8px; margin: 15px 0; }
+            @media (max-width: 768px) { .sp-layout { flex-direction: column; gap: 2rem; } .sp-media { position: relative; top: 0; } }
+        </style>
+        <div class="sp-layout">
+            <div class="sp-media">
+                <div id="sp-media-display" style="background: #f9f9f9; padding: 2rem; border-radius: 12px; display: flex; flex-direction: column; align-items: center;"></div>
+            </div>
+            <div class="sp-details">
+                <nav style="font-size: 0.95rem; margin-bottom: 1.5rem;"><a href="index.html" style="color: #6b7280; text-decoration: none; font-weight: 600;">← Volver a la tienda</a></nav>
+                <h1 style="font-size: 2.5rem; font-weight: 800; margin: 0 0 1rem 0; line-height: 1.1; color: #111;">${product.name}</h1>
+                <div id="sp-price" style="font-size: 2rem; font-weight: 600; margin-bottom: 1.5rem; color: #111;"></div>
+                
+                <div style="display: flex; gap: 1rem; margin-bottom: 2.5rem; flex-wrap: wrap;">
+                    <div style="display: flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; height: 55px;">
+                        <button onclick="window.updateSpQty(-1)" style="background: #f9fafb; border: none; padding: 0 20px; font-size: 1.5rem; cursor: pointer;">-</button>
+                        <input type="number" id="sp-qty" value="1" readonly style="width: 60px; text-align: center; border: none; font-size: 1.2rem; font-weight: 700; background: #fff; margin: 0;">
+                        <button onclick="window.updateSpQty(1)" style="background: #f9fafb; border: none; padding: 0 20px; font-size: 1.5rem; cursor: pointer;">+</button>
+                    </div>
+                    <button class="btn" onclick="window.addSpToCart()" style="flex: 2; min-width: 200px; height: 55px; font-size: 1.1rem; border-radius: 8px;">Añadir al Carrito</button>
+                    <button class="btn btn-outline" onclick="window.buySpNow()" style="flex: 2; min-width: 200px; height: 55px; font-size: 1.1rem; border-radius: 8px; background: white;">Pagar Ahora</button>
+                </div>
+                <div class="sp-description" style="font-size: 1.1rem; line-height: 1.8; color: #374151; overflow-wrap: break-word;">
+                    ${product.description || 'Sin descripción detallada.'}
+                </div>
+            </div>
+        </div>
+    `;
 
-    // Configurar botón Pagar Ahora (Nuevo)
-    document.getElementById('pm-buy-now-btn').onclick = () => {
-        const qty = parseInt(document.getElementById('pm-qty').value);
-        const product = products.find(p => p.id == id);
-        
-        if (product) {
-            const existingItem = cart.find(item => item.id == id);
-            const image = (product.images && product.images.length > 0) ? product.images[0] : (product.image || '');
-            const finalPrice = calculateItemPrice(product, existingItem ? existingItem.quantity + qty : qty);
-            
-            if (existingItem) {
-                existingItem.quantity += qty;
-                existingItem.price = finalPrice;
-                existingItem.image = image;
-            } else {
-                cart.push({ id: product.id, name: product.name, price: finalPrice, quantity: qty, originalPrice: product.price, image: image });
+    renderSpGallery(images, videos);
+    window.updateSpPriceDisplay(1);
+}
+
+function renderSpGallery(images, videos) {
+    const mediaContainer = document.getElementById('sp-media-display');
+    let galleryHtml = ''; let togglesHtml = '';
+    if (images.length > 0) {
+        galleryHtml = `<div id="sp-gallery-wrapper" style="width: 100%; display: flex; flex-direction: column; gap: 15px; align-items: center;">
+            <img id="sp-main-img" src="${images[0]}" style="width:100%; height:auto; max-height:500px; object-fit:contain; cursor: zoom-in; mix-blend-mode: multiply;" onclick="openImageModal(this.src, 'Vista Previa')">
+            ${images.length > 1 ? `<div style="display: flex; gap: 10px; overflow-x: auto; padding: 5px 0; justify-content: center; width: 100%;">${images.map((img, idx) => `<img src="${img}" class="sp-thumb" style="width: 70px; height: 70px; border: 2px solid ${idx===0?'#000':'transparent'}; border-radius: 6px; cursor: pointer; object-fit: cover; opacity: ${idx===0?'1':'0.6'}; transition: all 0.2s;" onclick="window.changeSpImage('${img}', this)">`).join('')}</div>` : ''}
+        </div>`;
+        togglesHtml += `<button id="sp-photo-toggle" class="active" onclick="window.toggleSpMediaView('photo')" style="background: #000; color: #fff; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: 600;">Fotos</button>`;
+    }
+    if (videos && videos.length > 0) {
+        videos.forEach((vid, index) => {
+            const label = videos.length > 1 ? `Video ${index + 1}` : 'Video';
+            togglesHtml += `<button onclick="window.toggleSpMediaView('video', '${vid.replace(/'/g, "\\'")}', this)" style="background: #e5e7eb; color: #374151; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: 600;">${label}</button>`;
+        });
+    }
+    mediaContainer.innerHTML = `${galleryHtml}<div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">${togglesHtml}</div><div id="sp-video-player" style="display:none; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; overflow: hidden;"></div>`;
+}
+
+window.changeSpImage = function(src, thumbEl) {
+    document.getElementById('sp-main-img').src = src;
+    document.querySelectorAll('.sp-thumb').forEach(t => { t.style.borderColor = 'transparent'; t.style.opacity = '0.6'; });
+    if (thumbEl) { thumbEl.style.borderColor = '#000'; thumbEl.style.opacity = '1'; }
+}
+
+window.toggleSpMediaView = function(view, videoUrl = '', btnElement = null) {
+    const gallery = document.getElementById('sp-gallery-wrapper');
+    const videoPlayer = document.getElementById('sp-video-player');
+    const allButtons = document.getElementById('sp-media-display').querySelectorAll('button');
+    allButtons.forEach(b => { if(!b.classList.contains('img-remove-btn')){ b.style.background = '#e5e7eb'; b.style.color = '#374151'; }});
+    if (view === 'video') {
+        if (gallery) gallery.style.display = 'none';
+        videoPlayer.style.display = 'block'; 
+        if (btnElement) { btnElement.style.background = '#000'; btnElement.style.color = '#fff'; }
+        if (videoUrl.startsWith('data:video')) {
+            videoPlayer.innerHTML = `<video controls autoplay style="width:100%; height:100%;" src="${videoUrl}"></video>`;
+        } else if (videoUrl.startsWith('data:image')) {
+            videoPlayer.innerHTML = `<img src="${videoUrl}" style="width:100%; height:100%; object-fit:contain;">`;
+        } else {
+            let embedUrl = videoUrl;
+            if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
+                let videoId = videoUrl.includes('youtu.be') ? videoUrl.split('youtu.be/')[1].split('?')[0] : videoUrl.split('v=')[1].split('&')[0];
+                if (videoId) embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+            } else if (videoUrl.includes('tiktok.com')) {
+                const match = videoUrl.match(/\/video\/(\d+)/);
+                if (match && match[1]) embedUrl = `https://www.tiktok.com/embed/v2/${match[1]}`;
             }
-            saveCart();
-            window.location.href = 'pedido.html';
+            videoPlayer.innerHTML = `<iframe style="width:100%; height:100%;" src="${embedUrl}" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; web-share" allowfullscreen></iframe>`;
         }
-        closeProductModal();
-    };
+    } else {
+        if (gallery) gallery.style.display = 'flex';
+        videoPlayer.style.display = 'none'; videoPlayer.innerHTML = '';
+        const photoToggle = document.getElementById('sp-photo-toggle');
+        if (photoToggle) { photoToggle.style.background = '#000'; photoToggle.style.color = '#fff'; }
+    }
+}
 
-    document.getElementById('product-modal').classList.add('active');
+window.updateSpQty = function(change) {
+    const input = document.getElementById('sp-qty');
+    let val = parseInt(input.value) + change;
+    if (val < 1) val = 1;
+    input.value = val;
+    window.updateSpPriceDisplay(val);
+}
+
+window.updateSpPriceDisplay = function(quantity) {
+    const product = products.find(p => p.id == window.currentSpProductId);
+    const priceEl = document.getElementById('sp-price');
+    if (!priceEl || !product) return;
+    const unitPrice = calculateItemPrice(product, quantity);
+    let html = currencyManager.format(unitPrice);
+    if (unitPrice < product.price) {
+        html = `<span style="text-decoration:line-through; color:#9ca3af; margin-right:10px; font-size: 1.3rem;">${currencyManager.format(product.price)}</span> <span style="font-weight:800; color:#111;">${currencyManager.format(unitPrice)}</span>`;
+    }
+    if (product.discount > 0) html += ` <span style="background:#ef4444; color:white; padding: 4px 8px; border-radius: 4px; font-size:1rem; vertical-align: middle; margin-left: 10px;">-${product.discount}%</span>`;
+    if (globalSettings.promo_progressive_active === true && (window.currentUser || globalSettings.promo_progressive_public === true) && quantity >= 2) {
+         html += `<div style="color: #d97706; font-size:1rem; margin-top:8px; font-weight: 600;">🔥 ¡Ahorras ${currencyManager.format(Math.min(quantity, 5))} por unidad!</div>`;
+    }
+    if (globalSettings.promo_login_5 === true && window.currentUser) html += `<div style="color:green; font-size:1rem; margin-top:4px; font-weight: 600;">✨ + 5% Descuento Socio</div>`;
+    if (quantity > 1) html += `<div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; font-size: 1.5rem; font-weight: 800; color: #111;">Total: ${currencyManager.format(unitPrice * quantity)}</div>`;
+    priceEl.innerHTML = html;
+}
+
+window.addSpToCart = function() {
+    const qty = parseInt(document.getElementById('sp-qty').value);
+    addToCart(window.currentSpProductId, qty);
+}
+
+window.buySpNow = function() {
+    const qty = parseInt(document.getElementById('sp-qty').value);
+    const product = products.find(p => p.id == window.currentSpProductId);
+    if (product) {
+        const existingItem = cart.find(item => item.id == window.currentSpProductId);
+        const finalPrice = calculateItemPrice(product, existingItem ? existingItem.quantity + qty : qty);
+        const image = (product.images && product.images.length > 0) ? product.images[0] : (product.image || '');
+        if (existingItem) {
+            existingItem.quantity += qty;
+            existingItem.price = finalPrice;
+            existingItem.image = image;
+        } else {
+            cart.push({ id: product.id, name: product.name, price: finalPrice, quantity: qty, originalPrice: product.price, image: image });
+        }
+        saveCart();
+        window.location.href = 'pedido.html';
+    }
 }
 
 window.closeProductModal = function() {
@@ -1207,6 +1348,13 @@ function clearCart() {
 
 function toggleCart() {
     modal.classList.toggle('active');
+}
+
+// Cerrar carrito si se hace clic en el overlay oscuro
+if (modal) {
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.classList.remove('active');
+    });
 }
 
 function showToast(message) {

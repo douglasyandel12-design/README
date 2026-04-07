@@ -93,7 +93,17 @@ function initEditors() {
     if (document.getElementById('edit-editor-container') && !quillEdit) {
         quillEdit = new Quill('#edit-editor-container', { 
             theme: 'snow',
-            placeholder: 'Detalles del producto, características, etc.'
+            placeholder: 'Detalles del producto, características, etc.',
+            modules: {
+                toolbar: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                    [{ 'align': [] }], // <-- Aquí agregamos la alineación
+                    ['link', 'clean']
+                ]
+            }
         });
     }
 }
@@ -922,12 +932,6 @@ async function saveProductModal(e) {
     let method = 'POST';
 
     let descriptionContent = quillEdit ? quillEdit.root.innerHTML : '';
-
-    // SANITIZACIÓN CRÍTICA: Eliminar imágenes en base64 pegadas en el editor de texto.
-    const base64ImageRegex = /<img src="data:image\/[^;]+;base64[^"]*">/g;
-    if (descriptionContent.match(base64ImageRegex)) {
-        descriptionContent = descriptionContent.replace(base64ImageRegex, '');
-    }
 
     if (idInput) {
         // --- ACTUALIZAR EXISTENTE ---
