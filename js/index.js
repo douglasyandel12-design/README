@@ -685,7 +685,11 @@ async function renderSingleProductPage(id) {
                 padding: 1.5rem; 
                 box-shadow: 0 10px 30px rgba(0,0,0,0.03); 
                 box-sizing: border-box;
+                max-height: calc(100vh - 4rem);
+                overflow-y: auto;
             }
+            .sp-media::-webkit-scrollbar { width: 4px; }
+            .sp-media::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 4px; }
             .sp-details { flex: 1; min-width: 300px; padding: 0; }
             .sp-description img { max-width: 100%; height: auto; border-radius: 8px; margin: 15px 0; }
             
@@ -714,6 +718,10 @@ async function renderSingleProductPage(id) {
         <div class="sp-layout">
             <div class="sp-media">
                 <div id="sp-media-display" style="display: flex; flex-direction: column; align-items: center;"></div>
+                <div id="sp-related-products" style="margin-top: 2rem; border-top: 1px solid #eaeaea; padding-top: 1.5rem; display: none;">
+                    <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; color: #111; text-transform: uppercase; letter-spacing: 0.5px;">Más productos</h3>
+                    <div id="sp-related-grid" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+                </div>
             </div>
             <div class="sp-details">
                 <nav style="font-size: 0.85rem; margin-bottom: 1.2rem;"><a href="#" onclick="event.preventDefault(); window.closeSingleProductPage();" style="color: #6b7280; text-decoration: none; font-weight: 500;">← Volver a la tienda</a></nav>
@@ -733,10 +741,6 @@ async function renderSingleProductPage(id) {
                     ${product.description || 'Sin descripción detallada.'}
                 </div>
             </div>
-        </div>
-        <div id="sp-related-products" style="margin-top: 4rem; border-top: 1px solid #eaeaea; padding-top: 3rem;">
-            <h2 style="font-size: 2rem; font-weight: 800; margin-bottom: 2rem; text-align: center; color: #111;">Más productos</h2>
-            <div class="product-grid" id="sp-related-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem;"></div>
         </div>
     `;
 
