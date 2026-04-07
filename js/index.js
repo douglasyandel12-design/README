@@ -693,9 +693,9 @@ async function renderSingleProductPage(id) {
             .sp-description .ql-align-center { text-align: center; }
             .sp-description .ql-align-right { text-align: right; }
             .sp-description .ql-align-justify { text-align: justify; }
-            .sp-description .ql-size-small { font-size: 0.85rem; }
-            .sp-description .ql-size-large { font-size: 1.5rem; }
-            .sp-description .ql-size-huge { font-size: 2rem; }
+            .sp-description .ql-size-small { font-size: 0.8rem; }
+            .sp-description .ql-size-large { font-size: 1.2rem; }
+            .sp-description .ql-size-huge { font-size: 1.5rem; }
             .sp-description .ql-indent-1 { padding-left: 2rem; }
             .sp-description .ql-indent-2 { padding-left: 4rem; }
             .sp-description .ql-indent-3 { padding-left: 6rem; }
@@ -716,20 +716,20 @@ async function renderSingleProductPage(id) {
                 <div id="sp-media-display" style="display: flex; flex-direction: column; align-items: center;"></div>
             </div>
             <div class="sp-details">
-                <nav style="font-size: 0.95rem; margin-bottom: 1.5rem;"><a href="#" onclick="event.preventDefault(); window.closeSingleProductPage();" style="color: #6b7280; text-decoration: none; font-weight: 600;">← Volver a la tienda</a></nav>
-                <h1 style="font-size: 2.5rem; font-weight: 800; margin: 0 0 1rem 0; line-height: 1.1; color: #111;">${product.name}</h1>
-                <div id="sp-price" style="font-size: 2rem; font-weight: 600; margin-bottom: 1.5rem; color: #111;"></div>
+                <nav style="font-size: 0.9rem; margin-bottom: 1.5rem;"><a href="#" onclick="event.preventDefault(); window.closeSingleProductPage();" style="color: #6b7280; text-decoration: none; font-weight: 600;">← Volver a la tienda</a></nav>
+                <h1 style="font-size: 1.8rem; font-weight: 800; margin: 0 0 0.8rem 0; line-height: 1.2; color: #111;">${product.name}</h1>
+                <div id="sp-price" style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; color: #111;"></div>
                 
                 <div class="sp-actions-container">
-                    <div style="display: flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; height: 55px; width: 140px;">
-                        <button onclick="window.updateSpQty(-1)" style="background: #f9fafb; border: none; padding: 0 15px; font-size: 1.5rem; cursor: pointer; flex: 1;">-</button>
-                        <input type="number" id="sp-qty" value="1" readonly style="width: 50px; text-align: center; border: none; font-size: 1.2rem; font-weight: 700; background: #fff; margin: 0; padding: 0;">
-                        <button onclick="window.updateSpQty(1)" style="background: #f9fafb; border: none; padding: 0 15px; font-size: 1.5rem; cursor: pointer; flex: 1;">+</button>
+                    <div style="display: flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; height: 45px; width: 110px;">
+                        <button onclick="window.updateSpQty(-1)" style="background: #f9fafb; border: none; padding: 0 12px; font-size: 1.2rem; cursor: pointer; flex: 1;">-</button>
+                        <input type="number" id="sp-qty" value="1" readonly style="width: 40px; text-align: center; border: none; font-size: 1rem; font-weight: 700; background: #fff; margin: 0; padding: 0;">
+                        <button onclick="window.updateSpQty(1)" style="background: #f9fafb; border: none; padding: 0 12px; font-size: 1.2rem; cursor: pointer; flex: 1;">+</button>
                     </div>
-                    <button class="btn" onclick="window.addSpToCart()" style="flex: 1; height: 55px; font-size: 1.1rem; border-radius: 8px;">Añadir al Carrito</button>
-                    <button class="btn btn-outline" onclick="window.buySpNow()" style="flex: 1; height: 55px; font-size: 1.1rem; border-radius: 8px; background: white;">Pagar Ahora</button>
+                    <button class="btn" onclick="window.addSpToCart()" style="flex: 1; height: 45px; font-size: 0.95rem; border-radius: 8px;">Añadir al Carrito</button>
+                    <button class="btn btn-outline" onclick="window.buySpNow()" style="flex: 1; height: 45px; font-size: 0.95rem; border-radius: 8px; background: white;">Pagar Ahora</button>
                 </div>
-                <div class="sp-description" style="font-size: 1.1rem; line-height: 1.8; color: #374151; overflow-wrap: break-word;">
+                <div class="sp-description" style="font-size: 0.95rem; line-height: 1.6; color: #374151; overflow-wrap: break-word;">
                     ${product.description || 'Sin descripción detallada.'}
                 </div>
             </div>
@@ -781,12 +781,12 @@ function renderSpGallery(images, videos) {
             <img id="sp-main-img" src="${images[0]}" style="width:100%; height:auto; max-height:400px; object-fit:contain; cursor: zoom-in; mix-blend-mode: multiply;" onclick="openImageModal(this.src, 'Vista Previa')">
             ${images.length > 1 ? `<div style="display: flex; gap: 10px; overflow-x: auto; padding: 5px 0; justify-content: center; width: 100%;">${images.map((img, idx) => `<img src="${img}" class="sp-thumb" style="width: 60px; height: 60px; border: 2px solid ${idx===0?'#000':'transparent'}; border-radius: 6px; cursor: pointer; object-fit: cover; opacity: ${idx===0?'1':'0.6'}; transition: all 0.2s;" onclick="window.changeSpImage('${img}', this)">`).join('')}</div>` : ''}
         </div>`;
-        togglesHtml += `<button id="sp-photo-toggle" class="active" onclick="window.toggleSpMediaView('photo')" style="background: #000; color: #fff; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">Fotos</button>`;
+        togglesHtml += `<button id="sp-photo-toggle" class="active" onclick="window.toggleSpMediaView('photo')" style="background: #000; color: #fff; border: none; padding: 6px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">Fotos</button>`;
     }
     if (videos && videos.length > 0) {
         videos.forEach((vid, index) => {
             const label = videos.length > 1 ? `Video ${index + 1}` : 'Video';
-            togglesHtml += `<button onclick="window.toggleSpMediaView('video', '${vid.replace(/'/g, "\\'")}', this)" style="background: #e5e7eb; color: #374151; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">${label}</button>`;
+            togglesHtml += `<button onclick="window.toggleSpMediaView('video', '${vid.replace(/'/g, "\\'")}', this)" style="background: #e5e7eb; color: #374151; border: none; padding: 6px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">${label}</button>`;
         });
     }
     mediaContainer.innerHTML = `${galleryHtml}<div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">${togglesHtml}</div><div id="sp-video-player" style="display:none; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; overflow: hidden;"></div>`;
@@ -845,14 +845,14 @@ window.updateSpPriceDisplay = function(quantity) {
     const unitPrice = calculateItemPrice(product, quantity);
     let html = currencyManager.format(unitPrice);
     if (unitPrice < product.price) {
-        html = `<span style="text-decoration:line-through; color:#9ca3af; margin-right:10px; font-size: 1.3rem;">${currencyManager.format(product.price)}</span> <span style="font-weight:800; color:#111;">${currencyManager.format(unitPrice)}</span>`;
+        html = `<span style="text-decoration:line-through; color:#9ca3af; margin-right:8px; font-size: 1.1rem;">${currencyManager.format(product.price)}</span> <span style="font-weight:800; color:#111;">${currencyManager.format(unitPrice)}</span>`;
     }
-    if (product.discount > 0) html += ` <span style="background:#ef4444; color:white; padding: 4px 8px; border-radius: 4px; font-size:1rem; vertical-align: middle; margin-left: 10px;">-${product.discount}%</span>`;
+    if (product.discount > 0) html += ` <span style="background:#ef4444; color:white; padding: 2px 6px; border-radius: 4px; font-size:0.85rem; vertical-align: middle; margin-left: 8px;">-${product.discount}%</span>`;
     if (globalSettings.promo_progressive_active === true && (window.currentUser || globalSettings.promo_progressive_public === true) && quantity >= 2) {
-         html += `<div style="color: #d97706; font-size:1rem; margin-top:8px; font-weight: 600;">🔥 ¡Ahorras ${currencyManager.format(Math.min(quantity, 5))} por unidad!</div>`;
+         html += `<div style="color: #d97706; font-size:0.85rem; margin-top:6px; font-weight: 600;">🔥 ¡Ahorras ${currencyManager.format(Math.min(quantity, 5))} por unidad!</div>`;
     }
-    if (globalSettings.promo_login_5 === true && window.currentUser) html += `<div style="color:green; font-size:1rem; margin-top:4px; font-weight: 600;">✨ + 5% Descuento Socio</div>`;
-    if (quantity > 1) html += `<div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; font-size: 1.5rem; font-weight: 800; color: #111;">Total: ${currencyManager.format(unitPrice * quantity)}</div>`;
+    if (globalSettings.promo_login_5 === true && window.currentUser) html += `<div style="color:green; font-size:0.85rem; margin-top:4px; font-weight: 600;">✨ + 5% Descuento Socio</div>`;
+    if (quantity > 1) html += `<div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e5e7eb; font-size: 1.25rem; font-weight: 800; color: #111;">Total: ${currencyManager.format(unitPrice * quantity)}</div>`;
     priceEl.innerHTML = html;
 }
 
