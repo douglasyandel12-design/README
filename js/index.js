@@ -693,9 +693,9 @@ async function renderSingleProductPage(id) {
             .sp-description .ql-align-center { text-align: center; }
             .sp-description .ql-align-right { text-align: right; }
             .sp-description .ql-align-justify { text-align: justify; }
-            .sp-description .ql-size-small { font-size: 0.8rem; }
-            .sp-description .ql-size-large { font-size: 1.2rem; }
-            .sp-description .ql-size-huge { font-size: 1.5rem; }
+            .sp-description .ql-size-small { font-size: 0.75rem; }
+            .sp-description .ql-size-large { font-size: 1.05rem; }
+            .sp-description .ql-size-huge { font-size: 1.25rem; }
             .sp-description .ql-indent-1 { padding-left: 2rem; }
             .sp-description .ql-indent-2 { padding-left: 4rem; }
             .sp-description .ql-indent-3 { padding-left: 6rem; }
@@ -716,20 +716,20 @@ async function renderSingleProductPage(id) {
                 <div id="sp-media-display" style="display: flex; flex-direction: column; align-items: center;"></div>
             </div>
             <div class="sp-details">
-                <nav style="font-size: 0.9rem; margin-bottom: 1.5rem;"><a href="#" onclick="event.preventDefault(); window.closeSingleProductPage();" style="color: #6b7280; text-decoration: none; font-weight: 600;">← Volver a la tienda</a></nav>
-                <h1 style="font-size: 1.8rem; font-weight: 800; margin: 0 0 0.8rem 0; line-height: 1.2; color: #111;">${product.name}</h1>
-                <div id="sp-price" style="font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; color: #111;"></div>
+                <nav style="font-size: 0.85rem; margin-bottom: 1.2rem;"><a href="#" onclick="event.preventDefault(); window.closeSingleProductPage();" style="color: #6b7280; text-decoration: none; font-weight: 500;">← Volver a la tienda</a></nav>
+                <h1 style="font-size: 1.35rem; font-weight: 600; margin: 0 0 0.5rem 0; line-height: 1.3; color: #111;">${product.name}</h1>
+                <div id="sp-price" style="font-size: 1.25rem; font-weight: 500; margin-bottom: 1.5rem; color: #111;"></div>
                 
                 <div class="sp-actions-container">
-                    <div style="display: flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; height: 45px; width: 110px;">
-                        <button onclick="window.updateSpQty(-1)" style="background: #f9fafb; border: none; padding: 0 12px; font-size: 1.2rem; cursor: pointer; flex: 1;">-</button>
-                        <input type="number" id="sp-qty" value="1" readonly style="width: 40px; text-align: center; border: none; font-size: 1rem; font-weight: 700; background: #fff; margin: 0; padding: 0;">
-                        <button onclick="window.updateSpQty(1)" style="background: #f9fafb; border: none; padding: 0 12px; font-size: 1.2rem; cursor: pointer; flex: 1;">+</button>
+                    <div style="display: flex; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; height: 40px; width: 100px;">
+                        <button onclick="window.updateSpQty(-1)" style="background: #f9fafb; border: none; padding: 0 10px; font-size: 1.1rem; cursor: pointer; flex: 1; color: #555;">-</button>
+                        <input type="number" id="sp-qty" value="1" readonly style="width: 36px; text-align: center; border: none; font-size: 0.9rem; font-weight: 500; background: #fff; margin: 0; padding: 0; color: #111;">
+                        <button onclick="window.updateSpQty(1)" style="background: #f9fafb; border: none; padding: 0 10px; font-size: 1.1rem; cursor: pointer; flex: 1; color: #555;">+</button>
                     </div>
-                    <button class="btn" onclick="window.addSpToCart()" style="flex: 1; height: 45px; font-size: 0.95rem; border-radius: 8px;">Añadir al Carrito</button>
-                    <button class="btn btn-outline" onclick="window.buySpNow()" style="flex: 1; height: 45px; font-size: 0.95rem; border-radius: 8px; background: white;">Pagar Ahora</button>
+                    <button class="btn" onclick="window.addSpToCart()" style="flex: 1; height: 40px; font-size: 0.85rem; font-weight: 500; border-radius: 6px; letter-spacing: 0.5px;">Añadir al Carrito</button>
+                    <button class="btn btn-outline" onclick="window.buySpNow()" style="flex: 1; height: 40px; font-size: 0.85rem; font-weight: 500; border-radius: 6px; background: white; letter-spacing: 0.5px;">Pagar Ahora</button>
                 </div>
-                <div class="sp-description" style="font-size: 0.95rem; line-height: 1.6; color: #374151; overflow-wrap: break-word;">
+                <div class="sp-description" style="font-size: 0.85rem; line-height: 1.6; color: #4b5563; overflow-wrap: break-word;">
                     ${product.description || 'Sin descripción detallada.'}
                 </div>
             </div>
@@ -843,16 +843,16 @@ window.updateSpPriceDisplay = function(quantity) {
     const priceEl = document.getElementById('sp-price');
     if (!priceEl || !product) return;
     const unitPrice = calculateItemPrice(product, quantity);
-    let html = currencyManager.format(unitPrice);
+    let html = `<span style="font-weight:500; color:#111;">${currencyManager.format(unitPrice)}</span>`;
     if (unitPrice < product.price) {
-        html = `<span style="text-decoration:line-through; color:#9ca3af; margin-right:8px; font-size: 1.1rem;">${currencyManager.format(product.price)}</span> <span style="font-weight:800; color:#111;">${currencyManager.format(unitPrice)}</span>`;
+        html = `<span style="text-decoration:line-through; color:#9ca3af; margin-right:8px; font-size: 0.95rem;">${currencyManager.format(product.price)}</span> <span style="font-weight:600; color:#111;">${currencyManager.format(unitPrice)}</span>`;
     }
-    if (product.discount > 0) html += ` <span style="background:#ef4444; color:white; padding: 2px 6px; border-radius: 4px; font-size:0.85rem; vertical-align: middle; margin-left: 8px;">-${product.discount}%</span>`;
+    if (product.discount > 0) html += ` <span style="background:#ef4444; color:white; padding: 2px 6px; border-radius: 4px; font-size:0.75rem; vertical-align: middle; margin-left: 8px; font-weight: 500;">-${product.discount}%</span>`;
     if (globalSettings.promo_progressive_active === true && (window.currentUser || globalSettings.promo_progressive_public === true) && quantity >= 2) {
-         html += `<div style="color: #d97706; font-size:0.85rem; margin-top:6px; font-weight: 600;">🔥 ¡Ahorras ${currencyManager.format(Math.min(quantity, 5))} por unidad!</div>`;
+         html += `<div style="color: #d97706; font-size:0.8rem; margin-top:6px; font-weight: 500;">🔥 ¡Ahorras ${currencyManager.format(Math.min(quantity, 5))} por unidad!</div>`;
     }
-    if (globalSettings.promo_login_5 === true && window.currentUser) html += `<div style="color:green; font-size:0.85rem; margin-top:4px; font-weight: 600;">✨ + 5% Descuento Socio</div>`;
-    if (quantity > 1) html += `<div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e5e7eb; font-size: 1.25rem; font-weight: 800; color: #111;">Total: ${currencyManager.format(unitPrice * quantity)}</div>`;
+    if (globalSettings.promo_login_5 === true && window.currentUser) html += `<div style="color:green; font-size:0.8rem; margin-top:4px; font-weight: 500;">✨ + 5% Descuento Socio</div>`;
+    if (quantity > 1) html += `<div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e5e7eb; font-size: 1.1rem; font-weight: 600; color: #111;">Total: ${currencyManager.format(unitPrice * quantity)}</div>`;
     priceEl.innerHTML = html;
 }
 
