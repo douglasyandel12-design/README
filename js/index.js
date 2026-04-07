@@ -673,29 +673,61 @@ async function renderSingleProductPage(id) {
     // Inyectamos el diseño premium tipo Shopify
     singleContainer.innerHTML = `
         <style>
-            .sp-layout { display: flex; gap: 4rem; flex-wrap: wrap; align-items: flex-start; }
-            .sp-media { flex: 1; min-width: 300px; position: sticky; top: 2rem; }
-            .sp-details { flex: 1; min-width: 300px; padding: 1rem 0; }
+            .sp-layout { display: flex; gap: 3rem; flex-wrap: wrap; align-items: flex-start; }
+            .sp-media { 
+                flex: 0 0 38%; 
+                min-width: 320px; 
+                position: sticky; 
+                top: 2rem; 
+                background: #fff; 
+                border: 1px solid #eaeaea; 
+                border-radius: 12px; 
+                padding: 1.5rem; 
+                box-shadow: 0 10px 30px rgba(0,0,0,0.03); 
+                box-sizing: border-box;
+            }
+            .sp-details { flex: 1; min-width: 300px; padding: 0; }
             .sp-description img { max-width: 100%; height: auto; border-radius: 8px; margin: 15px 0; }
-            @media (max-width: 768px) { .sp-layout { flex-direction: column; gap: 2rem; } .sp-media { position: relative; top: 0; } }
+            
+            /* Clases de soporte para el editor "Word" (Quill.js) */
+            .sp-description .ql-align-center { text-align: center; }
+            .sp-description .ql-align-right { text-align: right; }
+            .sp-description .ql-align-justify { text-align: justify; }
+            .sp-description .ql-size-small { font-size: 0.85rem; }
+            .sp-description .ql-size-large { font-size: 1.5rem; }
+            .sp-description .ql-size-huge { font-size: 2rem; }
+            .sp-description .ql-indent-1 { padding-left: 2rem; }
+            .sp-description .ql-indent-2 { padding-left: 4rem; }
+            .sp-description .ql-indent-3 { padding-left: 6rem; }
+            .sp-description .ql-video { width: 100%; height: 400px; border: none; border-radius: 8px; margin: 15px 0; }
+
+            .sp-actions-container { display: flex; gap: 1rem; margin-bottom: 2.5rem; flex-wrap: wrap; }
+            
+            @media (max-width: 900px) { 
+                .sp-layout { flex-direction: column; gap: 2rem; } 
+                .sp-media { flex: 1; width: 100%; position: relative; top: 0; padding: 1rem; } 
+                .sp-actions-container { flex-direction: column; }
+                .sp-actions-container > * { width: 100%; flex: none; }
+                .sp-description .ql-video { height: 250px; }
+            }
         </style>
         <div class="sp-layout">
             <div class="sp-media">
-                <div id="sp-media-display" style="background: #f9f9f9; padding: 2rem; border-radius: 12px; display: flex; flex-direction: column; align-items: center;"></div>
+                <div id="sp-media-display" style="display: flex; flex-direction: column; align-items: center;"></div>
             </div>
             <div class="sp-details">
                 <nav style="font-size: 0.95rem; margin-bottom: 1.5rem;"><a href="#" onclick="event.preventDefault(); window.closeSingleProductPage();" style="color: #6b7280; text-decoration: none; font-weight: 600;">← Volver a la tienda</a></nav>
                 <h1 style="font-size: 2.5rem; font-weight: 800; margin: 0 0 1rem 0; line-height: 1.1; color: #111;">${product.name}</h1>
                 <div id="sp-price" style="font-size: 2rem; font-weight: 600; margin-bottom: 1.5rem; color: #111;"></div>
                 
-                <div style="display: flex; gap: 1rem; margin-bottom: 2.5rem; flex-wrap: wrap;">
-                    <div style="display: flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; height: 55px;">
-                        <button onclick="window.updateSpQty(-1)" style="background: #f9fafb; border: none; padding: 0 20px; font-size: 1.5rem; cursor: pointer;">-</button>
-                        <input type="number" id="sp-qty" value="1" readonly style="width: 60px; text-align: center; border: none; font-size: 1.2rem; font-weight: 700; background: #fff; margin: 0;">
-                        <button onclick="window.updateSpQty(1)" style="background: #f9fafb; border: none; padding: 0 20px; font-size: 1.5rem; cursor: pointer;">+</button>
+                <div class="sp-actions-container">
+                    <div style="display: flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; height: 55px; width: 140px;">
+                        <button onclick="window.updateSpQty(-1)" style="background: #f9fafb; border: none; padding: 0 15px; font-size: 1.5rem; cursor: pointer; flex: 1;">-</button>
+                        <input type="number" id="sp-qty" value="1" readonly style="width: 50px; text-align: center; border: none; font-size: 1.2rem; font-weight: 700; background: #fff; margin: 0; padding: 0;">
+                        <button onclick="window.updateSpQty(1)" style="background: #f9fafb; border: none; padding: 0 15px; font-size: 1.5rem; cursor: pointer; flex: 1;">+</button>
                     </div>
-                    <button class="btn" onclick="window.addSpToCart()" style="flex: 2; min-width: 200px; height: 55px; font-size: 1.1rem; border-radius: 8px;">Añadir al Carrito</button>
-                    <button class="btn btn-outline" onclick="window.buySpNow()" style="flex: 2; min-width: 200px; height: 55px; font-size: 1.1rem; border-radius: 8px; background: white;">Pagar Ahora</button>
+                    <button class="btn" onclick="window.addSpToCart()" style="flex: 1; height: 55px; font-size: 1.1rem; border-radius: 8px;">Añadir al Carrito</button>
+                    <button class="btn btn-outline" onclick="window.buySpNow()" style="flex: 1; height: 55px; font-size: 1.1rem; border-radius: 8px; background: white;">Pagar Ahora</button>
                 </div>
                 <div class="sp-description" style="font-size: 1.1rem; line-height: 1.8; color: #374151; overflow-wrap: break-word;">
                     ${product.description || 'Sin descripción detallada.'}
@@ -746,15 +778,15 @@ function renderSpGallery(images, videos) {
     let galleryHtml = ''; let togglesHtml = '';
     if (images.length > 0) {
         galleryHtml = `<div id="sp-gallery-wrapper" style="width: 100%; display: flex; flex-direction: column; gap: 15px; align-items: center;">
-            <img id="sp-main-img" src="${images[0]}" style="width:100%; height:auto; max-height:500px; object-fit:contain; cursor: zoom-in; mix-blend-mode: multiply;" onclick="openImageModal(this.src, 'Vista Previa')">
-            ${images.length > 1 ? `<div style="display: flex; gap: 10px; overflow-x: auto; padding: 5px 0; justify-content: center; width: 100%;">${images.map((img, idx) => `<img src="${img}" class="sp-thumb" style="width: 70px; height: 70px; border: 2px solid ${idx===0?'#000':'transparent'}; border-radius: 6px; cursor: pointer; object-fit: cover; opacity: ${idx===0?'1':'0.6'}; transition: all 0.2s;" onclick="window.changeSpImage('${img}', this)">`).join('')}</div>` : ''}
+            <img id="sp-main-img" src="${images[0]}" style="width:100%; height:auto; max-height:400px; object-fit:contain; cursor: zoom-in; mix-blend-mode: multiply;" onclick="openImageModal(this.src, 'Vista Previa')">
+            ${images.length > 1 ? `<div style="display: flex; gap: 10px; overflow-x: auto; padding: 5px 0; justify-content: center; width: 100%;">${images.map((img, idx) => `<img src="${img}" class="sp-thumb" style="width: 60px; height: 60px; border: 2px solid ${idx===0?'#000':'transparent'}; border-radius: 6px; cursor: pointer; object-fit: cover; opacity: ${idx===0?'1':'0.6'}; transition: all 0.2s;" onclick="window.changeSpImage('${img}', this)">`).join('')}</div>` : ''}
         </div>`;
-        togglesHtml += `<button id="sp-photo-toggle" class="active" onclick="window.toggleSpMediaView('photo')" style="background: #000; color: #fff; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: 600;">Fotos</button>`;
+        togglesHtml += `<button id="sp-photo-toggle" class="active" onclick="window.toggleSpMediaView('photo')" style="background: #000; color: #fff; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">Fotos</button>`;
     }
     if (videos && videos.length > 0) {
         videos.forEach((vid, index) => {
             const label = videos.length > 1 ? `Video ${index + 1}` : 'Video';
-            togglesHtml += `<button onclick="window.toggleSpMediaView('video', '${vid.replace(/'/g, "\\'")}', this)" style="background: #e5e7eb; color: #374151; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: 600;">${label}</button>`;
+            togglesHtml += `<button onclick="window.toggleSpMediaView('video', '${vid.replace(/'/g, "\\'")}', this)" style="background: #e5e7eb; color: #374151; border: none; padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">${label}</button>`;
         });
     }
     mediaContainer.innerHTML = `${galleryHtml}<div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">${togglesHtml}</div><div id="sp-video-player" style="display:none; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; overflow: hidden;"></div>`;
