@@ -48,6 +48,7 @@ const OrderSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true, index: true },
   status: String,
   date: String,
+  userId: String,
   customer: {
     name: String,
     email: String,
@@ -207,6 +208,63 @@ const sendNewOrderNotificationEmail = async (order) => {
         
         <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
         <p style="text-align: center; color: #999; font-size: 11px;">&copy; ${new Date().getFullYear()} LVS Shop. Notificación automática.</p>
+      </div>
+    `
+  };
+  await transporter.sendMail(mailOptions);
+};
+
+const sendCustomerOrderConfirmationEmail = async (order) => {
+  // Si el cliente no dejó un correo, detenemos la función
+  if (!order.customer.email) return;
+
+  const itemsHtml = order.items.map(item => `
+    <tr>
+      <td style="padding: 10px; border-bottom: 1px solid #eee;">${item.quantity}x ${item.name}</td>
+      <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">$${(item.price * item.quantity).toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  const mailOptions = {
+    from: '"LVS Shop" <' + process.env.EMAIL_USER + '>',
+    to: order.customer.email, // Correo del cliente
+    subject: `✅ Confirmación de tu pedido #${order.id} en LVS Shop`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #000; text-align: center;">¡Gracias por tu compra, ${order.customer.name}!</h2>
+        <p>Hemos recibido tu pedido y ya estamos trabajando en él.</p>
+        
+        <div style="text-align: center; margin-top: 20px; background: #f9f9f9; padding: 15px; border-radius: 8px;">
+          <p style="margin: 0; color: #666; font-size: 14px;">Tu número de seguimiento es:</p>
+          <h2 style="margin: 5px 0 0 0; letter-spacing: 1px; color: #2563eb;">#${order.id}</h2>
+        </div>
+
+        <h3 style="border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 30px;">Resumen del Pedido</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr>
+              <th style="text-align: left; padding: 10px; background: #f9f9f9;">Producto</th>
+              <th style="text-align: right; padding: 10px; background: #f9f9f9;">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td style="padding: 15px 10px 0; font-weight: bold; text-align: right;">Total a pagar:</td>
+              <td style="padding: 15px 10px 0; font-weight: bold; font-size: 1.2rem; text-align: right;">$${order.total.toFixed(2)}</td>
+            </tr>
+          </tfoot>
+        </table>
+        
+        <h3 style="border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 30px;">Datos de Envío</h3>
+        <p><strong>Dirección:</strong> ${order.customer.address}</p>
+        <p><strong>Teléfono:</strong> ${order.customer.phone}</p>
+        <p><strong>Pago:</strong> ${order.customer.payment}</p>
+
+        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+        <p style="text-align: center; color: #999; font-size: 12px;">&copy; ${new Date().getFullYear()} LVS Shop. Este es un correo automático.</p>
       </div>
     `
   };
@@ -767,6 +825,7 @@ router.post('/orders', async (req, res) => {
             id: 'ORD-' + Math.floor(100000 + Math.random() * 900000), // NOTA: Es mejor usar una librería como `nanoid` para IDs únicos.
             status: 'En progreso',
             date: new Date().toISOString(), // Usar formato estándar
+        userId: req.user ? req.user.id : null,
             customer,
             items,
             total: serverTotal // Usar el total calculado en el servidor
@@ -785,6 +844,11 @@ router.post('/orders', async (req, res) => {
             if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
                 // No usamos await aquí para no retrasar la respuesta al cliente
                 sendNewOrderNotificationEmail(newOrder).catch(err => console.error('Error enviando email al admin:', err));
+                
+                // Enviar email al cliente si proporcionó un correo electrónico
+                if (newOrder.customer.email) {
+                    sendCustomerOrderConfirmationEmail(newOrder).catch(err => console.error('Error enviando email al cliente:', err));
+                }
             } else {
                 console.warn('EMAIL_USER o EMAIL_PASS no configurados. No se enviará correo de pedido.');
             }
@@ -834,7 +898,12 @@ router.get('/my-orders', isAuthenticated, async (req, res) => {
   try {
     await connectToDatabase();
     const userEmail = req.user.email;
-    const orders = await Order.find({ 'customer.email': userEmail }).sort({ createdAt: -1 });
+    const orders = await Order.find({ 
+        $or: [
+            { userId: req.user.id },
+            { 'customer.email': userEmail }
+        ]
+    }).sort({ createdAt: -1 });
     res.json(orders);
   } catch (error) {
     res.status(500).json({ error: 'Error al cargar mis pedidos.' });

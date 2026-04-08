@@ -256,6 +256,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const authData = await authRes.json();
         const currentUser = authData.user;
 
+        const urlParams = new URLSearchParams(window.location.search);
+        const trackedId = urlParams.get('id');
+
         // Si es invitado, mostrar el aviso
         if (!currentUser) {
             const warningMsg = document.createElement('div');
@@ -271,32 +274,68 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         let myOrders = [];
+        const loadedIds = new Set();
 
+        // 1. Si hay un ID en la URL, siempre lo intentamos cargar primero
+        if (trackedId) {
+            try {
+                const res = await fetch(`/api/orders/${trackedId}`);
+                if (res.ok) {
+                    const order = await res.json();
+                    myOrders.push(order);
+                    loadedIds.add(order.id);
+                    
+                    // Si es invitado y no lo tenía guardado, lo agregamos para el futuro
+                    if (!currentUser) {
+                        const guestOrders = JSON.parse(localStorage.getItem('lvs_guest_orders')) || [];
+                        if (!guestOrders.includes(trackedId)) {
+                            guestOrders.push(trackedId);
+                            localStorage.setItem('lvs_guest_orders', JSON.stringify(guestOrders));
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Error al cargar el pedido rastreado:', e);
+            }
+        }
+
+        // 2. Cargar el resto del historial
         if (currentUser) {
-            // 2a. Si es usuario registrado: Usamos el endpoint seguro de "mis pedidos"
-            const ordersRes = await fetch('/api/my-orders');
-            if (ordersRes.ok) {
-                myOrders = await ordersRes.json();
+            // 2a. Si es usuario registrado: Usamos el endpoint seguro
+            try {
+                const ordersRes = await fetch('/api/my-orders');
+                if (ordersRes.ok) {
+                    const userOrders = await ordersRes.json();
+                    userOrders.forEach(o => {
+                        if (!loadedIds.has(o.id)) {
+                            myOrders.push(o);
+                            loadedIds.add(o.id);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error('Error al cargar historial:', e);
             }
         } else {
-            // 2b. Si es INVITADO: Buscamos UNO por UNO los pedidos guardados localmente
-            // Esto es mucho más seguro que descargar toda la base de datos
+            // 2b. Si es INVITADO: Buscamos los pedidos locales restantes
             const localIds = JSON.parse(localStorage.getItem('lvs_guest_orders')) || [];
+            const idsToFetch = localIds.filter(id => id !== trackedId);
             
-            if (localIds.length > 0) {
-                // Hacemos fetch en paralelo para cada ID guardado
-                const fetchPromises = localIds.map(id => 
+            if (idsToFetch.length > 0) {
+                const fetchPromises = idsToFetch.map(id => 
                     fetch(`/api/orders/${id}`).then(res => res.ok ? res.json() : null)
                 );
                 
                 const results = await Promise.all(fetchPromises);
-                // Filtramos los nulos (pedidos no encontrados)
-                myOrders = results.filter(order => order !== null);
+                const validOrders = results.filter(order => order !== null);
+                
+                validOrders.forEach(o => {
+                    if (!loadedIds.has(o.id)) {
+                        myOrders.push(o);
+                        loadedIds.add(o.id);
+                    }
+                });
             }
-
-            // Nota: La búsqueda por email para invitados se elimina por seguridad, 
-            // ya que requeriría un endpoint inseguro de búsqueda masiva. 
-            // Los invitados solo ven lo que guardaron en su localStorage.
         }
 
         allMyOrders = myOrders; // Guardar la lista completa
