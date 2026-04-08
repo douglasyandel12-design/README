@@ -163,6 +163,14 @@ async function loadSettings() {
         if (authRes.ok) {
             const authData = await authRes.json();
             window.currentUser = authData.user;
+
+            // Sincronizar Modo Oscuro con la cuenta
+            if (window.currentUser && window.currentUser.darkMode !== undefined) {
+                const isDark = window.currentUser.darkMode;
+                localStorage.setItem('lvs_dark_mode', isDark ? 'true' : 'false');
+                if (isDark) document.documentElement.classList.add('dark-mode');
+                else document.documentElement.classList.remove('dark-mode');
+            }
             
             if (window.currentUser) {
                 const cartRes = await fetch('/api/cart');

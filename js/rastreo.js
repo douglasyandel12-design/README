@@ -264,6 +264,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const authData = await authRes.json();
         const currentUser = authData.user;
 
+        // Sincronizar Modo Oscuro con la cuenta
+        if (currentUser && currentUser.darkMode !== undefined) {
+            const isDark = currentUser.darkMode;
+            localStorage.setItem('lvs_dark_mode', isDark ? 'true' : 'false');
+            if (isDark) document.documentElement.classList.add('dark-mode');
+            else document.documentElement.classList.remove('dark-mode');
+        }
+
         const urlParams = new URLSearchParams(window.location.search);
         const trackedId = urlParams.get('id');
 

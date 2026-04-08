@@ -78,7 +78,8 @@ const UserSchema = new mongoose.Schema({
   picture: String,
   isVerified: { type: Boolean, default: false },
   verificationCode: String,
-  cart: { type: Array, default: [] } // Campo para guardar el carrito
+  cart: { type: Array, default: [] }, // Campo para guardar el carrito
+  darkMode: { type: Boolean, default: false } // Nueva preferencia de modo oscuro
 }, { timestamps: true });
 const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
@@ -333,7 +334,8 @@ router.post('/auth/login', async (req, res) => {
           email: dbUser.email, 
           isAdmin: dbUser.isAdmin, 
           picture: dbUser.picture,
-          provider: 'local' // Marcamos que es cuenta local
+          provider: 'local', // Marcamos que es cuenta local
+          darkMode: dbUser.darkMode // Enviamos su preferencia visual
         };
         return req.login(userPayload, (err) => {
           if (err) return res.status(500).json({ message: 'Error de sesión' });
@@ -496,7 +498,7 @@ router.post('/auth/verify', async (req, res) => {
             await user.save();
 
             // Iniciar sesión automáticamente
-            const userPayload = { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin, picture: user.picture, provider: 'local' };
+            const userPayload = { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin, picture: user.picture, provider: 'local', darkMode: user.darkMode };
             req.login(userPayload, (err) => {
                 if (err) return res.status(500).json({ message: 'Verificado, pero error al iniciar sesión.' });
                 return res.json({ message: '¡Cuenta verificada con éxito!', user: userPayload });
@@ -531,6 +533,27 @@ router.post('/cart', isAuthenticated, async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Error al guardar el carrito' });
+  }
+});
+
+// RUTA: Guardar Preferencias (Modo Oscuro, etc)
+router.put('/auth/preferences', isAuthenticated, async (req, res) => {
+  try {
+    const { darkMode } = req.body;
+    if (darkMode !== undefined) req.user.darkMode = darkMode; // Actualizar en la sesión activa
+
+    await connectToDatabase();
+    // Guardar en Base de datos solo si es usuario local
+    if (req.user.provider === 'local' || (req.user.id && req.user.id.length > 20)) {
+      const user = await User.findById(req.user.id);
+      if (user) {
+        if (darkMode !== undefined) user.darkMode = darkMode;
+        await user.save();
+      }
+    }
+    res.json({ message: 'Preferencias actualizadas', darkMode });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al guardar preferencias' });
   }
 });
 

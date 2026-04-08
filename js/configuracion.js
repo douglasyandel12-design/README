@@ -232,6 +232,15 @@ window.toggleDarkMode = function(isDark) {
         localStorage.setItem('lvs_dark_mode', 'false');
         document.documentElement.classList.remove('dark-mode');
     }
+
+    // Guardar en la base de datos de manera silenciosa si hay sesión
+    if (currentUser) {
+        fetch('/api/auth/preferences', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ darkMode: isDark })
+        }).catch(e => console.error('Error guardando preferencia:', e));
+    }
 }
 
 async function handleUpdateProfile(e) {

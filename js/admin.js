@@ -23,6 +23,18 @@ function debounce(func, delay) {
 // Cargar productos desde la nube al iniciar
 async function initAdmin() {
     try {
+        // Sincronizar Modo Oscuro
+        const authRes = await fetch('/api/auth/status');
+        if (authRes.ok) {
+            const authData = await authRes.json();
+            if (authData.user && authData.user.darkMode !== undefined) {
+                const isDark = authData.user.darkMode;
+                localStorage.setItem('lvs_dark_mode', isDark ? 'true' : 'false');
+                if (isDark) document.documentElement.classList.add('dark-mode');
+                else document.documentElement.classList.remove('dark-mode');
+            }
+        }
+
         const res = await fetch('/api/products?all=true');
         if (res.ok) {
             products = await res.json();

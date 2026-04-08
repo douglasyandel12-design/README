@@ -270,6 +270,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
+    // Sincronizar Modo Oscuro con la cuenta
+    if (user && user.darkMode !== undefined) {
+        const isDark = user.darkMode;
+        localStorage.setItem('lvs_dark_mode', isDark ? 'true' : 'false');
+        if (isDark) document.documentElement.classList.add('dark-mode');
+        else document.documentElement.classList.remove('dark-mode');
+    }
+
         // Renderizar tarjeta de perfil
         const profileCard = document.getElementById('profile-card');
         if (profileCard) {

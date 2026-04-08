@@ -824,6 +824,14 @@ async function initPedido() {
         const sessionData = sessionRes.ok ? await sessionRes.json() : { user: null };
         window.currentUser = sessionData.user;
 
+    // Sincronizar Modo Oscuro con la cuenta
+    if (window.currentUser && window.currentUser.darkMode !== undefined) {
+        const isDark = window.currentUser.darkMode;
+        localStorage.setItem('lvs_dark_mode', isDark ? 'true' : 'false');
+        if (isDark) document.documentElement.classList.add('dark-mode');
+        else document.documentElement.classList.remove('dark-mode');
+    }
+
         // PASO 2: Sincronizar carrito (puede que cambie el contenido de `cart`)
         if (window.currentUser) {
             try {
