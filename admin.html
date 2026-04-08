@@ -5,22 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LVS² Shop | Admin</title>
     <link rel="icon" href="img/Logo.jpg" type="image/jpeg">
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/admin.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <link rel="stylesheet" href="css/admin.css">
 </head>
 <body>
     <header>
         <nav>
             <a href="index.html" class="logo">LVS² Admin</a>
-            <a href="index.html" style="text-decoration: none; color: var(--text-dark);">Ir a la Tienda</a>
+            <a href="index.html" class="nav-link">Ir a la Tienda</a>
         </nav>
     </header>
 
     <main class="container">
         <h1>Panel de Control</h1>
         <br>
-        <div class="card" style="margin-bottom: 2rem;">
+        <div class="card card-spaced">
             <h2>Resumen de Ventas</h2>
             <canvas id="salesChart"></canvas>
         </div>
@@ -46,11 +47,11 @@
 
             <!-- Sección de Pedidos -->
             <div class="card orders-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; margin-bottom: 1rem;">
+                <div class="section-header">
                     <h2>Pedidos Recibidos</h2>
-                    <button class="btn" style="width: auto; padding: 0.5rem 1rem;" onclick="exportOrdersToCSV()">Exportar (CSV)</button>
+                    <button class="btn btn-outline" onclick="exportOrdersToCSV()">Exportar (CSV)</button>
                 </div>
-                <div id="orders-list" style="margin-top: 1rem;"></div>
+                <div id="orders-list" class="mt-4"></div>
             </div>
         </div>
     </main>
@@ -72,7 +73,7 @@
                         </div>
                         <div class="form-group">
                             <label>Descripción</label>
-                            <div id="edit-editor-container" style="height: 150px; background: white;"></div>
+                            <div id="edit-editor-container" class="editor-box"></div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
@@ -94,24 +95,25 @@
                         <div class="image-manager">
                             <h4>📸 Galería de Imágenes</h4>
                             <div class="img-input-group">
-                                <input type="text" id="img-url-edit" placeholder="Pegar URL de imagen..." style="margin-bottom:0;">
-                                <button type="button" class="btn" onclick="addImageFromUrl('edit')" style="width:auto; padding: 5px 10px;">+</button>
+                                <input type="text" id="img-url-edit" placeholder="Pegar URL de imagen...">
+                                <button type="button" class="btn btn-outline" onclick="addImageFromUrl('edit')">+</button>
                             </div>
-                            <div style="margin-bottom:10px; text-align:center; font-size:0.8rem; color:#666;">O</div>
+                            <div class="text-divider">O</div>
                             <label for="img-file-edit" class="custom-file-upload">Seleccionar imágenes</label>
                             <input type="file" id="img-file-edit" accept="image/*" multiple onchange="addImageFromFile('edit')">
                             <div id="img-preview-edit" class="img-preview-list"></div>
                         </div>
                         <!-- Contenedor para múltiples videos -->
-                        <div id="video-manager-ui" class="image-manager" style="margin-top: 1rem; border-color: #e5e7eb;"></div>
+                        <div id="video-manager-ui" class="image-manager mt-4"></div>
 
-                        <div id="edit-promo-container" style="margin-top: 1rem; padding: 0.5rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px;">
-                            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color: #166534; font-weight: 500;"><input type="checkbox" id="edit-is-promo"><span>🌟 Activar promoción "Más compras, más barato"</span></label><small style="display:block; margin-top:4px; color:#166534;">Si activas esto, este producto bajará de precio según la cantidad (2 items = $2 menos, etc).</small>
+                        <div id="edit-promo-container" class="info-panel mt-4">
+                            <label class="promo-toggle"><input type="checkbox" id="edit-is-promo"><span>🌟 Activar promoción "Más compras, más barato"</span></label>
+                            <small class="promo-hint">Si activas esto, este producto bajará de precio según la cantidad (2 items = $2 menos, etc).</small>
                         </div>
                     </div>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn" style="background: #ccc; color: #333;" onclick="closeEditModal()">Cancelar</button>
+                    <button type="button" class="btn btn-outline" onclick="closeEditModal()">Cancelar</button>
                     <button type="submit" class="btn">Guardar Cambios</button>
                 </div>
             </form>

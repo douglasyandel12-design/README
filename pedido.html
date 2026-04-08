@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LVS² Shop | Finalizar Pedido</title>
+    <link rel="stylesheet" href="css/common.css">
     <link rel="stylesheet" href="css/pedido.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
 </head>
@@ -27,15 +28,15 @@
                 <label>Correo Electrónico</label>
                 <input type="email" id="client-email" required placeholder="juan@ejemplo.com">
             </div>
-            <div class="form-group" style="flex-direction: row; align-items: center; gap: 10px; background: #f9fafb; padding: 0.75rem; border-radius: 6px; margin-top: -0.5rem;">
-                <input type="checkbox" id="remember-email" style="width: auto; height: auto; transform: scale(1.2);">
-                <label for="remember-email" style="margin: 0; font-size: 0.9rem; cursor: pointer;">Recordar mi correo en este dispositivo para futuras promociones.</label>
+            <div class="form-group checkbox-row">
+                <input type="checkbox" id="remember-email">
+                <label for="remember-email">Recordar mi correo en este dispositivo para futuras promociones.</label>
             </div>
             <div class="form-group">
                 <label>Número de Teléfono</label>
                 <input type="tel" id="client-phone" required placeholder="Ej: 55 1234 5678">
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="grid-2">
                 <div class="form-group">
                     <label>País</label>
                     <select id="client-country" required><option value="">Cargando países...</option></select>
@@ -66,7 +67,7 @@
 
         <div class="order-summary">
             <h3>Resumen del Pedido</h3>
-            <div id="items-list" style="margin: 1rem 0; border-bottom: 1px solid #eee; padding-bottom: 1rem;"></div>
+            <div id="items-list" class="panel-block"></div>
             <div class="total-row">
                 <span>Total a Pagar:</span>
                 <span id="order-total">$0.00</span>

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LVS² Shop | Carrito</title>
+    <link rel="stylesheet" href="css/common.css">
     <link rel="stylesheet" href="css/carrito.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
     <style>
@@ -41,7 +42,7 @@
     <header>
         <nav>
             <a href="index.html" class="logo">LVS² Shop</a>
-            <a href="index.html" style="text-decoration: none; color: var(--text-dark);">Seguir Comprando</a>
+            <a href="index.html" class="nav-link">Seguir Comprando</a>
         </nav>
     </header>
 
@@ -52,10 +53,12 @@
             <!-- Tabla generada por JS -->
         </div>
 
-        <div class="summary" id="cart-summary" style="display: none;">
+        <div class="summary hidden" id="cart-summary">
             <span class="total-price">Total: <span id="total-amount">$0.00</span></span>
-            <button class="btn btn-danger" onclick="clearCart()" style="margin-right: 1rem;">Vaciar Carrito</button>
-            <button class="btn" id="checkout-btn">Proceder al Pago</button>
+            <div class="button-group">
+                <button class="btn btn-danger" onclick="clearCart()">Vaciar Carrito</button>
+                <button class="btn" id="checkout-btn">Proceder al Pago</button>
+            </div>
         </div>
     </main>
 

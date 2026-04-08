@@ -5,20 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LVS² Shop | Configuración</title>
     <link rel="icon" href="img/Logo.jpg" type="image/jpeg">
+    <link rel="stylesheet" href="css/common.css">
     <link rel="stylesheet" href="css/configuracion.css">
 </head>
 <body>
     <header>
         <nav>
             <a href="index.html" class="logo">LVS² Shop</a>
-            <a href="index.html" style="text-decoration: none; color: var(--text-dark);">← Volver a la Tienda</a>
+            <a href="index.html" class="nav-link">← Volver a la Tienda</a>
         </nav>
     </header>
 
     <main class="container">
         <div class="card">
             <h2>Configuración de Envío</h2>
-            <p style="color: #666; font-size: 0.9rem; margin-bottom: 1.5rem;">Guarda tu información para autocompletar en futuras compras.</p>
+            <p class="helper-text">Guarda tu información para autocompletar en futuras compras.</p>
             <form id="shipping-form" onsubmit="saveShippingInfo(event)">
                 <div class="form-group">
                     <label>Teléfono de Contacto</label>

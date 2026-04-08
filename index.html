@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LVS² Shop | Inicio</title>
     <link rel="icon" href="img/Logo.jpg" type="image/jpeg">
+    <link rel="stylesheet" href="css/common.css">
     <link rel="stylesheet" href="css/index.css">
     <!-- Frameworks y Librerías -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
@@ -38,12 +39,12 @@
                 <!-- Items injected here -->
                 <p>Tu carrito está vacío.</p>
                         </div>
-            <div style="margin-top: 1rem; border-top: 1px solid #eee; padding-top: 1rem;">
-                <p style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 1rem;">
+            <div class="cart-footer">
+                <div class="cart-total-row">
                     <span>Total:</span>
                     <span id="modal-total">$0.00</span>
-                </p>
-                <a href="carrito.html" class="btn" style="display: block; text-align: center; text-decoration: none; margin-bottom: 0.5rem;">Ver Carrito Completo</a>
+                </div>
+                <a href="carrito.html" class="btn btn-block">Ver Carrito Completo</a>
             </div>
         </div>
     </div>
@@ -55,7 +56,7 @@
     </section>
     
     <main class="container">
-        <h2 style="margin-bottom: 1.5rem;">Nuestros Productos</h2>
+        <h2 class="section-title">Nuestros Productos</h2>
         <div class="product-grid" id="product-grid">
             <!-- Los productos se generarán con JS -->
         </div>

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LVS² Shop | Acceso</title>
     <link rel="icon" href="img/Logo.jpg" type="image/jpeg">
+    <link rel="stylesheet" href="css/common.css">
     <link rel="stylesheet" href="css/login.css">
 </head>
 <body>
@@ -28,9 +29,9 @@
             </div>
             <p class="error" id="login-error">Credenciales incorrectas.</p>
             <button type="submit" class="btn">Entrar</button>
-            <p style="text-align: center; margin: 1rem 0; color: #999;">o</p>
-            <a href="/api/auth/google" class="btn google-btn" style="text-decoration: none; margin-top: 0;">
-                <span style="font-weight: bold;">G</span> Continuar con Google
+            <p class="text-divider">o</p>
+            <a href="/api/auth/google" class="btn google-btn btn-block">
+                <span class="google-mark">G</span> Continuar con Google
             </a>
         </form>
 
@@ -51,25 +52,25 @@
                 </div>
                 <button type="submit" class="btn">Crear Cuenta</button>
             </form>
-            <p style="text-align: center; margin: 1rem 0; color: #999;">o</p>
-            <a href="/api/auth/google" class="btn google-btn" style="text-decoration: none; margin-top: 0;">
-                <span style="font-weight: bold;">G</span> Continuar con Google
+            <p class="text-divider">o</p>
+            <a href="/api/auth/google" class="btn google-btn btn-block">
+                <span class="google-mark">G</span> Continuar con Google
             </a>
         </div>
 
         <!-- Nuevo formulario de Verificación (Oculto por defecto) -->
         <div id="verify-form" class="hidden">
-            <h3 style="text-align: center; margin-bottom: 1rem;">Verificar Correo</h3>
-            <p style="text-align: center; font-size: 0.9rem; color: #666; margin-bottom: 1.5rem;">
+            <h3 class="text-center">Verificar Correo</h3>
+            <p class="text-center small-text mb-4">
                 Hemos enviado un código de 6 dígitos a <strong id="verify-email-display"></strong>.
             </p>
             <form onsubmit="handleVerification(event)">
                 <div class="form-group">
                     <label>Código de Verificación</label>
-                    <input type="text" id="verify-code" placeholder="Ej: 123456" style="text-align: center; letter-spacing: 5px; font-size: 1.2rem;" required maxlength="6">
+                    <input type="text" id="verify-code" class="code-input" placeholder="Ej: 123456" required maxlength="6">
                 </div>
                 <button type="submit" class="btn">Verificar y Entrar</button>
-                <button type="button" class="btn btn-outline" style="margin-top: 10px; background: transparent; color: #555; border: 1px solid #ddd;" onclick="location.reload()">Cancelar</button>
+                <button type="button" class="btn btn-outline" onclick="location.reload()">Cancelar</button>
             </form>
         </div>
     </div>
