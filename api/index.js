@@ -779,6 +779,7 @@ router.post('/orders', async (req, res) => {
 
         let serverTotal = 0;
         const stockUpdates = [];
+        const finalItems = [];
 
         for (const item of items) {
             // Asegurar comparación robusta de ID (String vs Number)
@@ -818,6 +819,15 @@ router.post('/orders', async (req, res) => {
                     }
                 });
             }
+
+            // Añadir el item final con la imagen y el precio calculado
+            finalItems.push({
+                id: item.id,
+                name: product.name,
+                price: price,
+                quantity: item.quantity,
+                image: (product.images && product.images.length > 0) ? product.images[0] : (product.image || '')
+            });
         }
 
         // 5. Crear y guardar el nuevo pedido
@@ -825,9 +835,9 @@ router.post('/orders', async (req, res) => {
             id: 'ORD-' + Math.floor(100000 + Math.random() * 900000), // NOTA: Es mejor usar una librería como `nanoid` para IDs únicos.
             status: 'En progreso',
             date: new Date().toISOString(), // Usar formato estándar
-        userId: req.user ? req.user.id : null,
+            userId: req.user ? req.user.id : null,
             customer,
-            items,
+            items: finalItems,
             total: serverTotal // Usar el total calculado en el servidor
         });
         await newOrder.save({ session });
@@ -839,16 +849,19 @@ router.post('/orders', async (req, res) => {
 
         await session.commitTransaction();
         
-        // Enviar correo de notificación al admin (sin bloquear la respuesta al cliente)
+        // Enviar correo de notificación al admin
         try {
             if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-                // No usamos await aquí para no retrasar la respuesta al cliente
-                sendNewOrderNotificationEmail(newOrder).catch(err => console.error('Error enviando email al admin:', err));
+                const emailPromises = [];
+                emailPromises.push(sendNewOrderNotificationEmail(newOrder).catch(err => console.error('Error enviando email al admin:', err)));
                 
                 // Enviar email al cliente si proporcionó un correo electrónico
                 if (newOrder.customer.email) {
-                    sendCustomerOrderConfirmationEmail(newOrder).catch(err => console.error('Error enviando email al cliente:', err));
+                    emailPromises.push(sendCustomerOrderConfirmationEmail(newOrder).catch(err => console.error('Error enviando email al cliente:', err)));
                 }
+                
+                // En Vercel (Serverless) es imperativo usar await antes de enviar la respuesta, de lo contrario las funciones asíncronas se cancelan.
+                await Promise.all(emailPromises);
             } else {
                 console.warn('EMAIL_USER o EMAIL_PASS no configurados. No se enviará correo de pedido.');
             }

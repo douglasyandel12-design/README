@@ -218,8 +218,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div style="margin-bottom: 1rem;">
                         <ul style="list-style: none; padding: 0; margin: 0;">
                             ${order.items.map(item => `
-                                <li style="display: flex; justify-content: space-between; font-size: 0.95rem; color: #374151; margin-bottom: 4px;">
-                                    <span>${item.quantity}x ${item.name}</span>
+                                <li style="display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; color: #374151; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <img src="${item.image || 'https://placehold.co/64x64?text=Foto'}" alt="${item.name}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid #eee;">
+                                        <span><span style="font-weight: bold; margin-right: 4px;">${item.quantity}x</span> ${item.name}</span>
+                                    </div>
                                     <span style="font-weight: 500;">${currencyManager.format(item.price * item.quantity)}</span>
                                 </li>
                             `).join('')}

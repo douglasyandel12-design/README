@@ -363,7 +363,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <ul class="order-item-list">
                                 ${order.items.map(item => `
                                     <li class="order-item">
-                                        <span class="item-name"><span class="item-qty">${item.quantity}x</span> ${item.name}</span>
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <img src="${item.image || 'https://placehold.co/64x64?text=Foto'}" alt="${item.name}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid #eee;">
+                                            <span class="item-name"><span class="item-qty">${item.quantity}x</span> ${item.name}</span>
+                                        </div>
                                         <span class="item-price">${currencyManager.format(item.price * item.quantity)}</span>
                                     </li>
                                 `).join('')}
