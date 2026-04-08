@@ -781,6 +781,7 @@ router.post('/orders', async (req, res) => {
         
         const isProgressivePromoActive = settings.promo_progressive_active === true && (req.user || settings.promo_progressive_public === true);
         const isMemberPromoActive = settings.promo_login_5 === true && req.user; // req.user existe si hay sesión válida
+        const memberPromoPercent = parseFloat(settings.promo_login_percent) || 5;
 
         let serverTotal = 0;
         const stockUpdates = [];
@@ -811,7 +812,7 @@ router.post('/orders', async (req, res) => {
             }
 
             // Lógica de Descuento Socio
-            if (isMemberPromoActive) price = price * 0.95;
+            if (isMemberPromoActive) price = price * (1 - (memberPromoPercent / 100));
 
             serverTotal += price * item.quantity;
 

@@ -600,7 +600,8 @@ function updateModalPriceDisplay(product, quantity) {
     
     const canSeeMemberPromo = globalSettings.promo_login_5 === true && window.currentUser;
     if (canSeeMemberPromo) {
-         html += `<small style="color:green; display:block; font-size:0.8rem; margin-top:2px;">+ 5% Descuento Socio</small>`;
+         const memberPromoPercent = parseFloat(globalSettings.promo_login_percent) || 5;
+         html += `<small style="color:green; display:block; font-size:0.8rem; margin-top:2px;">+ ${memberPromoPercent}% Descuento Socio</small>`;
     }
 
     // Añadir el precio total si la cantidad es mayor a 1
@@ -769,6 +770,7 @@ function renderRelatedProducts(currentId) {
     let html = '';
     const isPromoActive = globalSettings.promo_login_5 === true && window.currentUser;
     const canSeeProgressivePromo = globalSettings.promo_progressive_active === true && (window.currentUser || globalSettings.promo_progressive_public === true);
+    const memberPromoPercent = parseFloat(globalSettings.promo_login_percent) || 5;
 
     selected.forEach((product, index) => {
         const mainImage = (product.images && product.images.length > 0) ? product.images[0] : (product.image || '');
@@ -784,11 +786,11 @@ function renderRelatedProducts(currentId) {
         }
         if (canSeeProgressivePromo) promoMsg = `<small style="color: #d97706; display:block; font-size:0.7rem; margin-top:2px;">¡Promo por cantidad activa!</small>`;
         if (isPromoActive) {
-            displayPrice = displayPrice * 0.95;
+            displayPrice = displayPrice * (1 - (memberPromoPercent / 100));
             if (!originalPriceHtml && displayPrice < product.price) {
                 originalPriceHtml = `<span class="original-price" style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">${currencyManager.format(product.price)}</span>`;
             }
-            promoMsg += `<small style="color:green; display:block; font-size:0.7rem; margin-top:2px;">+ 5% Descuento Socio</small>`;
+            promoMsg += `<small style="color:green; display:block; font-size:0.7rem; margin-top:2px;">+ ${memberPromoPercent}% Descuento Socio</small>`;
         }
 
         html += `
@@ -923,7 +925,10 @@ window.updateSpPriceDisplay = function(quantity) {
     if (globalSettings.promo_progressive_active === true && (window.currentUser || globalSettings.promo_progressive_public === true) && quantity >= 2) {
          html += `<div style="color: #d97706; font-size:0.8rem; margin-top:6px; font-weight: 500;">🔥 ¡Ahorras ${currencyManager.format(Math.min(quantity, 5))} por unidad!</div>`;
     }
-    if (globalSettings.promo_login_5 === true && window.currentUser) html += `<div style="color:green; font-size:0.8rem; margin-top:4px; font-weight: 500;">✨ + 5% Descuento Socio</div>`;
+    if (globalSettings.promo_login_5 === true && window.currentUser) {
+         const memberPromoPercent = parseFloat(globalSettings.promo_login_percent) || 5;
+         html += `<div style="color:green; font-size:0.8rem; margin-top:4px; font-weight: 500;">✨ + ${memberPromoPercent}% Descuento Socio</div>`;
+    }
     if (quantity > 1) html += `<div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e5e7eb; font-size: 1.1rem; font-weight: 600; color: #111;">Total: ${currencyManager.format(unitPrice * quantity)}</div>`;
     priceEl.innerHTML = html;
 }
@@ -1181,6 +1186,7 @@ function renderProducts() {
 
     // Verificar si aplica promo de socio (Usuario logueado + Config activa)
     const isPromoActive = globalSettings.promo_login_5 === true && window.currentUser;
+    const memberPromoPercent = parseFloat(globalSettings.promo_login_percent) || 5;
 
     const filteredProducts = products.filter(p => {
         // Filtro de Stock: Si el stock es 0, el producto no se muestra
@@ -1237,11 +1243,11 @@ function renderProducts() {
         
         // Aplicar descuento de socio (5%) para visualización si está activo
         if (isPromoActive) {
-            displayPrice = displayPrice * 0.95;
+            displayPrice = displayPrice * (1 - (memberPromoPercent / 100));
             if (!originalPriceHtml && displayPrice < product.price) {
                 originalPriceHtml = `<span class="original-price" style="text-decoration:line-through; color:#999; margin-right:5px; font-size: 0.9rem;">${currencyManager.format(product.price)}</span>`;
             }
-            promoMsg += `<small style="color:green; display:block; font-size:0.7rem; margin-top:2px;">+ 5% Descuento Socio</small>`;
+            promoMsg += `<small style="color:green; display:block; font-size:0.7rem; margin-top:2px;">+ ${memberPromoPercent}% Descuento Socio</small>`;
         }
         
         const card = document.createElement('div');
@@ -1308,10 +1314,11 @@ function calculateItemPrice(product, quantity) {
         priceAfterPrimaryDiscount = product.price;
     }
 
-    // 2. Aplicar descuento de socio (5%) SOBRE el precio ya rebajado, si aplica.
+    // 2. Aplicar descuento de socio dinámico SOBRE el precio ya rebajado, si aplica.
     const isMemberPromoActive = globalSettings.promo_login_5 === true && window.currentUser;
     if (isMemberPromoActive) {
-        return priceAfterPrimaryDiscount * 0.95;
+        const memberPromoPercent = parseFloat(globalSettings.promo_login_percent) || 5;
+        return priceAfterPrimaryDiscount * (1 - (memberPromoPercent / 100));
     }
 
     return priceAfterPrimaryDiscount;

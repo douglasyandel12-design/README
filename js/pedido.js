@@ -521,10 +521,11 @@ function calculateItemPrice(product, quantity) {
         priceAfterPrimaryDiscount = product.price;
     }
 
-    // 2. Aplicar descuento de socio (5%) SOBRE el precio ya rebajado, si aplica.
+    // 2. Aplicar descuento de socio dinámico SOBRE el precio ya rebajado, si aplica.
     const isMemberPromoActive = globalSettings.promo_login_5 === true && window.currentUser;
     if (isMemberPromoActive) {
-        return priceAfterPrimaryDiscount * 0.95;
+        const memberPromoPercent = parseFloat(globalSettings.promo_login_percent) || 5;
+        return priceAfterPrimaryDiscount * (1 - (memberPromoPercent / 100));
     }
 
     return priceAfterPrimaryDiscount;

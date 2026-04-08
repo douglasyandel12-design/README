@@ -566,17 +566,24 @@ async function renderSettingsPanel() {
         } catch(e) { console.error(e); }
 
         const isLoginPromoActive = settings.promo_login_5 === true;
+        const loginPromoPercent = parseFloat(settings.promo_login_percent) || 5;
         const isProgressivePromoActive = settings.promo_progressive_active === true;
         const isProgressivePromoPublic = settings.promo_progressive_public === true;
 
         panel.innerHTML = `
             <h3>⚙️ Configuración Global de Promociones</h3>
             
-            <div class="setting-accordion" style="background: #fff;">
-                <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight: bold;">
-                    <input type="checkbox" id="promo-toggle" ${isLoginPromoActive ? 'checked' : ''} style="width: 20px; height: 20px;">
+            <div class="setting-accordion" style="background: #fff; padding: 1rem;">
+                <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight: bold; margin-bottom: 0;">
+                    <input type="checkbox" id="promo-toggle" ${isLoginPromoActive ? 'checked' : ''} style="width: 20px; height: 20px; margin: 0;">
                     <span>Activar <strong>Descuento para Socios</strong></span>
                 </label>
+                <div style="margin-top: 15px; margin-left: 30px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <label for="promo-percent-input" style="font-weight: 500; margin: 0; color: #4b5563;">Porcentaje de descuento:</label>
+                    <input type="number" id="promo-percent-input" value="${loginPromoPercent}" min="1" max="99" style="width: 70px; padding: 5px 10px; border: 1px solid #d1d5db; border-radius: 4px; margin: 0;">
+                    <span style="font-weight: bold; color: #4b5563;">%</span>
+                    <button id="save-promo-percent" class="btn" style="width: auto; padding: 5px 15px; margin: 0; font-size: 0.85rem; background-color: #f3f4f6; color: #111; border: 1px solid #d1d5db;">Guardar %</button>
+                </div>
             </div>
 
             <div class="setting-accordion">
@@ -608,6 +615,17 @@ async function renderSettingsPanel() {
             });
             showAdminToast('Descuento para socios actualizado.');
         });
+
+    const savePercentBtn = document.getElementById('save-promo-percent');
+    if (savePercentBtn) savePercentBtn.addEventListener('click', async () => {
+        const percent = parseFloat(document.getElementById('promo-percent-input').value) || 5;
+        await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: 'promo_login_percent', value: percent })
+        });
+        showAdminToast('Porcentaje de descuento actualizado al ' + percent + '%.');
+    });
 
         const progressiveToggle = document.getElementById('progressive-promo-toggle');
 
