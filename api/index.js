@@ -214,7 +214,7 @@ const sendNewOrderNotificationEmail = async (order) => {
   await transporter.sendMail(mailOptions);
 };
 
-const sendCustomerOrderConfirmationEmail = async (order) => {
+const sendCustomerOrderConfirmationEmail = async (order, req) => {
   // Si el cliente no dejó un correo, detenemos la función
   if (!order.customer.email) return;
 
@@ -225,6 +225,10 @@ const sendCustomerOrderConfirmationEmail = async (order) => {
     </tr>
   `).join('');
 
+  // Detectar automáticamente el dominio de Vercel para que el botón funcione al instante
+  const host = req ? req.get('host') : null;
+  const appUrl = process.env.APP_URL || (host ? `https://${host}` : 'https://lvs-shop-oficial.vercel.app/');
+
   const mailOptions = {
     from: '"LVS Shop" <' + process.env.EMAIL_USER + '>',
     to: order.customer.email, // Correo del cliente
@@ -234,9 +238,10 @@ const sendCustomerOrderConfirmationEmail = async (order) => {
         <h2 style="color: #000; text-align: center;">¡Gracias por tu compra, ${order.customer.name}!</h2>
         <p>Hemos recibido tu pedido y ya estamos trabajando en él.</p>
         
-        <div style="text-align: center; margin-top: 20px; background: #f9f9f9; padding: 15px; border-radius: 8px;">
+        <div style="text-align: center; margin-top: 20px; background: #f9f9f9; padding: 25px 15px; border-radius: 8px;">
           <p style="margin: 0; color: #666; font-size: 14px;">Tu número de seguimiento es:</p>
-          <h2 style="margin: 5px 0 0 0; letter-spacing: 1px; color: #2563eb;">#${order.id}</h2>
+          <h2 style="margin: 5px 0 20px 0; letter-spacing: 1px; color: #2563eb;">#${order.id}</h2>
+          <a href="${appUrl}/rastreo.html?id=${order.id}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">Rastrear mi pedido</a>
         </div>
 
         <h3 style="border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 30px;">Resumen del Pedido</h3>
@@ -857,7 +862,7 @@ router.post('/orders', async (req, res) => {
                 
                 // Enviar email al cliente si proporcionó un correo electrónico
                 if (newOrder.customer.email) {
-                    emailPromises.push(sendCustomerOrderConfirmationEmail(newOrder).catch(err => console.error('Error enviando email al cliente:', err)));
+                    emailPromises.push(sendCustomerOrderConfirmationEmail(newOrder, req).catch(err => console.error('Error enviando email al cliente:', err)));
                 }
                 
                 // En Vercel (Serverless) es imperativo usar await antes de enviar la respuesta, de lo contrario las funciones asíncronas se cancelan.
