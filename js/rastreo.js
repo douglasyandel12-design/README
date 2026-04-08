@@ -193,10 +193,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Lógica para país y bandera
             let countryHtml = '';
-            if (order.customer.countryCode && order.customer.country) {
+            if (order.customer.countryCode && order.customer.country && order.customer.countryCode !== 'undefined') {
+                const safeCode = String(order.customer.countryCode).toLowerCase();
                 countryHtml = `
                     <div style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: #6b7280; margin-top: 4px;">
-                        <img src="https://flagcdn.com/w20/${order.customer.countryCode.toLowerCase()}.png" width="16" alt="Bandera de ${order.customer.country}">
+                        <img src="https://flagcdn.com/w20/${safeCode}.png" width="16" alt="Bandera de ${order.customer.country}" onerror="this.style.display='none'">
                         <span>${order.customer.country}</span>
                     </div>
                 `;
