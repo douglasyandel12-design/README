@@ -1,3 +1,6 @@
+// --- SISTEMA DE MODO OSCURO GLOBAL ---
+(function applyDarkMode(){const isDark=localStorage.getItem('lvs_dark_mode')==='true';if(isDark)document.documentElement.classList.add('dark-mode');if(!document.getElementById('dark-mode-styles')){const style=document.createElement('style');style.id='dark-mode-styles';style.innerHTML=`html.dark-mode body{background-color:#121212 !important;color:#f3f4f6 !important;}html.dark-mode header,html.dark-mode footer,html.dark-mode nav,html.dark-mode .settings-sidebar,html.dark-mode .settings-content,html.dark-mode .order-card,html.dark-mode .product-card,html.dark-mode .sp-media,html.dark-mode form,html.dark-mode .order-summary,html.dark-mode .product-modal-content,html.dark-mode .cart-content,html.dark-mode .pm-details,html.dark-mode .pm-image-container,html.dark-mode .accordion-header,html.dark-mode .hero{background-color:#1f2937 !important;color:#f3f4f6 !important;border-color:#374151 !important;}html.dark-mode input,html.dark-mode select,html.dark-mode textarea{background-color:#374151 !important;color:#f3f4f6 !important;border-color:#4b5563 !important;}html.dark-mode h1,html.dark-mode h2,html.dark-mode h3,html.dark-mode h4,html.dark-mode strong,html.dark-mode .product-title,html.dark-mode .pm-title,html.dark-mode .item-price,html.dark-mode .total-amount,html.dark-mode .order-value,html.dark-mode .sp-details h1{color:#ffffff !important;}html.dark-mode .logo{color:#ffffff !important;}html.dark-mode .btn-outline{color:#f3f4f6 !important;border-color:#6b7280 !important;background:transparent !important;}html.dark-mode .btn-outline:hover{background:#374151 !important;}html.dark-mode .btn{background-color:#3b82f6 !important;color:#ffffff !important;border-color:#3b82f6 !important;}html.dark-mode .btn:hover{background-color:#2563eb !important;}html.dark-mode .settings-menu-btn{color:#d1d5db !important;border-color:#374151 !important;background:transparent !important;}html.dark-mode .settings-menu-btn:hover,html.dark-mode .settings-menu-btn.active{background-color:#374151 !important;color:#ffffff !important;border-left-color:#3b82f6 !important;}html.dark-mode .empty-state,html.dark-mode .order-header,html.dark-mode .accordion-content,html.dark-mode .cart-table th{background-color:#111827 !important;border-color:#374151 !important;color:#d1d5db !important;}html.dark-mode .track-line-bg{background:#374151 !important;}html.dark-mode .step-counter{background:#1f2937 !important;border-color:#374151 !important;color:#9ca3af !important;}html.dark-mode .stepper-item.active .step-counter{border-color:#3b82f6 !important;color:#3b82f6 !important;background:#1f2937 !important;}html.dark-mode .stepper-item.completed .step-counter{background:#10b981 !important;border-color:#10b981 !important;color:#fff !important;}html.dark-mode .filter-btn{background-color:#1f2937 !important;color:#d1d5db !important;border-color:#374151 !important;}html.dark-mode .filter-btn:hover,html.dark-mode .filter-btn.active{background-color:#3b82f6 !important;color:#fff !important;border-color:#3b82f6 !important;}html.dark-mode .header-search-container input{background:#1f2937 !important;border-color:#374151 !important;color:#fff !important;}html.dark-mode .filter-chip{background:#374151 !important;color:#d1d5db !important;}html.dark-mode .filter-chip.active{background:#3b82f6 !important;color:#fff !important;}html.dark-mode .dropdown-menu{background:#1f2937 !important;border-color:#374151 !important;}html.dark-mode .dropdown-menu a{color:#d1d5db !important;}html.dark-mode .dropdown-menu a:hover{background:#374151 !important;}html.dark-mode .cart-table td,html.dark-mode .total-row,html.dark-mode .summary-row,html.dark-mode .item-row{border-color:#374151 !important;}html.dark-mode .sp-media{background:transparent !important;}html.dark-mode .profile-info h2,html.dark-mode .profile-info p{color:#fff !important;}`;document.head.appendChild(style);}})();
+
 let currentUser = null;
 let cropInstance = null; // Instancia del recortador
 let cropResolve = null;  // Promesa para manejar la respuesta
@@ -69,6 +72,9 @@ function injectSettingsStyles() {
         .avatar-btn { color: #2563eb; font-weight: 500; font-size: 0.9rem; cursor: pointer; background: none; border: none; padding: 0; }
         .avatar-btn:hover { text-decoration: underline; }
 
+        .switch input:checked + .slider { background-color: #3b82f6; }
+        .switch input:checked ~ .slider-dot { transform: translateX(26px); }
+
         @media (max-width: 768px) {
             .settings-layout { flex-direction: column; }
             .settings-sidebar { width: 100%; display: flex; overflow-x: auto; }
@@ -91,6 +97,7 @@ function renderSettingsUI(container) {
         <div class="settings-layout">
             <div class="settings-sidebar">
                 <button class="settings-menu-btn active" onclick="switchSettingsTab('profile')">👤 Mi Perfil ${googleIcon}</button>
+                <button class="settings-menu-btn" onclick="switchSettingsTab('appearance')">🎨 Apariencia</button>
                 ${!isGoogleUser ? `<button class="settings-menu-btn" onclick="switchSettingsTab('security')">🔒 Seguridad</button>` : ''}
                 <button class="settings-menu-btn" onclick="switchSettingsTab('shipping')">🚚 Datos de Envío</button>
             </div>
@@ -134,6 +141,25 @@ function renderSettingsUI(container) {
                         <button type="button" onclick="handleDeleteAccount()" class="btn-save" style="background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; width: auto;">
                             Eliminar Cuenta Permanentemente
                         </button>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN APARIENCIA -->
+                <div id="tab-appearance" class="settings-section">
+                    <div class="settings-header">
+                        <h2>Apariencia</h2>
+                        <p>Personaliza cómo se ve la tienda en tu dispositivo.</p>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 8px; background: transparent;">
+                        <div>
+                            <strong style="display: block; font-size: 1.1rem; margin-bottom: 4px;">Modo Oscuro</strong>
+                            <span style="color: #6b7280; font-size: 0.9rem;">Cambia el tema visual de la página a colores oscuros.</span>
+                        </div>
+                        <label class="switch" style="position: relative; display: inline-block; width: 60px; height: 34px;">
+                            <input type="checkbox" id="dark-mode-toggle" onchange="window.toggleDarkMode(this.checked)" style="opacity: 0; width: 0; height: 0;" ${localStorage.getItem('lvs_dark_mode') === 'true' ? 'checked' : ''}>
+                            <span class="slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px;"></span>
+                            <span class="slider-dot" style="position: absolute; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></span>
+                        </label>
                     </div>
                 </div>
 
@@ -196,6 +222,16 @@ window.switchSettingsTab = function(tabName) {
     // Secciones
     document.querySelectorAll('.settings-section').forEach(sec => sec.classList.remove('active'));
     document.getElementById(`tab-${tabName}`).classList.add('active');
+}
+
+window.toggleDarkMode = function(isDark) {
+    if (isDark) {
+        localStorage.setItem('lvs_dark_mode', 'true');
+        document.documentElement.classList.add('dark-mode');
+    } else {
+        localStorage.setItem('lvs_dark_mode', 'false');
+        document.documentElement.classList.remove('dark-mode');
+    }
 }
 
 async function handleUpdateProfile(e) {
