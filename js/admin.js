@@ -938,6 +938,26 @@ async function deleteOrder(id) {
     });
 }
 
+window.copyCustomerData = function(id) {
+    const order = allOrders.find(o => o.id === id);
+    if (!order) return;
+
+    const customer = order.customer;
+    let textToCopy = `Nombre: ${customer.name}\n`;
+    if (customer.email) textToCopy += `Email: ${customer.email}\n`;
+    textToCopy += `Teléfono: ${customer.phone}\n`;
+    textToCopy += `Dirección: ${customer.address}\n`;
+    if (customer.country) textToCopy += `País: ${customer.country}\n`;
+    textToCopy += `Pago: ${customer.payment}`;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        showAdminToast('📋 Datos copiados al portapapeles.');
+    }).catch(err => {
+        console.error('Error al copiar datos:', err);
+        showAdminToast('❌ Error al copiar al portapapeles.');
+    });
+}
+
 async function forceRefreshOrders() {
     const listContainer = document.getElementById('orders-list');
     const searchInput = document.getElementById('order-search');
