@@ -559,8 +559,8 @@ function createProductModal() {
                         <input type="number" id="pm-qty" class="qty-input" value="1" readonly>
                         <button class="qty-btn" onclick="updateModalQty(1)">+</button>
                     </div>
-                    <button class="btn" id="pm-add-btn" style="flex:1; padding: 15px;">Añadir al Carrito</button>
-                    <button class="btn" id="pm-buy-now-btn" style="flex:1; padding: 15px; background: #fff; color: #000; border: 1px solid #000;">Pagar Ahora</button>
+                    <button class="btn" id="pm-buy-now-btn" style="flex:1.2; padding: 18px; font-size: 1.1rem;">Pedir ahora</button>
+                    <button class="btn" id="pm-add-btn" style="flex:0.8; padding: 15px; background: #fff; color: #000; border: 1px solid #000;">Añadir al Carrito</button>
                 </div>
 
                 <div class="pm-description" id="pm-desc"></div>
@@ -737,14 +737,14 @@ async function renderSingleProductPage(id) {
                 <h1 style="font-size: 1.8rem; font-weight: 800; margin: 0 0 0.5rem 0; line-height: 1.3; color: #111;">${product.name}</h1>
                 <div id="sp-price" style="font-size: 1.25rem; font-weight: 500; margin-bottom: 1.5rem; color: #111;"></div>
                 
-                <div class="sp-actions-container">
-                    <div style="display: flex; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; height: 40px; width: 100px;">
+                <div class="sp-actions-container" style="align-items: center;">
+                    <div style="display: flex; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; height: 48px; width: 100px;">
                         <button onclick="window.updateSpQty(-1)" style="background: #f9fafb; border: none; padding: 0 10px; font-size: 1.1rem; cursor: pointer; flex: 1; color: #555;">-</button>
                         <input type="number" id="sp-qty" value="1" readonly style="width: 36px; text-align: center; border: none; font-size: 0.9rem; font-weight: 500; background: #fff; margin: 0; padding: 0; color: #111;">
                         <button onclick="window.updateSpQty(1)" style="background: #f9fafb; border: none; padding: 0 10px; font-size: 1.1rem; cursor: pointer; flex: 1; color: #555;">+</button>
                     </div>
-                    <button class="btn" onclick="window.addSpToCart()" style="flex: 1; height: 40px; font-size: 0.85rem; font-weight: 500; border-radius: 6px; letter-spacing: 0.5px;">Añadir al Carrito</button>
-                    <button class="btn btn-outline" onclick="window.buySpNow()" style="flex: 1; height: 40px; font-size: 0.85rem; font-weight: 500; border-radius: 6px; background: white; letter-spacing: 0.5px;">Pagar Ahora</button>
+                    <button class="btn" onclick="window.buySpNow()" style="flex: 1.2; height: 48px; font-size: 0.95rem; font-weight: 600; border-radius: 6px; letter-spacing: 0.5px;">Pedir ahora</button>
+                    <button class="btn btn-outline" onclick="window.addSpToCart()" style="flex: 0.8; height: 40px; font-size: 0.85rem; font-weight: 500; border-radius: 6px; background: white; letter-spacing: 0.5px;">Añadir al Carrito</button>
                 </div>
                 <div class="sp-description" style="font-size: 0.85rem; line-height: 1.6; color: #4b5563; overflow-wrap: break-word;">
                     ${product.description || 'Sin descripción detallada.'}
@@ -809,9 +809,9 @@ function renderRelatedProducts(currentId) {
                 <div class="product-info">
                     <h3 class="product-title">${product.name}</h3>
                     <div class="price-container">${originalPriceHtml}<span class="product-price">${currencyManager.format(displayPrice)}</span>${promoMsg}</div>
-                    <div class="btn-container">
-                        <button class="btn btn-outline" onclick="addToCart(${product.id})">Añadir</button>
-                        <button class="btn" onclick="orderNow(${product.id})">Pedir ahora</button>
+                    <div class="btn-container" style="display: flex; gap: 8px;">
+                        <button class="btn" onclick="orderNow(${product.id})" style="flex: 1.2; font-size: 0.9rem; padding: 10px;">Pedir ahora</button>
+                        <button class="btn btn-outline" onclick="addToCart(${product.id})" style="flex: 0.8; font-size: 0.8rem; padding: 10px;">Añadir</button>
                     </div>
                 </div>
             </div>
@@ -1270,9 +1270,9 @@ function renderProducts() {
             <div class="product-info">
                 <h3 class="product-title">${product.name}</h3>
                 <div class="price-container">${originalPriceHtml}<span class="product-price">${currencyManager.format(displayPrice)}</span>${promoMsg}</div>
-                <div class="btn-container">
-                    <button class="btn btn-outline" onclick="addToCart(${product.id})">Añadir</button>
-                    <button class="btn" onclick="orderNow(${product.id})">Pedir ahora</button>
+                <div class="btn-container" style="display: flex; gap: 8px;">
+                    <button class="btn" onclick="orderNow(${product.id})" style="flex: 1.2; font-size: 0.9rem; padding: 10px;">Pedir ahora</button>
+                    <button class="btn btn-outline" onclick="addToCart(${product.id})" style="flex: 0.8; font-size: 0.8rem; padding: 10px;">Añadir</button>
                 </div>
             </div>
         `;
@@ -1458,9 +1458,9 @@ function updateCartUI() {
                 <span style="font-weight: bold; font-size: 1.1rem;">Total: <span id="modal-total">${currencyManager.format(total)}</span></span>
                 ${cart.length > 0 ? `<button onclick="clearCart()" style="background:none; border:none; color:#ef4444; font-size:0.85rem; cursor:pointer; text-decoration:underline; padding:0;">Vaciar Todo</button>` : ''}
             </div>
-            <div style="display: flex; gap: 10px;">
-                <button onclick="window.location.href='carrito.html'" class="btn btn-outline" style="flex: 1; text-align: center;">Ver Carrito</button>
-                ${cart.length > 0 ? `<button onclick="window.location.href='pedido.html'" class="btn" style="flex: 1; text-align: center;">Pagar Ahora</button>` : ''}
+            <div style="display: flex; gap: 10px; align-items: center;">
+                ${cart.length > 0 ? `<button onclick="window.location.href='pedido.html'" class="btn" style="flex: 1.2; text-align: center; padding: 14px; font-size: 1.05rem;">Pedir ahora</button>` : ''}
+                <button onclick="window.location.href='carrito.html'" class="btn btn-outline" style="flex: 0.8; text-align: center;">Ver Carrito</button>
             </div>
         `;
     } else {
