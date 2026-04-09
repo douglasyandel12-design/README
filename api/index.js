@@ -515,11 +515,16 @@ router.post('/auth/verify', async (req, res) => {
 router.get('/cart', isAuthenticated, async (req, res) => {
   try {
     await connectToDatabase();
+    
+    // Evitar error si el usuario es el admin o viene de Google (ID no válido para MongoDB)
+    if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+      return res.json([]);
+    }
+
     const user = await User.findById(req.user.id);
-    // Devolvemos el carrito guardado o un array vacío
-    res.json(user.cart || []);
+    res.json(user ? (user.cart || []) : []);
   } catch (error) {
-    console.error(error);
+    console.error('Error en GET /cart:', error);
     res.status(500).json([]);
   }
 });
@@ -529,9 +534,16 @@ router.post('/cart', isAuthenticated, async (req, res) => {
   try {
     await connectToDatabase();
     const { cart } = req.body;
+
+    // Si el ID no es válido en DB (ej: admin), no intentamos guardarlo allí
+    if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+      return res.json({ success: true });
+    }
+
     await User.findByIdAndUpdate(req.user.id, { cart });
     res.json({ success: true });
   } catch (error) {
+    console.error('Error en POST /cart:', error);
     res.status(500).json({ error: 'Error al guardar el carrito' });
   }
 });
@@ -543,8 +555,8 @@ router.put('/auth/preferences', isAuthenticated, async (req, res) => {
     if (darkMode !== undefined) req.user.darkMode = darkMode; // Actualizar en la sesión activa
 
     await connectToDatabase();
-    // Guardar en Base de datos solo si es usuario local
-    if (req.user.provider === 'local' || (req.user.id && req.user.id.length > 20)) {
+    // Guardar en Base de datos solo si tiene un ID de Mongo válido
+    if (mongoose.Types.ObjectId.isValid(req.user.id)) {
       const user = await User.findById(req.user.id);
       if (user) {
         if (darkMode !== undefined) user.darkMode = darkMode;
@@ -564,6 +576,12 @@ router.put('/auth/profile', isAuthenticated, async (req, res) => {
     const { name } = req.body;
     
     if (!name) return res.status(400).json({ message: 'El nombre es obligatorio.' });
+
+    // Si es un ID no guardable en DB (admin o google no linkeado)
+    if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+        req.user.name = name;
+        return res.json({ message: 'Perfil actualizado correctamente en la sesión.', user: req.user });
+    }
 
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'Usuario no encontrado.' });
@@ -592,6 +610,11 @@ router.put('/auth/profile-picture', isAuthenticated, async (req, res) => {
 
     if (!picture) return res.status(400).json({ message: 'La imagen es obligatoria.' });
 
+    if (!mongoose.Types.ObjectId.isValid(req.user.id)) {
+        req.user.picture = picture;
+        return res.json({ message: 'Foto de perfil actualizada en la sesión.', picture });
+    }
+
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: 'Usuario no encontrado.' });
 
@@ -612,8 +635,8 @@ router.put('/auth/change-password', isAuthenticated, async (req, res) => {
     await connectToDatabase();
     const { currentPassword, newPassword } = req.body;
 
-    if (req.user.provider === 'google') {
-        return res.status(400).json({ message: 'Los usuarios de Google no tienen contraseña para cambiar.' });
+    if (req.user.provider === 'google' || !mongoose.Types.ObjectId.isValid(req.user.id)) {
+        return res.status(400).json({ message: 'Esta cuenta no admite cambio de contraseña.' });
     }
 
     if (!currentPassword || !newPassword) {
@@ -649,8 +672,10 @@ router.put('/auth/change-password', isAuthenticated, async (req, res) => {
 router.delete('/auth/delete-account', isAuthenticated, async (req, res) => {
   try {
     await connectToDatabase();
-    // Eliminar usuario de la base de datos
-    await User.findByIdAndDelete(req.user.id);
+    
+    if (mongoose.Types.ObjectId.isValid(req.user.id)) {
+        await User.findByIdAndDelete(req.user.id);
+    }
     
     // Destruir la sesión
     req.logout((err) => {
