@@ -375,6 +375,12 @@ adminStyle.innerHTML = `
     }
 
     /* --- ESTILOS DEL EDITOR MEJORADO Y GALERÍA --- */
+    #edit-editor-container {
+        height: 250px; /* Evita que crezca sin límite y tape otros inputs */
+        background: #fff;
+    }
+    .ql-toolbar { background: #f9fafb; position: relative; z-index: 10; }
+    
     .admin-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
     @media (max-width: 768px) { .admin-form-grid { grid-template-columns: 1fr; } }
     
@@ -483,6 +489,7 @@ adminStyle.innerHTML = `
     }
     .editor-wrapper-fullscreen #edit-editor-container {
         flex: 1;
+        height: auto; /* Restaura la altura en pantalla completa */
         overflow-y: auto;
         background: #fff;
         font-size: 1.1rem;
