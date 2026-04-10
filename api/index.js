@@ -333,7 +333,6 @@ router.post('/auth/login', async (req, res) => {
           name: dbUser.name, 
           email: dbUser.email, 
           isAdmin: dbUser.isAdmin, 
-          picture: dbUser.picture,
           provider: 'local', // Marcamos que es cuenta local
           darkMode: dbUser.darkMode // Enviamos su preferencia visual
         };
@@ -400,7 +399,23 @@ router.post('/auth/create-admin', async (req, res) => {
   }
 });
 
-router.get('/auth/status', (req, res) => res.json({ user: req.user || null }));
+router.get('/auth/status', async (req, res) => {
+  if (!req.user) return res.json({ user: null });
+  
+  // Si es usuario local, traemos la foto fresca desde la BD sin sobrecargar la cookie
+  if (req.user.provider === 'local' && mongoose.Types.ObjectId.isValid(req.user.id)) {
+    try {
+      await connectToDatabase();
+      const dbUser = await User.findById(req.user.id);
+      if (dbUser) {
+        return res.json({ user: { ...req.user, picture: dbUser.picture, darkMode: dbUser.darkMode } });
+      }
+    } catch (error) {
+      console.error('Error obteniendo estado del usuario:', error);
+    }
+  }
+  res.json({ user: req.user });
+});
 
 router.get('/auth/logout', (req, res) => {
   req.logout(() => res.redirect('/'));
@@ -498,7 +513,7 @@ router.post('/auth/verify', async (req, res) => {
             await user.save();
 
             // Iniciar sesión automáticamente
-            const userPayload = { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin, picture: user.picture, provider: 'local', darkMode: user.darkMode };
+            const userPayload = { id: user._id, name: user.name, email: user.email, isAdmin: user.isAdmin, provider: 'local', darkMode: user.darkMode };
             req.login(userPayload, (err) => {
                 if (err) return res.status(500).json({ message: 'Verificado, pero error al iniciar sesión.' });
                 return res.json({ message: '¡Cuenta verificada con éxito!', user: userPayload });
@@ -620,7 +635,7 @@ router.put('/auth/profile-picture', isAuthenticated, async (req, res) => {
 
     user.picture = picture;
     await user.save();
-    req.user.picture = user.picture; // Actualizar sesión en memoria
+    // Ya NO actualizamos la foto en la sesión en memoria para evitar colapsar la cookie de 4KB
     
     res.json({ message: 'Foto de perfil actualizada.', picture: user.picture });
   } catch (error) {

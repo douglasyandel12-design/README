@@ -36,7 +36,11 @@ async function handleLogin(e) {
         }
     } catch (error) {
         console.error(error);
-        alert('Error de conexión');
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('Error', 'Error de conexión', 'error');
+        } else {
+            alert('Error de conexión');
+        }
     }
 }
 
@@ -79,13 +83,28 @@ async function handleRegister(e) {
             // Guardar email temporalmente para el envío del código
             window.tempRegisterEmail = data.email;
         } else {
-            alert('¡Cuenta creada con éxito! Ahora puedes iniciar sesión.');
-            switchTab('login');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: '¡Cuenta creada con éxito!',
+                    text: 'Ahora puedes iniciar sesión con tus credenciales.',
+                    icon: 'success',
+                    confirmButtonColor: '#000'
+                }).then(() => {
+                    switchTab('login');
+                });
+            } else {
+                alert('¡Cuenta creada con éxito! Ahora puedes iniciar sesión.');
+                switchTab('login');
+            }
         }
 
     } catch (error) {
         console.error('Error en el registro:', error);
-        alert(error.message);
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('Error', error.message, 'error');
+        } else {
+            alert(error.message);
+        }
     } finally {
         registerButton.disabled = false;
         registerButton.textContent = 'Crear Cuenta';
@@ -106,13 +125,24 @@ async function handleVerification(e) {
         const data = await res.json();
 
         if (res.ok) {
-            alert('✅ ' + data.message);
-            window.location.href = 'index.html'; // Entrar directamente
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: '¡Verificado!',
+                    text: data.message,
+                    icon: 'success',
+                    confirmButtonColor: '#000'
+                }).then(() => {
+                    window.location.href = 'index.html';
+                });
+            } else {
+                alert('✅ ' + data.message);
+                window.location.href = 'index.html';
+            }
         } else {
-            alert('❌ ' + data.message);
+            if (typeof Swal !== 'undefined') Swal.fire('Error', data.message, 'error'); else alert('❌ ' + data.message);
         }
     } catch (error) {
-        alert('Error de conexión verificando el código.');
+        if (typeof Swal !== 'undefined') Swal.fire('Error', 'Error de conexión verificando el código.', 'error'); else alert('Error de conexión verificando el código.');
     }
 }
 
