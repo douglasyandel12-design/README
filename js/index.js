@@ -675,6 +675,26 @@ async function renderSingleProductPage(id) {
     const images = (product.images && product.images.length > 0) ? product.images : (product.image ? [product.image] : []);
     const videos = (product.videos && product.videos.length > 0) ? product.videos : (product.video ? [product.video] : []);
 
+    let modelGroupHtml = '';
+    if (product.modelGroup) {
+        const groupProducts = products.filter(p => p.modelGroup === product.modelGroup);
+        if (groupProducts.length > 1) {
+            modelGroupHtml = `
+                <div style="margin-bottom: 1.5rem; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #eaeaea;">
+                    <span style="font-size: 0.9rem; font-weight: 600; color: #111; display: block; margin-bottom: 8px;">Colores/Modelos disponibles:</span>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        ${groupProducts.map(p => {
+                            const pImg = (p.images && p.images.length > 0) ? p.images[0] : (p.image || 'https://placehold.co/50x50?text=Foto');
+                            return `<div onclick="viewProductDetails('${p.id}')" title="${p.name}" style="width: 55px; height: 55px; border: 2px solid ${p.id == id ? '#000' : '#e5e7eb'}; border-radius: 6px; overflow: hidden; cursor: pointer; opacity: ${p.id == id ? '1' : '0.6'}; transition: all 0.2s;">
+                                <img src="${pImg}" style="width: 100%; height: 100%; object-fit: cover;">
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }
+    }
+
     // Inyectamos el diseño premium tipo Shopify
     singleContainer.innerHTML = `
         <style>
@@ -736,6 +756,7 @@ async function renderSingleProductPage(id) {
                 </nav>
                 <h1 style="font-size: 1.8rem; font-weight: 800; margin: 0 0 0.5rem 0; line-height: 1.3; color: #111;">${product.name}</h1>
                 <div id="sp-price" style="font-size: 1.25rem; font-weight: 500; margin-bottom: 1.5rem; color: #111;"></div>
+                ${modelGroupHtml}
                 
                 <div class="sp-actions-container" style="align-items: center;">
                     <div style="display: flex; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; height: 48px; width: 100px;">

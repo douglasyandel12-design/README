@@ -1090,6 +1090,7 @@ function openProductModal(id = null) {
         if(document.getElementById('edit-stock')) document.getElementById('edit-stock').value = (product.stock !== undefined && product.stock !== null) ? product.stock : '';
         
         tempVariants = product.variants ? JSON.parse(JSON.stringify(product.variants)) : [];
+        if(document.getElementById('edit-model-group')) document.getElementById('edit-model-group').value = product.modelGroup || '';
     } else {
         // MODO AGREGAR
         if(modalTitle) modalTitle.innerText = 'Nuevo Producto';
@@ -1104,8 +1105,10 @@ function openProductModal(id = null) {
         tempVideos = [];
         if(document.getElementById('edit-stock')) document.getElementById('edit-stock').value = '';
         tempVariants = [];
+        if(document.getElementById('edit-model-group')) document.getElementById('edit-model-group').value = '';
     }
     
+    injectModelGroupUI();
     injectVariantsUI();
     renderVariants();
     // Renderizar gestores de imagen separados
@@ -1130,6 +1133,7 @@ async function saveProductModal(e) {
     let descriptionContent = quillEdit ? quillEdit.root.innerHTML : '';
     
     const finalVariants = tempVariants.filter(v => v.name.trim() !== '' && v.options.length > 0);
+    const modelGroupValue = document.getElementById('edit-model-group') ? document.getElementById('edit-model-group').value.trim() : '';
 
     if (idInput) {
         // --- ACTUALIZAR EXISTENTE ---
@@ -1142,6 +1146,7 @@ async function saveProductModal(e) {
             discount: parseFloat(document.getElementById('edit-discount').value) || 0,
             stock: (document.getElementById('edit-stock').value === "" || document.getElementById('edit-stock').value === undefined) ? null : parseInt(document.getElementById('edit-stock').value),
             description: descriptionContent,
+            modelGroup: modelGroupValue,
             images: [...tempImages],
             variants: finalVariants,
             image: tempImages.length > 0 ? tempImages[0] : '',
@@ -1157,6 +1162,7 @@ async function saveProductModal(e) {
             discount: parseFloat(document.getElementById('edit-discount').value) || 0,
             stock: (document.getElementById('edit-stock').value === "" || document.getElementById('edit-stock').value === undefined) ? null : parseInt(document.getElementById('edit-stock').value),
             description: descriptionContent,
+            modelGroup: modelGroupValue,
             images: [...tempImages],
             variants: finalVariants,
             image: tempImages.length > 0 ? tempImages[0] : '',
@@ -1618,6 +1624,28 @@ function fixPageFavicon() {
         if(aspect > 1) { h=size/aspect; y=(size-h)/2; } else { w=size*aspect; x=(size-w)/2; }
         ctx.drawImage(img, x, y, w, h); link.href = canvas.toDataURL('image/png');
     }; img.src = link.href;
+}
+
+window.injectModelGroupUI = function() {
+    const form = document.querySelector('#edit-modal form');
+    if (form && !document.getElementById('model-group-section')) {
+        const mgSection = document.createElement('div');
+        mgSection.id = 'model-group-section';
+        mgSection.className = 'form-group';
+        mgSection.style.cssText = "grid-column: 1 / -1; margin-top: 10px;";
+        mgSection.innerHTML = `
+            <label style="font-size: 1rem; color: #111;">🔗 Grupo de Modelo (Para enlazar distintos colores/modelos)</label>
+            <input type="text" id="edit-model-group" placeholder="Ej: Camiseta Básica" style="margin-bottom: 5px;">
+            <p style="font-size: 0.8rem; color: #666; margin: 0;">Si escribes el mismo nombre aquí en varios productos diferentes, se mostrarán como opciones intercambiables con sus propias fotos en la tienda.</p>
+        `;
+        const variantsSec = document.getElementById('variants-section');
+        if (variantsSec) form.insertBefore(mgSection, variantsSec);
+        else {
+            const actions = form.querySelector('.form-actions');
+            if (actions) form.insertBefore(mgSection, actions);
+            else form.appendChild(mgSection);
+        }
+    }
 }
 
 window.injectVariantsUI = function() {

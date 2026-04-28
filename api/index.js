@@ -40,7 +40,8 @@ const ProductSchema = new mongoose.Schema({
   name: String,
   price: Number,
   image: String,
-  discount: Number
+  discount: Number,
+  modelGroup: String
 }, { strict: false });
 const Product = mongoose.models.Product || mongoose.model('Product', ProductSchema);
 
