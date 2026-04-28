@@ -1089,8 +1089,10 @@ function openProductModal(id = null) {
         // Stock
         if(document.getElementById('edit-stock')) document.getElementById('edit-stock').value = (product.stock !== undefined && product.stock !== null) ? product.stock : '';
         
-        tempVariants = product.variants ? JSON.parse(JSON.stringify(product.variants)) : [];
-        if(document.getElementById('edit-model-group')) document.getElementById('edit-model-group').value = product.modelGroup || '';
+        tempVariants = product.variants ? product.variants.map(v => ({
+            name: v.name || '',
+            options: (v.options || []).map(opt => typeof opt === 'string' ? { name: opt, image: '' } : { name: opt.name || '', image: opt.image || '' })
+        })) : [];
     } else {
         // MODO AGREGAR
         if(modalTitle) modalTitle.innerText = 'Nuevo Producto';
@@ -1105,10 +1107,8 @@ function openProductModal(id = null) {
         tempVideos = [];
         if(document.getElementById('edit-stock')) document.getElementById('edit-stock').value = '';
         tempVariants = [];
-        if(document.getElementById('edit-model-group')) document.getElementById('edit-model-group').value = '';
     }
     
-    injectModelGroupUI();
     injectVariantsUI();
     renderVariants();
     // Renderizar gestores de imagen separados
@@ -1132,8 +1132,12 @@ async function saveProductModal(e) {
 
     let descriptionContent = quillEdit ? quillEdit.root.innerHTML : '';
     
-    const finalVariants = tempVariants.filter(v => v.name.trim() !== '' && v.options.length > 0);
-    const modelGroupValue = document.getElementById('edit-model-group') ? document.getElementById('edit-model-group').value.trim() : '';
+    const finalVariants = tempVariants
+        .filter(v => v.name.trim() !== '' && v.options.length > 0)
+        .map(v => ({
+            name: v.name.trim(),
+            options: v.options.filter(o => o.name.trim() !== '').map(o => ({ name: o.name.trim(), image: o.image }))
+        }));
 
     if (idInput) {
         // --- ACTUALIZAR EXISTENTE ---
@@ -1146,7 +1150,6 @@ async function saveProductModal(e) {
             discount: parseFloat(document.getElementById('edit-discount').value) || 0,
             stock: (document.getElementById('edit-stock').value === "" || document.getElementById('edit-stock').value === undefined) ? null : parseInt(document.getElementById('edit-stock').value),
             description: descriptionContent,
-            modelGroup: modelGroupValue,
             images: [...tempImages],
             variants: finalVariants,
             image: tempImages.length > 0 ? tempImages[0] : '',
@@ -1162,7 +1165,6 @@ async function saveProductModal(e) {
             discount: parseFloat(document.getElementById('edit-discount').value) || 0,
             stock: (document.getElementById('edit-stock').value === "" || document.getElementById('edit-stock').value === undefined) ? null : parseInt(document.getElementById('edit-stock').value),
             description: descriptionContent,
-            modelGroup: modelGroupValue,
             images: [...tempImages],
             variants: finalVariants,
             image: tempImages.length > 0 ? tempImages[0] : '',
@@ -1626,28 +1628,6 @@ function fixPageFavicon() {
     }; img.src = link.href;
 }
 
-window.injectModelGroupUI = function() {
-    const form = document.querySelector('#edit-modal form');
-    if (form && !document.getElementById('model-group-section')) {
-        const mgSection = document.createElement('div');
-        mgSection.id = 'model-group-section';
-        mgSection.className = 'form-group';
-        mgSection.style.cssText = "grid-column: 1 / -1; margin-top: 10px;";
-        mgSection.innerHTML = `
-            <label style="font-size: 1rem; color: #111;">🔗 Grupo de Modelo (Para enlazar distintos colores/modelos)</label>
-            <input type="text" id="edit-model-group" placeholder="Ej: Camiseta Básica" style="margin-bottom: 5px;">
-            <p style="font-size: 0.8rem; color: #666; margin: 0;">Si escribes el mismo nombre aquí en varios productos diferentes, se mostrarán como opciones intercambiables con sus propias fotos en la tienda.</p>
-        `;
-        const variantsSec = document.getElementById('variants-section');
-        if (variantsSec) form.insertBefore(mgSection, variantsSec);
-        else {
-            const actions = form.querySelector('.form-actions');
-            if (actions) form.insertBefore(mgSection, actions);
-            else form.appendChild(mgSection);
-        }
-    }
-}
-
 window.injectVariantsUI = function() {
     const form = document.querySelector('#edit-modal form');
     if (form && !document.getElementById('variants-section')) {
@@ -1655,10 +1635,10 @@ window.injectVariantsUI = function() {
         variantsSection.id = 'variants-section';
         variantsSection.style.cssText = "grid-column: 1 / -1; margin-top: 10px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px dashed #ccc;";
         variantsSection.innerHTML = `
-            <label style="font-size: 1rem; color: #111;">🏷️ Variantes del Producto (Ej: Color, Talla) - Opcional</label>
-            <p style="font-size: 0.8rem; color: #666; margin-bottom: 10px;">Permite que el cliente elija opciones antes de añadir al carrito.</p>
+            <label style="font-size: 1rem; color: #111;">🏷️ Variantes del Producto con Imágenes (Ej: Color, Talla)</label>
+            <p style="font-size: 0.8rem; color: #666; margin-bottom: 10px;">Permite que el cliente elija opciones y vea la foto exacta del color que seleccionó.</p>
             <div id="variants-container" style="display:flex; flex-direction:column; gap:10px;"></div>
-            <button type="button" class="btn btn-outline" onclick="addVariantField()" style="margin-top: 10px; width: auto; padding: 6px 12px; font-size: 0.85rem;">+ Añadir Variante</button>
+            <button type="button" class="btn btn-outline" onclick="addVariantField()" style="margin-top: 10px; width: auto; padding: 6px 12px; font-size: 0.85rem;">+ Añadir Grupo de Variante</button>
         `;
         const actions = form.querySelector('.form-actions');
         if (actions) form.insertBefore(variantsSection, actions);
@@ -1669,14 +1649,50 @@ window.renderVariants = function() {
     const container = document.getElementById('variants-container');
     if (!container) return;
     container.innerHTML = tempVariants.map((v, i) => `
-        <div style="display:flex; gap:10px; align-items:center; background:#fff; padding:10px; border-radius:6px; border:1px solid #e5e7eb; flex-wrap: wrap;">
-            <input type="text" placeholder="Nombre (Ej: Color)" value="${v.name}" onchange="updateVariantName(${i}, this.value)" style="width:150px; margin:0; flex: 1; min-width: 120px;">
-            <input type="text" placeholder="Opciones separadas por coma (Ej: Rojo, Azul)" value="${v.options.join(', ')}" onchange="updateVariantOptions(${i}, this.value)" style="flex:2; min-width: 200px; margin:0;">
-            <button type="button" class="btn btn-danger" onclick="removeVariant(${i})" style="padding:5px 10px; width:auto; margin:0;">&times;</button>
+        <div style="background:#fff; padding:15px; border-radius:8px; border:1px solid #e5e7eb; margin-bottom:10px;">
+            <div style="display:flex; gap:10px; align-items:center; margin-bottom: 10px;">
+                <input type="text" placeholder="Nombre del Grupo (Ej: Color, Talla)" value="${v.name}" onchange="updateVariantName(${i}, this.value)" style="font-weight:bold; flex:1; margin:0;">
+                <button type="button" class="btn btn-danger" onclick="removeVariant(${i})" style="padding:8px 12px; width:auto; margin:0;">Eliminar Grupo</button>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; padding-left: 10px; border-left: 2px solid #eee;">
+                ${v.options.map((opt, j) => `
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap: wrap;">
+                        <input type="text" placeholder="Opción (Ej: Rojo, L)" value="${opt.name}" onchange="updateVariantOptionName(${i}, ${j}, this.value)" style="flex:1; min-width: 100px; margin:0;">
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            ${opt.image ? 
+                                `<img src="${opt.image}" style="width:36px; height:36px; border-radius:4px; border: 1px solid #ccc; object-fit:cover;">
+                                 <button type="button" onclick="removeVariantImage(${i}, ${j})" style="background:none; border:none; color:#ef4444; font-size: 1.2rem; cursor:pointer;" title="Quitar foto">&times;</button>` 
+                                : 
+                                `<button type="button" class="btn btn-outline" onclick="uploadVariantImage(${i}, ${j})" style="padding:6px 10px; font-size:0.75rem; width:auto; margin:0;">📷 Asignar Foto</button>`
+                            }
+                        </div>
+                        <button type="button" class="btn btn-danger" onclick="removeVariantOption(${i}, ${j})" style="padding:6px 10px; width:auto; margin:0;">&times;</button>
+                    </div>
+                `).join('')}
+                <button type="button" class="btn btn-outline" onclick="addVariantOption(${i})" style="padding:6px 12px; font-size:0.8rem; width:auto; align-self:flex-start; margin-top:5px;">+ Añadir Opción</button>
+            </div>
         </div>
     `).join('');
 }
 window.addVariantField = () => { tempVariants.push({ name: '', options: [] }); renderVariants(); }
 window.updateVariantName = (i, val) => { tempVariants[i].name = val; }
-window.updateVariantOptions = (i, val) => { tempVariants[i].options = val.split(',').map(s => s.trim()).filter(s => s); }
 window.removeVariant = (i) => { tempVariants.splice(i, 1); renderVariants(); }
+window.addVariantOption = (i) => { tempVariants[i].options.push({ name: '', image: '' }); renderVariants(); }
+window.updateVariantOptionName = (i, j, val) => { tempVariants[i].options[j].name = val; }
+window.removeVariantOption = (i, j) => { tempVariants[i].options.splice(j, 1); renderVariants(); }
+window.uploadVariantImage = function(i, j) {
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*';
+    input.onchange = async () => {
+        if(input.files[0]) {
+            Swal.fire({ title: 'Preparando imagen...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            try {
+                const base64 = await promptCrop(input.files[0], 1); // Recorte cuadrado 1:1
+                if(base64) { tempVariants[i].options[j].image = base64; renderVariants(); }
+                Swal.close();
+            } catch(e) { Swal.fire('Error', e.message, 'error'); }
+        }
+    };
+    input.click();
+}
+window.removeVariantImage = (i, j) => { tempVariants[i].options[j].image = ''; renderVariants(); }

@@ -675,24 +675,38 @@ async function renderSingleProductPage(id) {
     const images = (product.images && product.images.length > 0) ? product.images : (product.image ? [product.image] : []);
     const videos = (product.videos && product.videos.length > 0) ? product.videos : (product.video ? [product.video] : []);
 
-    let modelGroupHtml = '';
-    if (product.modelGroup) {
-        const groupProducts = products.filter(p => p.modelGroup === product.modelGroup);
-        if (groupProducts.length > 1) {
-            modelGroupHtml = `
-                <div style="margin-bottom: 1.5rem; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #eaeaea;">
-                    <span style="font-size: 0.9rem; font-weight: 600; color: #111; display: block; margin-bottom: 8px;">Colores/Modelos disponibles:</span>
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        ${groupProducts.map(p => {
-                            const pImg = (p.images && p.images.length > 0) ? p.images[0] : (p.image || 'https://placehold.co/50x50?text=Foto');
-                            return `<div onclick="viewProductDetails('${p.id}')" title="${p.name}" style="width: 55px; height: 55px; border: 2px solid ${p.id == id ? '#000' : '#e5e7eb'}; border-radius: 6px; overflow: hidden; cursor: pointer; opacity: ${p.id == id ? '1' : '0.6'}; transition: all 0.2s;">
-                                <img src="${pImg}" style="width: 100%; height: 100%; object-fit: cover;">
-                            </div>`;
-                        }).join('')}
-                    </div>
+    let variantsHtml = '';
+    if (product.variants && product.variants.length > 0) {
+        variantsHtml = `<div id="sp-variants" style="margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 15px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #eaeaea;">`;
+        product.variants.forEach((v, vIndex) => {
+            const hasImages = v.options.some(opt => opt.image);
+            variantsHtml += `<div class="variant-group">
+                <label style="font-weight: 600; font-size: 0.9rem; color: #111; display: block; margin-bottom: 8px;">${v.name} <span id="var-label-${vIndex}" style="font-weight:normal; color:#666;"></span></label>`;
+            
+            if (hasImages) {
+                variantsHtml += `<div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    ${v.options.map((opt, oIndex) => `
+                        <div onclick="window.selectVariant(${vIndex}, ${oIndex}, '${opt.name}', '${opt.image || ''}')" 
+                             id="var-swatch-${vIndex}-${oIndex}"
+                             class="variant-swatch variant-swatch-${vIndex}" 
+                             style="width: 55px; height: 55px; border: 2px solid #e5e7eb; border-radius: 6px; cursor: pointer; overflow: hidden; opacity: 0.6; transition: all 0.2s;"
+                             title="${opt.name}">
+                            ${opt.image ? `<img src="${opt.image}" style="width:100%; height:100%; object-fit:cover;">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#eee;font-size:0.7rem;">${opt.name}</div>`}
+                        </div>
+                    `).join('')}
                 </div>
-            `;
-        }
+                <input type="hidden" class="sp-variant-select" data-name="${v.name}" id="var-input-${vIndex}" value="">`;
+            } else {
+                variantsHtml += `<select class="sp-variant-select" data-name="${v.name}" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95rem; background: #fff; cursor: pointer;">
+                    ${v.options.map(opt => {
+                        const optName = typeof opt === 'string' ? opt : opt.name;
+                        return `<option value="${optName}">${optName}</option>`;
+                    }).join('')}
+                </select>`;
+            }
+            variantsHtml += `</div>`;
+        });
+        variantsHtml += `</div>`;
     }
 
     // Inyectamos el diseño premium tipo Shopify
@@ -756,7 +770,7 @@ async function renderSingleProductPage(id) {
                 </nav>
                 <h1 style="font-size: 1.8rem; font-weight: 800; margin: 0 0 0.5rem 0; line-height: 1.3; color: #111;">${product.name}</h1>
                 <div id="sp-price" style="font-size: 1.25rem; font-weight: 500; margin-bottom: 1.5rem; color: #111;"></div>
-                ${modelGroupHtml}
+                ${variantsHtml}
                 
                 <div class="sp-actions-container" style="align-items: center;">
                     <div style="display: flex; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; height: 48px; width: 100px;">
@@ -777,6 +791,16 @@ async function renderSingleProductPage(id) {
     renderSpGallery(images, videos);
     window.updateSpPriceDisplay(1);
     renderRelatedProducts(id);
+
+    // Autoseleccionar la primera opción de las variantes con imagen
+    if (product.variants) {
+        product.variants.forEach((v, vIndex) => {
+            const hasImages = v.options.some(opt => opt.image);
+            if (hasImages && v.options.length > 0) {
+                window.selectVariant(vIndex, 0, v.options[0].name, v.options[0].image);
+            }
+        });
+    }
 }
 
 function renderRelatedProducts(currentId) {
@@ -953,6 +977,32 @@ window.scrollToSpImage = function(index) {
     if (slider) {
         const slideWidth = slider.clientWidth;
         window.slowScrollTo(slider, slideWidth * index, 500); // 500ms para un deslizamiento un poquito más relajado
+    }
+}
+
+window.selectVariant = function(vIndex, oIndex, name, image) {
+    const input = document.getElementById(`var-input-${vIndex}`);
+    if(input) input.value = name;
+    
+    const label = document.getElementById(`var-label-${vIndex}`);
+    if(label) label.textContent = `- ${name}`;
+    
+    document.querySelectorAll(`.variant-swatch-${vIndex}`).forEach((el, idx) => {
+        if (idx === oIndex) {
+            el.style.borderColor = '#000';
+            el.style.opacity = '1';
+            el.style.transform = 'scale(1.05)';
+        } else {
+            el.style.borderColor = '#e5e7eb';
+            el.style.opacity = '0.6';
+            el.style.transform = 'scale(1)';
+        }
+    });
+
+    // Cambiar la imagen principal si la variante tiene una foto asignada
+    if (image) {
+        const mainImg = document.querySelector('#sp-main-slider img');
+        if (mainImg) mainImg.src = image;
     }
 }
 
@@ -1682,7 +1732,9 @@ function getSelectedVariants() {
     const selects = document.querySelectorAll('.sp-variant-select');
     let selectedVariants = [];
     selects.forEach(sel => {
-        selectedVariants.push(`${sel.dataset.name}: ${sel.value}`);
+        if (sel.value) {
+            selectedVariants.push(`${sel.dataset.name}: ${sel.value}`);
+        }
     });
     return selectedVariants.length > 0 ? `(${selectedVariants.join(', ')})` : '';
 }
