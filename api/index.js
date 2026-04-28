@@ -824,6 +824,58 @@ router.post('/settings', isAuthenticated, isAdmin, async (req, res) => {
   }
 });
 
+// ENVIAR PROMOCIÓN MASIVA A USUARIOS
+router.post('/promotions/send', isAuthenticated, isAdmin, async (req, res) => {
+  try {
+    await connectToDatabase();
+    const { subject, title, message, callToAction, link } = req.body;
+
+    if (!subject || !message) {
+      return res.status(400).json({ error: 'El asunto y el mensaje son obligatorios.' });
+    }
+
+    // Buscar a todos los usuarios que tengan un correo registrado
+    const users = await User.find({ email: { $exists: true, $ne: null } });
+
+    if (users.length === 0) {
+      return res.status(400).json({ error: 'No hay usuarios registrados a los cuales enviar la promoción.' });
+    }
+
+    // Preparamos los envíos en paralelo
+    const emailPromises = users.map(user => {
+      const mailOptions = {
+        from: '"LVS Shop Promociones" <' + process.env.EMAIL_USER + '>',
+        to: user.email,
+        subject: subject,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <h2 style="color: #000; text-align: center;">${title || '¡Nueva Promoción en LVS Shop!'}</h2>
+            <p>Hola <strong>${user.name || 'Cliente'}</strong>,</p>
+            <div style="margin: 20px 0; line-height: 1.6; color: #444; font-size: 15px;">
+                ${message.replace(/\n/g, '<br>')}
+            </div>
+            ${callToAction && link ? `
+            <div style="text-align: center; margin-top: 30px;">
+                <a href="${link}" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px;">${callToAction}</a>
+            </div>` : ''}
+            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+            <p style="text-align: center; color: #999; font-size: 11px;">&copy; ${new Date().getFullYear()} LVS Shop. Recibes este correo porque eres un usuario registrado en nuestra tienda.</p>
+          </div>
+        `
+      };
+      // Evitamos que si un correo falla (ej. rebotado), detenga el envío de los demás
+      return transporter.sendMail(mailOptions).catch(err => console.error(`Error enviando promo a ${user.email}:`, err.message));
+    });
+
+    await Promise.all(emailPromises);
+    res.json({ message: `¡Promoción enviada con éxito a ${users.length} cliente(s)!` });
+
+  } catch (error) {
+    console.error('Error enviando promociones:', error);
+    res.status(500).json({ error: 'Error interno al enviar la promoción masiva.' });
+  }
+});
+
 router.post('/orders', async (req, res) => {
     const session = await mongoose.startSession();
     session.startTransaction();

@@ -62,6 +62,7 @@ async function initAdmin() {
             renderProductsView();
             renderOrdersView();
             renderSettingsView();
+            renderPromotionsView(); // Iniciar vista de promociones
         }
     } catch (e) {
         console.error("Error cargando productos", e);
@@ -92,6 +93,7 @@ function renderAdminLayout() {
             <button class="admin-tab-btn" data-tab="products" onclick="switchAdminTab('products')">📦 Productos</button>
             <button class="admin-tab-btn" data-tab="orders" onclick="switchAdminTab('orders')">🛒 Pedidos</button>
             <button class="admin-tab-btn" data-tab="settings" onclick="switchAdminTab('settings')">⚙️ Configuración</button>
+            <button class="admin-tab-btn" data-tab="promotions" onclick="switchAdminTab('promotions')">📢 Promociones</button>
         </div>
 
         <div id="admin-tab-content">
@@ -99,6 +101,7 @@ function renderAdminLayout() {
             <div id="products-view" class="admin-tab-pane"></div>
             <div id="orders-view" class="admin-tab-pane"></div>
             <div id="settings-view" class="admin-tab-pane"></div>
+            <div id="promotions-view" class="admin-tab-pane"></div>
         </div>
     `;
 }
@@ -573,6 +576,72 @@ function renderSettingsView() {
     const container = document.getElementById('settings-view');
     container.innerHTML = `<div id="settings-panel"></div>`;
     renderSettingsPanel();
+}
+
+function renderPromotionsView() {
+    const container = document.getElementById('promotions-view');
+    container.innerHTML = `
+        <div style="background: #fff; padding: 2rem; border-radius: 8px; border: 1px solid #e5e7eb; max-width: 800px; margin: 0 auto; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+            <div style="margin-bottom: 2rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 1rem;">
+                <h2 style="margin: 0; color: #111;">📢 Enviar Promoción a Clientes</h2>
+                <p style="color: #666; margin-top: 5px; font-size: 0.9rem;">Escribe un mensaje publicitario y envíalo masivamente a los correos de todos los usuarios registrados.</p>
+            </div>
+            <form id="promo-form" onsubmit="window.sendPromotion(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+                <div>
+                    <label>Asunto del Correo (Obligatorio)</label>
+                    <input type="text" id="promo-subject" placeholder="Ej: ¡50% de Descuento en Relojes!" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                </div>
+                <div>
+                    <label>Título Principal en el Correo</label>
+                    <input type="text" id="promo-title" placeholder="Ej: Gran Venta de Verano" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                </div>
+                <div>
+                    <label>Mensaje (Obligatorio)</label>
+                    <textarea id="promo-message" rows="6" placeholder="Escribe aquí de qué trata tu promoción..." required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; resize: vertical;"></textarea>
+                </div>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label>Texto del Botón (Opcional)</label>
+                        <input type="text" id="promo-cta" placeholder="Ej: Comprar ahora" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <label>Enlace del Botón (Opcional)</label>
+                        <input type="url" id="promo-link" placeholder="Ej: https://lvs-shop.com/producto" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                    </div>
+                </div>
+                <button type="submit" class="btn" id="promo-submit-btn" style="margin-top: 10px; padding: 14px; font-size: 1rem; background-color: #2563eb;">🚀 Enviar a todos los clientes</button>
+            </form>
+        </div>
+    `;
+}
+
+window.sendPromotion = async function(e) {
+    e.preventDefault();
+    const subject = document.getElementById('promo-subject').value.trim();
+    const title = document.getElementById('promo-title').value.trim();
+    const message = document.getElementById('promo-message').value.trim();
+    const callToAction = document.getElementById('promo-cta').value.trim();
+    const link = document.getElementById('promo-link').value.trim();
+
+    const confirm = await Swal.fire({ title: '¿Enviar Promoción?', text: "Este correo se enviará a TODOS los usuarios registrados. ¿Deseas continuar?", icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, enviar masivamente', cancelButtonText: 'Cancelar', confirmButtonColor: '#2563eb' });
+    if (!confirm.isConfirmed) return;
+
+    const btn = document.getElementById('promo-submit-btn');
+    btn.disabled = true; btn.innerText = 'Enviando... (Por favor espera)';
+    Swal.fire({ title: 'Enviando correos...', html: 'Esto puede tomar unos segundos según la cantidad de clientes...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+    try {
+        const res = await fetch('/api/promotions/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subject, title, message, callToAction, link }) });
+        const data = await res.json();
+        if (res.ok) {
+            Swal.fire('¡Éxito!', data.message, 'success');
+            document.getElementById('promo-form').reset();
+        } else Swal.fire('Error', data.error || 'Hubo un error al enviar.', 'error');
+    } catch(err) {
+        Swal.fire('Error', 'Error de conexión. Intenta de nuevo.', 'error');
+    } finally {
+        btn.disabled = false; btn.innerText = '🚀 Enviar a todos los clientes';
+    }
 }
 
 // --- LÓGICA DE CONFIGURACIÓN (PROMOCIONES) ---
