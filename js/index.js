@@ -858,9 +858,18 @@ function renderSpGallery(images, videos) {
     const mediaContainer = document.getElementById('sp-media-display');
     let galleryHtml = ''; let togglesHtml = '';
     if (images.length > 0) {
-        galleryHtml = `<div id="sp-gallery-wrapper" style="width: 100%; display: flex; flex-direction: column; gap: 15px; align-items: center;">
-            <img id="sp-main-img" src="${images[0]}" style="width:100%; height:auto; max-height:400px; object-fit:contain; cursor: zoom-in; mix-blend-mode: multiply;" onclick="openImageModal(this.src, 'Vista Previa')">
-            ${images.length > 1 ? `<div style="display: flex; gap: 10px; overflow-x: auto; padding: 5px 0; justify-content: center; width: 100%;">${images.map((img, idx) => `<img src="${img}" class="sp-thumb" style="width: 60px; height: 60px; border: 2px solid ${idx===0?'#000':'transparent'}; border-radius: 6px; cursor: pointer; object-fit: cover; opacity: ${idx===0?'1':'0.6'}; transition: all 0.2s;" onclick="window.changeSpImage('${img}', this)">`).join('')}</div>` : ''}
+        galleryHtml = `<div id="sp-gallery-wrapper" style="width: 100%; display: flex; flex-direction: column; gap: 15px; align-items: center; position: relative;">
+            <div id="sp-main-slider" style="display: flex; overflow-x: auto; scroll-snap-type: x mandatory; width: 100%; gap: 0; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; scrollbar-width: none;">
+                ${images.map((img, idx) => `
+                    <div style="scroll-snap-align: start; flex: 0 0 100%; width: 100%; display: flex; justify-content: center; align-items: center;">
+                        <img src="${img}" style="width:100%; height:auto; max-height:400px; object-fit:contain; cursor: zoom-in; mix-blend-mode: multiply;" onclick="openImageModal(this.src, 'Vista Previa')">
+                    </div>
+                `).join('')}
+            </div>
+            <style>
+                #sp-main-slider::-webkit-scrollbar { display: none; }
+            </style>
+            ${images.length > 1 ? `<div style="display: flex; gap: 10px; overflow-x: auto; padding: 5px 0; justify-content: center; width: 100%;">${images.map((img, idx) => `<img src="${img}" class="sp-thumb" style="width: 60px; height: 60px; border: 2px solid ${idx===0?'#000':'transparent'}; border-radius: 6px; cursor: pointer; object-fit: cover; opacity: ${idx===0?'1':'0.6'}; transition: all 0.2s;" onclick="window.scrollToSpImage(${idx})">`).join('')}</div>` : ''}
         </div>`;
         togglesHtml += `<button id="sp-photo-toggle" class="active" onclick="window.toggleSpMediaView('photo')" style="background: #000; color: #fff; border: none; padding: 6px 16px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 0.85rem;">Fotos</button>`;
     }
@@ -871,12 +880,28 @@ function renderSpGallery(images, videos) {
         });
     }
     mediaContainer.innerHTML = `${galleryHtml}<div style="display: flex; justify-content: center; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">${togglesHtml}</div><div id="sp-video-player" style="display:none; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 8px; overflow: hidden;"></div>`;
+
+    const slider = document.getElementById('sp-main-slider');
+    if (slider) {
+        slider.addEventListener('scroll', () => {
+            const scrollLeft = slider.scrollLeft;
+            const slideWidth = slider.clientWidth;
+            if (slideWidth === 0) return;
+            const currentIndex = Math.round(scrollLeft / slideWidth);
+            document.querySelectorAll('.sp-thumb').forEach((t, i) => { 
+                t.style.borderColor = i === currentIndex ? '#000' : 'transparent'; 
+                t.style.opacity = i === currentIndex ? '1' : '0.6'; 
+            });
+        });
+    }
 }
 
-window.changeSpImage = function(src, thumbEl) {
-    document.getElementById('sp-main-img').src = src;
-    document.querySelectorAll('.sp-thumb').forEach(t => { t.style.borderColor = 'transparent'; t.style.opacity = '0.6'; });
-    if (thumbEl) { thumbEl.style.borderColor = '#000'; thumbEl.style.opacity = '1'; }
+window.scrollToSpImage = function(index) {
+    const slider = document.getElementById('sp-main-slider');
+    if (slider) {
+        const slideWidth = slider.clientWidth;
+        slider.scrollTo({ left: slideWidth * index, behavior: 'smooth' });
+    }
 }
 
 window.toggleSpMediaView = function(view, videoUrl = '', btnElement = null) {
@@ -979,10 +1004,17 @@ function renderProductGallery(images, videos) {
     let togglesHtml = '';
 
     if (images.length > 0) {
-        galleryHtml = `<div id="pm-gallery-wrapper" class="pm-gallery-wrapper">`;
-        galleryHtml += `<img id="pm-main-img" src="${images[0]}" style="width:100%; height:auto; max-height:400px; object-fit:contain; cursor: zoom-in;" onclick="openImageModal(this.src, 'Vista Previa')">`;
+        galleryHtml = `<div id="pm-gallery-wrapper" class="pm-gallery-wrapper" style="position: relative;">`;
+        galleryHtml += `<div id="pm-main-slider" style="display: flex; overflow-x: auto; scroll-snap-type: x mandatory; width: 100%; gap: 0; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; scrollbar-width: none;">
+                ${images.map((img, idx) => `
+                    <div style="scroll-snap-align: start; flex: 0 0 100%; width: 100%; display: flex; justify-content: center; align-items: center;">
+                        <img src="${img}" style="width:100%; height:auto; max-height:400px; object-fit:contain; cursor: zoom-in;" onclick="openImageModal(this.src, 'Vista Previa')">
+                    </div>
+                `).join('')}
+            </div>
+            <style>#pm-main-slider::-webkit-scrollbar { display: none; }</style>`;
         if (images.length > 1) {
-            galleryHtml += `<div class="pm-thumbnails">${images.map((img, idx) => `<img src="${img}" class="pm-thumb ${idx===0?'active':''}" onclick="changeModalImage('${img}', this)">`).join('')}</div>`;
+            galleryHtml += `<div class="pm-thumbnails">${images.map((img, idx) => `<img src="${img}" class="pm-thumb ${idx===0?'active':''}" onclick="scrollToModalImage(${idx})">`).join('')}</div>`;
         }
         galleryHtml += `</div>`;
         togglesHtml += `<button id="photo-toggle" class="active" onclick="toggleMediaView('photo')">Fotos</button>`;
@@ -998,6 +1030,20 @@ function renderProductGallery(images, videos) {
     }
 
     mediaContainer.innerHTML = `${galleryHtml}<div class="pm-media-toggle">${togglesHtml}</div><div id="pm-video-player" style="display:none;"></div>`;
+
+    const slider = document.getElementById('pm-main-slider');
+    if (slider) {
+        slider.addEventListener('scroll', () => {
+            const scrollLeft = slider.scrollLeft;
+            const slideWidth = slider.clientWidth;
+            if (slideWidth === 0) return;
+            const currentIndex = Math.round(scrollLeft / slideWidth);
+            document.querySelectorAll('.pm-thumb').forEach((t, i) => { 
+                if (i === currentIndex) t.classList.add('active');
+                else t.classList.remove('active');
+            });
+        });
+    }
 }
 
 window.toggleMediaView = function(view, videoUrl = '', btnElement = null) {
@@ -1053,21 +1099,11 @@ window.toggleMediaView = function(view, videoUrl = '', btnElement = null) {
     }
 }
 
-window.changeModalImage = function(src, thumbEl) {
-    const mainImg = document.getElementById('pm-main-img');
-    if (!mainImg) {
-        console.error('Elemento de imagen principal #pm-main-img no encontrado.');
-        return;
-    }
-    mainImg.src = src;
-
-    // Quitar 'active' de todos los thumbnails
-    const thumbnails = document.querySelectorAll('.pm-thumb');
-    thumbnails.forEach(t => t.classList.remove('active'));
-
-    // Añadir 'active' al thumbnail seleccionado, si existe
-    if (thumbEl) {
-        thumbEl.classList.add('active');
+window.scrollToModalImage = function(index) {
+    const slider = document.getElementById('pm-main-slider');
+    if (slider) {
+        const slideWidth = slider.clientWidth;
+        slider.scrollTo({ left: slideWidth * index, behavior: 'smooth' });
     }
 }
 
