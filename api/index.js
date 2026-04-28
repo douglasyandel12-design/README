@@ -61,6 +61,7 @@ const OrderSchema = new mongoose.Schema({
   items: [{
     id: mongoose.Schema.Types.Mixed, // Puede ser String o Number según tu lógica actual
     name: String,
+    variant: String,
     price: Number,
     quantity: Number,
     image: String
@@ -892,7 +893,8 @@ router.post('/orders', async (req, res) => {
             // Añadir el item final con la imagen y el precio calculado
             finalItems.push({
                 id: item.id,
-                name: product.name,
+                name: product.name + (item.variant ? ` ${item.variant}` : ''),
+                variant: item.variant || '',
                 price: price,
                 quantity: item.quantity,
                 image: (product.images && product.images.length > 0) ? product.images[0] : (product.image || '')

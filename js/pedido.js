@@ -568,6 +568,7 @@ function renderOrderSummary() {
                 </div>
                 <div class="item-details">
                     <span class="item-name" style="cursor: pointer;" onclick="openImageModal('${imgUrl}', '${safeName}')" title="Ver detalles">${item.name}</span>
+                    ${item.variant ? `<span style="display:block; font-size:0.85rem; color:#6b7280; font-weight:normal; margin-bottom:4px;">${item.variant}</span>` : ''}
                     <div class="qty-wrapper">
                         <button type="button" class="qty-btn" onclick="updateOrderItemQuantity(${index}, -1)">−</button>
                         <span class="qty-val">${item.quantity}</span>
@@ -683,7 +684,7 @@ async function submitOrder(e) {
         customer,
         // Enviamos solo los datos necesarios para que el backend verifique y procese.
         items: cart.map(item => {
-            return { id: item.id, name: item.name, quantity: item.quantity };
+                return { id: item.id, name: item.name, variant: item.variant || '', quantity: item.quantity };
         })
     };
 

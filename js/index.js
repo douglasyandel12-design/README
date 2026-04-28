@@ -810,8 +810,8 @@ function renderRelatedProducts(currentId) {
                     <h3 class="product-title">${product.name}</h3>
                     <div class="price-container">${originalPriceHtml}<span class="product-price">${currencyManager.format(displayPrice)}</span>${promoMsg}</div>
                     <div class="btn-container" style="display: flex; gap: 8px;">
-                        <button class="btn" onclick="orderNow(${product.id})" style="flex: 1.2; font-size: 0.9rem; padding: 10px;">Pedir ahora</button>
-                        <button class="btn btn-outline" onclick="addToCart(${product.id})" style="flex: 0.8; font-size: 0.8rem; padding: 10px;">Añadir</button>
+                        <button class="btn" onclick="${product.variants && product.variants.length > 0 ? `viewProductDetails('${product.id}')` : `orderNow('${product.id}')`}" style="flex: 1.2; font-size: 0.9rem; padding: 10px;">Pedir ahora</button>
+                        <button class="btn btn-outline" onclick="${product.variants && product.variants.length > 0 ? `viewProductDetails('${product.id}')` : `addToCart('${product.id}')`}" style="flex: 0.8; font-size: 0.8rem; padding: 10px;">Añadir</button>
                     </div>
                 </div>
             </div>
@@ -859,7 +859,7 @@ function renderSpGallery(images, videos) {
     let galleryHtml = ''; let togglesHtml = '';
     if (images.length > 0) {
         galleryHtml = `<div id="sp-gallery-wrapper" style="width: 100%; display: flex; flex-direction: column; gap: 15px; align-items: center; position: relative;">
-            <div id="sp-main-slider" style="display: flex; overflow-x: auto; scroll-snap-type: x mandatory; width: 100%; gap: 0; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; scrollbar-width: none;">
+            <div id="sp-main-slider" style="display: flex; overflow-x: auto; scroll-snap-type: x mandatory; width: 100%; gap: 0; -webkit-overflow-scrolling: touch; scrollbar-width: none;">
                 ${images.map((img, idx) => `
                     <div style="scroll-snap-align: start; flex: 0 0 100%; width: 100%; display: flex; justify-content: center; align-items: center;">
                         <img src="${img}" style="width:100%; height:auto; max-height:400px; object-fit:contain; cursor: zoom-in; mix-blend-mode: multiply;" onclick="openImageModal(this.src, 'Vista Previa')">
@@ -896,11 +896,42 @@ function renderSpGallery(images, videos) {
     }
 }
 
+window.slowScrollTo = function(element, to, duration) {
+    const start = element.scrollLeft;
+    const change = to - start;
+    let startTime = null;
+
+    // Desactivar temporalmente el scroll-snap nativo para tener control total de la animación
+    const originalSnap = element.style.scrollSnapType;
+    element.style.scrollSnapType = 'none';
+
+    function animateScroll(currentTime) {
+        if (!startTime) startTime = currentTime;
+        const timeElapsed = currentTime - startTime;
+        
+        // Easing In-Out Quad para suavidad premium (acelera y luego frena suavemente)
+        let t = timeElapsed / (duration / 2);
+        let val;
+        if (t < 1) val = (change / 2) * t * t + start;
+        else { t--; val = (-change / 2) * (t * (t - 2) - 1) + start; }
+
+        element.scrollLeft = val;
+
+        if (timeElapsed < duration) {
+            requestAnimationFrame(animateScroll);
+        } else {
+            element.scrollLeft = to;
+            element.style.scrollSnapType = originalSnap; // Restaurar snap táctil
+        }
+    }
+    requestAnimationFrame(animateScroll);
+}
+
 window.scrollToSpImage = function(index) {
     const slider = document.getElementById('sp-main-slider');
     if (slider) {
         const slideWidth = slider.clientWidth;
-        slider.scrollTo({ left: slideWidth * index, behavior: 'smooth' });
+        window.slowScrollTo(slider, slideWidth * index, 500); // 500ms para un deslizamiento un poquito más relajado
     }
 }
 
@@ -967,14 +998,16 @@ window.updateSpPriceDisplay = function(quantity) {
 
 window.addSpToCart = function() {
     const qty = parseInt(document.getElementById('sp-qty').value);
-    addToCart(window.currentSpProductId, qty);
+    const variant = getSelectedVariants();
+    addToCart(window.currentSpProductId, qty, variant);
 }
 
 window.buySpNow = function() {
     const qty = parseInt(document.getElementById('sp-qty').value);
+    const variant = getSelectedVariants();
     const product = products.find(p => p.id == window.currentSpProductId);
     if (product) {
-        const existingItem = cart.find(item => item.id == window.currentSpProductId);
+        const existingItem = cart.find(item => item.id == window.currentSpProductId && item.variant === variant);
         const finalPrice = calculateItemPrice(product, existingItem ? existingItem.quantity + qty : qty);
         const image = (product.images && product.images.length > 0) ? product.images[0] : (product.image || '');
         if (existingItem) {
@@ -982,7 +1015,7 @@ window.buySpNow = function() {
             existingItem.price = finalPrice;
             existingItem.image = image;
         } else {
-            cart.push({ id: product.id, name: product.name, price: finalPrice, quantity: qty, originalPrice: product.price, image: image });
+            cart.push({ id: product.id, name: product.name, variant: variant, price: finalPrice, quantity: qty, originalPrice: product.price, image: image });
         }
         saveCart();
         window.location.href = 'pedido.html';
@@ -1005,7 +1038,7 @@ function renderProductGallery(images, videos) {
 
     if (images.length > 0) {
         galleryHtml = `<div id="pm-gallery-wrapper" class="pm-gallery-wrapper" style="position: relative;">`;
-        galleryHtml += `<div id="pm-main-slider" style="display: flex; overflow-x: auto; scroll-snap-type: x mandatory; width: 100%; gap: 0; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; scrollbar-width: none;">
+        galleryHtml += `<div id="pm-main-slider" style="display: flex; overflow-x: auto; scroll-snap-type: x mandatory; width: 100%; gap: 0; -webkit-overflow-scrolling: touch; scrollbar-width: none;">
                 ${images.map((img, idx) => `
                     <div style="scroll-snap-align: start; flex: 0 0 100%; width: 100%; display: flex; justify-content: center; align-items: center;">
                         <img src="${img}" style="width:100%; height:auto; max-height:400px; object-fit:contain; cursor: zoom-in;" onclick="openImageModal(this.src, 'Vista Previa')">
@@ -1103,7 +1136,7 @@ window.scrollToModalImage = function(index) {
     const slider = document.getElementById('pm-main-slider');
     if (slider) {
         const slideWidth = slider.clientWidth;
-        slider.scrollTo({ left: slideWidth * index, behavior: 'smooth' });
+        window.slowScrollTo(slider, slideWidth * index, 500); // 500ms
     }
 }
 
@@ -1307,8 +1340,8 @@ function renderProducts() {
                 <h3 class="product-title">${product.name}</h3>
                 <div class="price-container">${originalPriceHtml}<span class="product-price">${currencyManager.format(displayPrice)}</span>${promoMsg}</div>
                 <div class="btn-container" style="display: flex; gap: 8px;">
-                    <button class="btn" onclick="orderNow(${product.id})" style="flex: 1.2; font-size: 0.9rem; padding: 10px;">Pedir ahora</button>
-                    <button class="btn btn-outline" onclick="addToCart(${product.id})" style="flex: 0.8; font-size: 0.8rem; padding: 10px;">Añadir</button>
+                    <button class="btn" onclick="${product.variants && product.variants.length > 0 ? `viewProductDetails('${product.id}')` : `orderNow('${product.id}')`}" style="flex: 1.2; font-size: 0.9rem; padding: 10px;">Pedir ahora</button>
+                    <button class="btn btn-outline" onclick="${product.variants && product.variants.length > 0 ? `viewProductDetails('${product.id}')` : `addToCart('${product.id}')`}" style="flex: 0.8; font-size: 0.8rem; padding: 10px;">Añadir</button>
                 </div>
             </div>
         `;
@@ -1367,7 +1400,7 @@ function calculateItemPrice(product, quantity) {
     return priceAfterPrimaryDiscount;
 }
 
-function addToCart(id, quantityToAdd = 1) {
+function addToCart(id, quantityToAdd = 1, variant = '') {
     // Usamos '==' para asegurar compatibilidad si el ID viene como texto o número
     const product = products.find(p => p.id == id);
     
@@ -1378,7 +1411,7 @@ function addToCart(id, quantityToAdd = 1) {
     const image = (product.images && product.images.length > 0) ? product.images[0] : (product.image || '');
 
     // Lógica de agrupación
-    const existingItem = cart.find(item => item.id == id);
+    const existingItem = cart.find(item => item.id == id && item.variant === variant);
     const newQuantity = existingItem ? existingItem.quantity + quantityToAdd : quantityToAdd;
 
     // Calcular precio dinámicamente
@@ -1390,7 +1423,7 @@ function addToCart(id, quantityToAdd = 1) {
         existingItem.image = image; // Actualizar imagen
     } else {
         // Guardamos el precio original por si necesitamos recalcular y el producto ya no está en la lista `products`
-        cart.push({ id: product.id, name: product.name, price: finalPrice, quantity: quantityToAdd, originalPrice: product.price, image: image });
+        cart.push({ id: product.id, name: product.name, variant: variant, price: finalPrice, quantity: quantityToAdd, originalPrice: product.price, image: image });
     }
 
     saveCart();
@@ -1400,12 +1433,12 @@ function addToCart(id, quantityToAdd = 1) {
     showToast(`¡${quantityToAdd}x ${product.name} agregado!`);
 }
 
-function orderNow(id) {
+function orderNow(id, variant = '') {
     const product = products.find(p => p.id == id);
     if (!product) return;
 
     // Lógica de agrupación para pedido directo
-    const existingItem = cart.find(item => item.id == id);
+    const existingItem = cart.find(item => item.id == id && item.variant === variant);
     const newQuantity = existingItem ? existingItem.quantity + 1 : 1;
 
     // Obtener imagen
@@ -1419,7 +1452,7 @@ function orderNow(id) {
         existingItem.price = finalPrice;
         existingItem.image = image;
     } else {
-        cart.push({ id: product.id, name: product.name, price: finalPrice, quantity: 1, originalPrice: product.price, image: image });
+        cart.push({ id: product.id, name: product.name, variant: variant, price: finalPrice, quantity: 1, originalPrice: product.price, image: image });
     }
 
     saveCart();
@@ -1458,7 +1491,7 @@ function updateCartUI() {
         htmlContent = cart.map((item, index) => `
             <div class="cart-item">
                 <div class="cart-item-details">
-                    <span style="font-weight:600;">${item.name}</span>
+                    <span style="font-weight:600;">${item.name} ${item.variant ? `<span style="font-weight:normal; color:#666; font-size:0.85rem;">${item.variant}</span>` : ''}</span>
                     <span style="font-size:0.8rem; color:#666;">
                         Cant: ${item.quantity} x 
                         ${
@@ -1622,4 +1655,13 @@ function fixPageFavicon() {
         if(aspect > 1) { h=size/aspect; y=(size-h)/2; } else { w=size*aspect; x=(size-w)/2; }
         ctx.drawImage(img, x, y, w, h); link.href = canvas.toDataURL('image/png');
     }; img.src = link.href;
+}
+
+function getSelectedVariants() {
+    const selects = document.querySelectorAll('.sp-variant-select');
+    let selectedVariants = [];
+    selects.forEach(sel => {
+        selectedVariants.push(`${sel.dataset.name}: ${sel.value}`);
+    });
+    return selectedVariants.length > 0 ? `(${selectedVariants.join(', ')})` : '';
 }

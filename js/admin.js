@@ -9,6 +9,7 @@ let tempImages = []; // Array temporal para gestionar imágenes antes de guardar
 let tempVideos = []; // Array temporal para gestionar videos
 let cropInstance = null;
 let cropResolve = null;
+let tempVariants = []; // Array temporal para las variantes
 
 // Helper function for debouncing, add at the top of the file
 function debounce(func, delay) {
@@ -1088,6 +1089,7 @@ function openProductModal(id = null) {
         // Stock
         if(document.getElementById('edit-stock')) document.getElementById('edit-stock').value = (product.stock !== undefined && product.stock !== null) ? product.stock : '';
         
+        tempVariants = product.variants ? JSON.parse(JSON.stringify(product.variants)) : [];
     } else {
         // MODO AGREGAR
         if(modalTitle) modalTitle.innerText = 'Nuevo Producto';
@@ -1101,8 +1103,11 @@ function openProductModal(id = null) {
         
         tempVideos = [];
         if(document.getElementById('edit-stock')) document.getElementById('edit-stock').value = '';
+        tempVariants = [];
     }
     
+    injectVariantsUI();
+    renderVariants();
     // Renderizar gestores de imagen separados
     renderSeparatedImageUIs();
     renderVideoManager(); // Renderizar gestor de videos
@@ -1123,6 +1128,8 @@ async function saveProductModal(e) {
     let method = 'POST';
 
     let descriptionContent = quillEdit ? quillEdit.root.innerHTML : '';
+    
+    const finalVariants = tempVariants.filter(v => v.name.trim() !== '' && v.options.length > 0);
 
     if (idInput) {
         // --- ACTUALIZAR EXISTENTE ---
@@ -1136,6 +1143,7 @@ async function saveProductModal(e) {
             stock: (document.getElementById('edit-stock').value === "" || document.getElementById('edit-stock').value === undefined) ? null : parseInt(document.getElementById('edit-stock').value),
             description: descriptionContent,
             images: [...tempImages],
+            variants: finalVariants,
             image: tempImages.length > 0 ? tempImages[0] : '',
             videos: [...tempVideos],
             video: tempVideos.length > 0 ? tempVideos[0] : '' // Mantener compatibilidad
@@ -1150,6 +1158,7 @@ async function saveProductModal(e) {
             stock: (document.getElementById('edit-stock').value === "" || document.getElementById('edit-stock').value === undefined) ? null : parseInt(document.getElementById('edit-stock').value),
             description: descriptionContent,
             images: [...tempImages],
+            variants: finalVariants,
             image: tempImages.length > 0 ? tempImages[0] : '',
             videos: [...tempVideos],
             video: tempVideos.length > 0 ? tempVideos[0] : ''
@@ -1610,3 +1619,36 @@ function fixPageFavicon() {
         ctx.drawImage(img, x, y, w, h); link.href = canvas.toDataURL('image/png');
     }; img.src = link.href;
 }
+
+window.injectVariantsUI = function() {
+    const form = document.querySelector('#edit-modal form');
+    if (form && !document.getElementById('variants-section')) {
+        const variantsSection = document.createElement('div');
+        variantsSection.id = 'variants-section';
+        variantsSection.style.cssText = "grid-column: 1 / -1; margin-top: 10px; background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px dashed #ccc;";
+        variantsSection.innerHTML = `
+            <label style="font-size: 1rem; color: #111;">🏷️ Variantes del Producto (Ej: Color, Talla) - Opcional</label>
+            <p style="font-size: 0.8rem; color: #666; margin-bottom: 10px;">Permite que el cliente elija opciones antes de añadir al carrito.</p>
+            <div id="variants-container" style="display:flex; flex-direction:column; gap:10px;"></div>
+            <button type="button" class="btn btn-outline" onclick="addVariantField()" style="margin-top: 10px; width: auto; padding: 6px 12px; font-size: 0.85rem;">+ Añadir Variante</button>
+        `;
+        const actions = form.querySelector('.form-actions');
+        if (actions) form.insertBefore(variantsSection, actions);
+        else form.appendChild(variantsSection);
+    }
+}
+window.renderVariants = function() {
+    const container = document.getElementById('variants-container');
+    if (!container) return;
+    container.innerHTML = tempVariants.map((v, i) => `
+        <div style="display:flex; gap:10px; align-items:center; background:#fff; padding:10px; border-radius:6px; border:1px solid #e5e7eb; flex-wrap: wrap;">
+            <input type="text" placeholder="Nombre (Ej: Color)" value="${v.name}" onchange="updateVariantName(${i}, this.value)" style="width:150px; margin:0; flex: 1; min-width: 120px;">
+            <input type="text" placeholder="Opciones separadas por coma (Ej: Rojo, Azul)" value="${v.options.join(', ')}" onchange="updateVariantOptions(${i}, this.value)" style="flex:2; min-width: 200px; margin:0;">
+            <button type="button" class="btn btn-danger" onclick="removeVariant(${i})" style="padding:5px 10px; width:auto; margin:0;">&times;</button>
+        </div>
+    `).join('');
+}
+window.addVariantField = () => { tempVariants.push({ name: '', options: [] }); renderVariants(); }
+window.updateVariantName = (i, val) => { tempVariants[i].name = val; }
+window.updateVariantOptions = (i, val) => { tempVariants[i].options = val.split(',').map(s => s.trim()).filter(s => s); }
+window.removeVariant = (i) => { tempVariants.splice(i, 1); renderVariants(); }

@@ -232,6 +232,7 @@ function renderCart() {
             <tr>
                 <td>
                     ${item.name}
+                    ${item.variant ? `<br><small style="color: #666; font-weight: 500;">${item.variant}</small>` : ''}
                     ${promoMsg}
                 </td>
                 <td>${priceDisplay}</td>
